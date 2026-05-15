@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnFlow</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <a href="#" class="header__logo">
+            <span class="header__logo-icon">📚</span>
+            <span>LearnFlow</span>
+        </a>
+
+        <div class="header__actions">
+            <button class="theme-toggle" id="themeToggle">🌙</button>
+            <button class="header__menu-btn" id="menuToggle">☰</button>
+        </div>
+    </header>
+
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="app-layout">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <span class="sidebar__section-title">Principal</span>
+
+            <button class="sidebar__link sidebar__link--active" data-tab="dashboard">
+                🏠 Dashboard
+            </button>
+
+            <button class="sidebar__link" data-tab="estudos">
+                📖 Estudos
+            </button>
+
+            <button class="sidebar__link" data-tab="prompts">
+                ✨ Prompts
+            </button>
+
+            <button class="sidebar__link" data-tab="recursos">
+                📦 Recursos
+            </button>
+
+            <span class="sidebar__section-title">Matérias</span>
+
+            <button class="sidebar__link" data-tab="estudos" data-materia="portugues">
+                📝 Português
+            </button>
+
+            <button class="sidebar__link" data-tab="estudos" data-materia="matematica">
+                🧮 Matemática
+            </button>
+
+            <button class="sidebar__link" data-tab="estudos" data-materia="fisica">
+                ⚡ Física
+            </button>
+
+            <button class="sidebar__link" data-tab="estudos" data-materia="quimica">
+                🧪 Química
+            </button>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="main-content" id="mainContent">
+
+            <!-- NAVEGAÇÃO DE ABAS -->
+            <nav class="tab-nav" id="tabNav">
+                <button class="tab-btn tab-btn--active" data-tab="dashboard">📊 Dashboard</button>
+                <button class="tab-btn" data-tab="estudos">📖 Estudos</button>
+                <button class="tab-btn" data-tab="prompts">✨ Prompts</button>
+                <button class="tab-btn" data-tab="recursos">📦 Recursos</button>
+            </nav>
+
+            <!-- ============================================================ -->
+            <!-- PAINEL: DASHBOARD (ZERADO) -->
+            <!-- ============================================================ -->
+            <section class="tab-panel tab-panel--active" id="panel-dashboard">
+                
+                <div class="dashboard-welcome">
+                    <h2>👋 Bem-vindo a LearnFlow!</h2>
+                    <p>Seu espaço de estudos organizado. Comece explorando as matérias na aba <strong>Estudos</strong>.</p>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-card__value">0</div>
+                        <div class="stat-card__label">Horas Estudadas</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card__value">0%</div>
+                        <div class="stat-card__label">Aproveitamento</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card__value">0</div>
+                        <div class="stat-card__label">Tópicos Concluídos</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card__value">0</div>
+                        <div class="stat-card__label">Simulados Realizados</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 16px; color: var(--text-secondary);">📌 Matérias disponíveis para começar:</h3>
+                
+                <div class="cards-grid">
+                    <article class="card card--clickable" data-tab="estudos" data-materia="portugues">
+                        <div class="card__icon">📝</div>
+                        <span class="card__badge">Português</span>
+                        <h3 class="card__title">Gramática e Interpretação</h3>
+                        <p class="card__text">Classes gramaticais, sintaxe, figuras de linguagem e técnicas de interpretação textual.</p>
+                    </article>
+
+                    <article class="card card--clickable" data-tab="estudos" data-materia="matematica">
+                        <div class="card__icon">🧮</div>
+                        <span class="card__badge">Matemática</span>
+                        <h3 class="card__title">Álgebra e Geometria</h3>
+                        <p class="card__text">Funções, equações, trigonometria e geometria plana e espacial.</p>
+                    </article>
+
+                    <article class="card card--clickable" data-tab="estudos" data-materia="fisica">
+                        <div class="card__icon">⚡</div>
+                        <span class="card__badge">Física</span>
+                        <h3 class="card__title">Mecânica e Termodinâmica</h3>
+                        <p class="card__text">Leis de Newton, trabalho e energia, calor e temperatura.</p>
+                    </article>
+
+                    <article class="card card--clickable" data-tab="estudos" data-materia="quimica">
+                        <div class="card__icon">🧪</div>
+                        <span class="card__badge">Química</span>
+                        <h3 class="card__title">Química Geral e Orgânica</h3>
+                        <p class="card__text">Tabela periódica, ligações químicas, reações e compostos orgânicos.</p>
+                    </article>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- PAINEL: ESTUDOS (SISTEMA DE MATÉRIAS) -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-estudos">
+                
+                <!-- SUB-NAVEGAÇÃO DE MATÉRIAS -->
+                <div class="materia-nav" id="materiaNav">
+                    <button class="materia-btn materia-btn--active" data-materia="portugues">
+                        📝 Português
+                    </button>
+                    <button class="materia-btn" data-materia="matematica">
+                        🧮 Matemática
+                    </button>
+                    <button class="materia-btn" data-materia="fisica">
+                        ⚡ Física
+                    </button>
+                    <button class="materia-btn" data-materia="quimica">
+                        🧪 Química
+                    </button>
+                </div>
+
+                <!-- CONTEÚDO DAS MATÉRIAS -->
+                <div class="materia-content">
+                    
+                    <!-- PORTUGUÊS -->
+                    <div class="materia-panel materia-panel--active" id="materia-portugues">
+                        <h2>📝 Português</h2>
+                        <p class="materia-descricao">Domine a língua portuguesa com conteúdos organizados de gramática, literatura e interpretação textual.</p>
+                        
+                        <div class="cards-grid">
+                            <!-- Card 1 -->
+                            <article class="card">
+                                <div class="card__icon">📚</div>
+                                <span class="card__badge">Gramática</span>
+                                <h3 class="card__title">Classes Gramaticais</h3>
+                                <p class="card__text">Substantivos, adjetivos, verbos, advérbios e todas as 10 classes de palavras da língua portuguesa.</p>
+                                <ul class="card__topicos">
+                                    <li>Substantivo: classificação e flexões</li>
+                                    <li>Adjetivo: graus comparativo e superlativo</li>
+                                    <li>Verbos: conjugações e modos verbais</li>
+                                    <li>Advérbios: classificação completa</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <!-- Card 2 -->
+                            <article class="card">
+                                <div class="card__icon">📖</div>
+                                <span class="card__badge">Sintaxe</span>
+                                <h3 class="card__title">Análise Sintática</h3>
+                                <p class="card__text">Sujeito, predicado, complementos verbais e nominais. Estrutura completa da oração.</p>
+                                <ul class="card__topicos">
+                                    <li>Tipos de sujeito (simples, composto, oculto)</li>
+                                    <li>Predicado verbal, nominal e verbo-nominal</li>
+                                    <li>Objeto direto e indireto</li>
+                                    <li>Adjuntos adnominais e adverbiais</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <!-- Card 3 -->
+                            <article class="card">
+                                <div class="card__icon">✍️</div>
+                                <span class="card__badge">Redação</span>
+                                <h3 class="card__title">Estrutura Dissertativa</h3>
+                                <p class="card__text">Aprenda a construir introdução, desenvolvimento e conclusão para o ENEM e vestibulares.</p>
+                                <ul class="card__topicos">
+                                    <li>Tese e argumentação</li>
+                                    <li>Coesão e coerência textual</li>
+                                    <li>Conectivos e transições</li>
+                                    <li>Proposta de intervenção</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <!-- Card 4 -->
+                            <article class="card">
+                                <div class="card__icon">🎭</div>
+                                <span class="card__badge">Literatura</span>
+                                <h3 class="card__title">Escolas Literárias</h3>
+                                <p class="card__text">Do Barroco ao Modernismo: características, autores e obras fundamentais.</p>
+                                <ul class="card__topicos">
+                                    <li>Barroco e Arcadismo</li>
+                                    <li>Romantismo e Realismo</li>
+                                    <li>Modernismo brasileiro</li>
+                                    <li>Literatura contemporânea</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+                        </div>
+                    </div>
+
+                    <!-- MATEMÁTICA -->
+                    <div class="materia-panel" id="materia-matematica">
+                        <h2>🧮 Matemática</h2>
+                        <p class="materia-descricao">Desenvolva seu raciocínio lógico com álgebra, geometria e muito mais.</p>
+                        
+                        <div class="cards-grid">
+                            <article class="card">
+                                <div class="card__icon">📐</div>
+                                <span class="card__badge">Álgebra</span>
+                                <h3 class="card__title">Funções Matemáticas</h3>
+                                <p class="card__text">Funções do 1º e 2º grau, modular, exponencial e logarítmica.</p>
+                                <ul class="card__topicos">
+                                    <li>Função afim: gráficos e aplicações</li>
+                                    <li>Função quadrática: vértice e raízes</li>
+                                    <li>Função exponencial: crescimento</li>
+                                    <li>Logaritmos: definição e propriedades</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <article class="card">
+                                <div class="card__icon">📏</div>
+                                <span class="card__badge">Geometria</span>
+                                <h3 class="card__title">Geometria Plana</h3>
+                                <p class="card__text">Áreas, perímetros, teoremas e relações métricas no triângulo.</p>
+                                <ul class="card__topicos">
+                                    <li>Teorema de Pitágoras</li>
+                                    <li>Áreas de figuras planas</li>
+                                    <li>Semelhança de triângulos</li>
+                                    <li>Relações trigonométricas</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <article class="card">
+                                <div class="card__icon">📊</div>
+                                <span class="card__badge">Trigonometria</span>
+                                <h3 class="card__title">Ciclo Trigonométrico</h3>
+                                <p class="card__text">Seno, cosseno, tangente e suas aplicações no ciclo trigonométrico.</p>
+                                <ul class="card__topicos">
+                                    <li>Arcos e ângulos notáveis</li>
+                                    <li>Redução ao primeiro quadrante</li>
+                                    <li>Equações trigonométricas</li>
+                                    <li>Lei dos senos e cossenos</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+                        </div>
+                    </div>
+
+                    <!-- FÍSICA -->
+                    <div class="materia-panel" id="materia-fisica">
+                        <h2>⚡ Física</h2>
+                        <p class="materia-descricao">Compreenda as leis que regem o universo, da mecânica à termodinâmica.</p>
+                        
+                        <div class="cards-grid">
+                            <article class="card">
+                                <div class="card__icon">🚀</div>
+                                <span class="card__badge">Mecânica</span>
+                                <h3 class="card__title">Leis de Newton</h3>
+                                <p class="card__text">Inércia, princípio fundamental da dinâmica e ação-reação.</p>
+                                <ul class="card__topicos">
+                                    <li>1ª Lei: Inércia e referenciais</li>
+                                    <li>2ª Lei: Força e aceleração (F=ma)</li>
+                                    <li>3ª Lei: Ação e reação</li>
+                                    <li>Aplicações no cotidiano</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <article class="card">
+                                <div class="card__icon">🔥</div>
+                                <span class="card__badge">Termodinâmica</span>
+                                <h3 class="card__title">Calor e Temperatura</h3>
+                                <p class="card__text">Calorimetria, dilatação térmica e leis da termodinâmica.</p>
+                                <ul class="card__topicos">
+                                    <li>Escalas termométricas</li>
+                                    <li>Calor sensível e latente</li>
+                                    <li>Dilatação de sólidos e líquidos</li>
+                                    <li>1ª Lei da Termodinâmica</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <article class="card">
+                                <div class="card__icon">⚡</div>
+                                <span class="card__badge">Eletricidade</span>
+                                <h3 class="card__title">Circuitos Elétricos</h3>
+                                <p class="card__text">Lei de Ohm, resistores, capacitores e circuitos em série e paralelo.</p>
+                                <ul class="card__topicos">
+                                    <li>Tensão, corrente e resistência</li>
+                                    <li>1ª Lei de Ohm</li>
+                                    <li>Associação de resistores</li>
+                                    <li>Potência elétrica</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+                        </div>
+                    </div>
+
+                    <!-- QUÍMICA -->
+                    <div class="materia-panel" id="materia-quimica">
+                        <h2>🧪 Química</h2>
+                        <p class="materia-descricao">Explore a composição da matéria, reações e compostos orgânicos.</p>
+                        
+                        <div class="cards-grid">
+                            <article class="card">
+                                <div class="card__icon">⚛️</div>
+                                <span class="card__badge">Química Geral</span>
+                                <h3 class="card__title">Tabela Periódica</h3>
+                                <p class="card__text">Propriedades periódicas, famílias e distribuição eletrônica.</p>
+                                <ul class="card__topicos">
+                                    <li>Histórico e organização</li>
+                                    <li>Propriedades periódicas</li>
+                                    <li>Distribuição eletrônica</li>
+                                    <li>Famílias e períodos</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <article class="card">
+                                <div class="card__icon">🔗</div>
+                                <span class="card__badge">Ligações</span>
+                                <h3 class="card__title">Ligações Químicas</h3>
+                                <p class="card__text">Iônica, covalente e metálica: como os átomos se unem.</p>
+                                <ul class="card__topicos">
+                                    <li>Regra do octeto</li>
+                                    <li>Ligação iônica: características</li>
+                                    <li>Ligação covalente: polaridade</li>
+                                    <li>Ligação metálica</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+
+                            <article class="card">
+                                <div class="card__icon">🧬</div>
+                                <span class="card__badge">Orgânica</span>
+                                <h3 class="card__title">Funções Orgânicas</h3>
+                                <p class="card__text">Hidrocarbonetos, álcoois, cetonas e ácidos carboxílicos.</p>
+                                <ul class="card__topicos">
+                                    <li>Hidrocarbonetos: alcanos, alcenos</li>
+                                    <li>Funções oxigenadas</li>
+                                    <li>Funções nitrogenadas</li>
+                                    <li>Isomeria plana e espacial</li>
+                                </ul>
+                                <button class="btn btn--primary btn--sm">📖 Estudar Agora</button>
+                            </article>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- PAINEL: PROMPTS -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-prompts">
+                <h2>✨ Área de Prompts</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Gere resumos e materiais de estudo personalizados com IA.
+                </p>
+                
+                <div class="prompt-form">
+                    <label class="prompt-form__label" for="promptInput">O que você quer estudar?</label>
+                    <textarea 
+                        class="prompt-form__textarea" 
+                        id="promptInput" 
+                        placeholder="Ex: Explique de forma didática o que é efeito estufa e suas consequências..."
+                        rows="4"
+                    ></textarea>
+                    
+                    <div class="prompt-form__row">
+                        <select class="prompt-form__select" id="nivelSelect">
+                            <option value="basico">Nível Básico</option>
+                            <option value="intermediario" selected>Nível Intermediário</option>
+                            <option value="avancado">Nível Avançado</option>
+                        </select>
+                        
+                        <select class="prompt-form__select" id="formatoSelect">
+                            <option value="resumo" selected>Formato: Resumo</option>
+                            <option value="detalhado">Formato: Detalhado</option>
+                            <option value="topicos">Formato: Tópicos</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" class="btn btn--primary" id="gerarPrompt">
+                        🚀 Gerar Conteúdo
+                    </button>
+                </div>
+                
+                <div class="results-area" id="resultsArea" style="margin-top: 20px; display: none;">
+                    <h3>📄 Conteúdo Gerado:</h3>
+                    <div class="results-area__content" id="resultsContent"></div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- PAINEL: RECURSOS -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-recursos">
+                <h2>📦 Recursos de Estudo</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Ferramentas e materiais complementares para seus estudos.
+                </p>
+                
+                <div class="cards-grid">
+                    <article class="card">
+                        <div class="card__icon">🎥</div>
+                        <span class="card__badge">Vídeo</span>
+                        <h3 class="card__title">Playlists Recomendadas</h3>
+                        <p class="card__text">Seleção de videoaulas gratuitas para cada matéria do ENEM e vestibulares.</p>
+                        <button class="btn btn--secondary btn--sm">🔗 Acessar</button>
+                    </article>
+
+                    <article class="card">
+                        <div class="card__icon">📄</div>
+                        <span class="card__badge">PDF</span>
+                        <h3 class="card__title">Apostilas Completas</h3>
+                        <p class="card__text">Material didático organizado por tópicos com exercícios resolvidos.</p>
+                        <button class="btn btn--secondary btn--sm">📥 Download</button>
+                    </article>
+
+                    <article class="card">
+                        <div class="card__icon">📋</div>
+                        <span class="card__badge">Simulados</span>
+                        <h3 class="card__title">Simulados ENEM</h3>
+                        <p class="card__text">Provas anteriores e simulados cronometrados para praticar.</p>
+                        <button class="btn btn--secondary btn--sm">📝 Iniciar</button>
+                    </article>
+
+                    <article class="card">
+                        <div class="card__icon">🔗</div>
+                        <span class="card__badge">Links Úteis</span>
+                        <h3 class="card__title">Sites de Estudo</h3>
+                        <p class="card__text">Plataformas gratuitas com questões comentadas e correções.</p>
+                        <button class="btn btn--secondary btn--sm">🔗 Acessar</button>
+                    </article>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        © 2026 Bruno Santos - Plataforma de Estudos
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
