@@ -30,22 +30,17 @@
             <span class="sidebar__section-title">Principal</span>
             <button class="sidebar__link sidebar__link--active" data-tab="dashboard">🏠 Dashboard</button>
             <button class="sidebar__link" data-tab="estudos">📖 Estudos</button>
-            <button class="sidebar__link" data-tab="produtividade">⚡ Produtividade</button>
-            <button class="sidebar__link" data-tab="prompts">✨ Prompts</button>
-            <button class="sidebar__link" data-tab="recursos">📦 Recursos</button>
-
-            <span class="sidebar__section-title">Matérias</span>
-            <button class="sidebar__link" data-tab="estudos" data-materia="portugues">📝 Português</button>
-            <button class="sidebar__link" data-tab="estudos" data-materia="matematica">🧮 Matemática</button>
-            <button class="sidebar__link" data-tab="estudos" data-materia="fisica">⚡ Física</button>
-            <button class="sidebar__link" data-tab="estudos" data-materia="quimica">🧪 Química</button>
 
             <span class="sidebar__section-title">Produtividade</span>
-            <button class="sidebar__link" data-tab="produtividade" data-submodulo="calendario">📅 Calendário</button>
-            <button class="sidebar__link" data-tab="produtividade" data-submodulo="tarefas">✅ Tarefas</button>
-            <button class="sidebar__link" data-tab="produtividade" data-submodulo="metas">🎯 Metas</button>
-            <button class="sidebar__link" data-tab="produtividade" data-submodulo="pomodoro">⏳ Pomodoro</button>
-            <button class="sidebar__link" data-tab="produtividade" data-submodulo="arquivos">📁 Arquivos</button>
+            <button class="sidebar__link" data-tab="calendario">📅 Calendário</button>
+            <button class="sidebar__link" data-tab="tarefas">✅ Tarefas</button>
+            <button class="sidebar__link" data-tab="metas">🎯 Metas</button>
+            <button class="sidebar__link" data-tab="pomodoro">⏳ Pomodoro</button>
+            <button class="sidebar__link" data-tab="arquivos">📁 Arquivos</button>
+
+            <span class="sidebar__section-title">Outros</span>
+            <button class="sidebar__link" data-tab="recursos">📦 Recursos</button>
+            <button class="sidebar__link" data-tab="configuracoes">⚙️ Configurações</button>
         </aside>
 
         <!-- CONTEÚDO PRINCIPAL -->
@@ -55,9 +50,13 @@
             <nav class="tab-nav" id="tabNav">
                 <button class="tab-btn tab-btn--active" data-tab="dashboard">📊 Dashboard</button>
                 <button class="tab-btn" data-tab="estudos">📖 Estudos</button>
-                <button class="tab-btn" data-tab="produtividade">⚡ Produtividade</button>
-                <button class="tab-btn" data-tab="prompts">✨ Prompts</button>
+                <button class="tab-btn" data-tab="calendario">📅 Calendário</button>
+                <button class="tab-btn" data-tab="tarefas">✅ Tarefas</button>
+                <button class="tab-btn" data-tab="metas">🎯 Metas</button>
+                <button class="tab-btn" data-tab="pomodoro">⏳ Pomodoro</button>
+                <button class="tab-btn" data-tab="arquivos">📁 Arquivos</button>
                 <button class="tab-btn" data-tab="recursos">📦 Recursos</button>
+                <button class="tab-btn" data-tab="configuracoes">⚙️ Configurações</button>
             </nav>
 
             <!-- ============================================================ -->
@@ -108,162 +107,140 @@
                     <!-- GRÁFICO DE PROGRESSO -->
                     <div class="dashboard-card">
                         <h3>📊 Progresso Semanal</h3>
-                        <canvas id="graficoProgresso" width="300" height="150"></canvas>
+                        <div id="graficoBarras" class="grafico-barras"></div>
                     </div>
 
                     <!-- RECOMENDAÇÃO DO DIA -->
                     <div class="dashboard-card">
                         <h3>💡 Recomendação do Dia</h3>
                         <p id="recomendacaoDia">Carregando...</p>
+                        <button class="btn btn--primary btn--sm" id="iniciarSessao">▶ Iniciar Sessão de Estudo</button>
                     </div>
                 </div>
             </section>
 
             <!-- ============================================================ -->
-            <!-- PAINEL: ESTUDOS (mantido com mais conteúdo) -->
+            <!-- PAINEL: ESTUDOS (NOVO FLUXO) -->
             <!-- ============================================================ -->
             <section class="tab-panel" id="panel-estudos">
-                <div class="materia-nav" id="materiaNav">
-                    <button class="materia-btn materia-btn--active" data-materia="portugues">📝 Português</button>
-                    <button class="materia-btn" data-materia="matematica">🧮 Matemática</button>
-                    <button class="materia-btn" data-materia="fisica">⚡ Física</button>
-                    <button class="materia-btn" data-materia="quimica">🧪 Química</button>
-                </div>
-                <div class="materia-content">
-                    <!-- PORTUGUÊS (exemplo com conteúdo expandido) -->
-                    <div class="materia-panel materia-panel--active" id="materia-portugues">
-                        <h2>📝 Português</h2>
-                        <p class="materia-descricao">Gramática, literatura e redação.</p>
-                        <div class="cards-grid">
-                            <article class="card card--estudo" data-materia="portugues" data-tema="classes-gramaticais">
-                                <div class="card__icon">📚</div>
-                                <span class="card__badge">Gramática</span>
-                                <h3 class="card__title">Classes Gramaticais</h3>
-                                <p class="card__text">Substantivos, adjetivos, verbos, advérbios e todas as 10 classes de palavras.</p>
-                            </article>
-                            <article class="card card--estudo" data-materia="portugues" data-tema="sintaxe">
-                                <div class="card__icon">📖</div>
-                                <span class="card__badge">Sintaxe</span>
-                                <h3 class="card__title">Análise Sintática</h3>
-                                <p class="card__text">Sujeito, predicado, complementos.</p>
-                            </article>
-                        </div>
-                    </div>
-                    <!-- Outras matérias mantidas de forma similar -->
-                    <div class="materia-panel" id="materia-matematica"><h2>🧮 Matemática</h2><p class="materia-descricao">Funções e geometria.</p></div>
-                    <div class="materia-panel" id="materia-fisica"><h2>⚡ Física</h2><p class="materia-descricao">Mecânica e termodinâmica.</p></div>
-                    <div class="materia-panel" id="materia-quimica"><h2>🧪 Química</h2><p class="materia-descricao">Química geral e orgânica.</p></div>
+                <h2>📖 Matérias</h2>
+                <p class="materia-descricao">Escolha uma matéria para estudar.</p>
+                <div class="cards-grid" id="materiasGrid">
+                    <!-- Gerado por JS -->
                 </div>
             </section>
 
             <!-- ============================================================ -->
-            <!-- PAINEL: PRODUTIVIDADE -->
+            <!-- PAINEL: CALENDÁRIO -->
             <!-- ============================================================ -->
-            <section class="tab-panel" id="panel-produtividade">
-                <div class="materia-nav" id="produtividadeNav">
-                    <button class="materia-btn materia-btn--active" data-submodulo="calendario">📅 Calendário</button>
-                    <button class="materia-btn" data-submodulo="tarefas">✅ Tarefas</button>
-                    <button class="materia-btn" data-submodulo="metas">🎯 Metas</button>
-                    <button class="materia-btn" data-submodulo="pomodoro">⏳ Pomodoro</button>
-                    <button class="materia-btn" data-submodulo="arquivos">📁 Arquivos</button>
-                </div>
-                <div class="materia-content">
-                    <!-- SUBMÓDULO: CALENDÁRIO -->
-                    <div class="materia-panel materia-panel--active" id="submodulo-calendario">
-                        <div class="calendario-container">
-                            <div class="calendario-header">
-                                <button class="btn btn--secondary btn--sm" id="calPrev">←</button>
-                                <h2 id="calTitulo"></h2>
-                                <button class="btn btn--secondary btn--sm" id="calNext">→</button>
-                                <button class="btn btn--primary btn--sm" id="calHoje">Hoje</button>
-                            </div>
-                            <div class="calendario-grid" id="calendarioGrid"></div>
-                            <div class="calendario-legenda">
-                                <span class="legenda-item"><span class="legenda-cor feriado"></span> Feriado</span>
-                                <span class="legenda-item"><span class="legenda-cor hoje"></span> Hoje</span>
-                                <span class="legenda-item"><span class="legenda-cor tarefa-dia"></span> Com evento</span>
-                            </div>
-                        </div>
+            <section class="tab-panel" id="panel-calendario">
+                <div class="calendario-container">
+                    <div class="calendario-header">
+                        <button class="btn btn--secondary btn--sm" id="calPrev">←</button>
+                        <h2 id="calTitulo"></h2>
+                        <button class="btn btn--secondary btn--sm" id="calNext">→</button>
+                        <button class="btn btn--primary btn--sm" id="calHoje">Hoje</button>
                     </div>
-                    <!-- SUBMÓDULO: TAREFAS -->
-                    <div class="materia-panel" id="submodulo-tarefas">
-                        <h2>✅ Gerenciador de Tarefas</h2>
-                        <div class="prompt-form" id="tarefaForm">
-                            <input type="text" class="prompt-form__input" id="tarefaTitulo" placeholder="Título da tarefa...">
-                            <textarea class="prompt-form__textarea" id="tarefaDescricao" rows="2" placeholder="Descrição (opcional)..."></textarea>
-                            <div class="prompt-form__row">
-                                <input type="date" class="prompt-form__select" id="tarefaPrazo">
-                                <select class="prompt-form__select" id="tarefaNivel">
-                                    <option value="urgente">🔴 Urgente</option>
-                                    <option value="moderado" selected>🟡 Moderado</option>
-                                    <option value="tranquilo">🟢 Tranquilo</option>
-                                </select>
-                                <input type="time" class="prompt-form__select" id="tarefaHora" title="Horário">
-                            </div>
-                            <button type="button" class="btn btn--primary" id="btnAddTarefa">➕ Adicionar Tarefa</button>
-                        </div>
-                        <div class="tarefas-lista" id="tarefasLista"></div>
-                    </div>
-                    <!-- SUBMÓDULO: METAS -->
-                    <div class="materia-panel" id="submodulo-metas">
-                        <h2>🎯 Metas Pessoais</h2>
-                        <div class="prompt-form" id="metaForm">
-                            <input type="text" class="prompt-form__input" id="metaTitulo" placeholder="Título da meta...">
-                            <div class="prompt-form__row">
-                                <input type="number" class="prompt-form__select" id="metaAlvo" placeholder="Alvo" min="1" value="100">
-                                <select class="prompt-form__select" id="metaUnidade">
-                                    <option value="horas">Horas</option>
-                                    <option value="topicos">Tópicos</option>
-                                    <option value="simulados">Simulados</option>
-                                </select>
-                            </div>
-                            <button type="button" class="btn btn--primary" id="btnAddMeta">🎯 Criar Meta</button>
-                        </div>
-                        <div class="metas-lista" id="metasLista"></div>
-                    </div>
-                    <!-- SUBMÓDULO: POMODORO -->
-                    <div class="materia-panel" id="submodulo-pomodoro">
-                        <h2>⏳ Timer Pomodoro</h2>
-                        <div class="pomodoro-container">
-                            <div class="pomodoro-display" id="pomodoroDisplay">25:00</div>
-                            <div class="pomodoro-controls">
-                                <button class="btn btn--primary" id="pomodoroIniciar">▶ Iniciar</button>
-                                <button class="btn btn--secondary" id="pomodoroPausar" disabled>⏸ Pausar</button>
-                                <button class="btn btn--danger" id="pomodoroResetar">↺ Resetar</button>
-                            </div>
-                            <p class="text-muted">Sessão de foco: 25 minutos. Descanse por 5 minutos ao final.</p>
-                            <div class="pomodoro-historico" id="pomodoroHistorico"></div>
-                        </div>
-                    </div>
-                    <!-- SUBMÓDULO: ARQUIVOS -->
-                    <div class="materia-panel" id="submodulo-arquivos">
-                        <h2>📁 Seus Arquivos</h2>
-                        <div class="upload-area" id="uploadArea">
-                            <div class="upload-area__icon">📤</div>
-                            <p>Arraste arquivos ou clique</p>
-                            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt" style="display:none;">
-                            <button class="btn btn--primary" id="btnUpload">📁 Selecionar Arquivos</button>
-                        </div>
-                        <div class="arquivos-lista" id="arquivosLista"><h4>📎 Arquivos recentes:</h4></div>
+                    <div class="calendario-grid" id="calendarioGrid"></div>
+                    <div class="calendario-legenda">
+                        <span><span class="legenda-cor feriado"></span> Feriado</span>
+                        <span><span class="legenda-cor hoje"></span> Hoje</span>
+                        <span><span class="legenda-cor tarefa-dia"></span> Evento</span>
                     </div>
                 </div>
             </section>
 
-            <!-- PAINEL: PROMPTS -->
-            <section class="tab-panel" id="panel-prompts">
-                <h2>✨ Gerador de Conteúdo IA</h2>
-                <div class="prompt-form">
-                    <textarea class="prompt-form__textarea" id="promptInput" rows="3" placeholder="Ex: Explique o que é fotossíntese..."></textarea>
-                    <button class="btn btn--primary" id="gerarPrompt">🚀 Gerar</button>
+            <!-- ============================================================ -->
+            <!-- PAINEL: TAREFAS -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-tarefas">
+                <h2>✅ Tarefas</h2>
+                <div class="prompt-form" id="tarefaForm">
+                    <input type="text" class="prompt-form__input" id="tarefaTitulo" placeholder="Título...">
+                    <textarea class="prompt-form__textarea" id="tarefaDescricao" rows="2" placeholder="Descrição..."></textarea>
+                    <div class="prompt-form__row">
+                        <input type="date" class="prompt-form__select" id="tarefaPrazo">
+                        <select class="prompt-form__select" id="tarefaPrioridade">
+                            <option value="alta">🔴 Alta</option>
+                            <option value="media" selected>🟡 Média</option>
+                            <option value="baixa">🟢 Baixa</option>
+                        </select>
+                        <input type="time" class="prompt-form__select" id="tarefaHora">
+                    </div>
+                    <button class="btn btn--primary" id="btnAddTarefa">➕ Adicionar</button>
                 </div>
-                <div class="results-area" id="resultsArea" style="display:none;"><h3>📄 Conteúdo:</h3><div id="resultsContent"></div></div>
+                <div class="tarefas-lista" id="tarefasLista"></div>
             </section>
 
+            <!-- ============================================================ -->
+            <!-- PAINEL: METAS -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-metas">
+                <h2>🎯 Metas</h2>
+                <div class="prompt-form" id="metaForm">
+                    <input type="text" class="prompt-form__input" id="metaTitulo" placeholder="Título...">
+                    <div class="prompt-form__row">
+                        <input type="number" class="prompt-form__select" id="metaAlvo" value="100" min="1">
+                        <select class="prompt-form__select" id="metaUnidade">
+                            <option value="horas">Horas</option>
+                            <option value="topicos">Tópicos</option>
+                            <option value="simulados">Simulados</option>
+                        </select>
+                    </div>
+                    <button class="btn btn--primary" id="btnAddMeta">🎯 Criar Meta</button>
+                </div>
+                <div class="metas-lista" id="metasLista"></div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- PAINEL: POMODORO -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-pomodoro">
+                <h2>⏳ Timer Pomodoro</h2>
+                <div class="pomodoro-container">
+                    <div class="pomodoro-display" id="pomodoroDisplay">25:00</div>
+                    <div class="pomodoro-controls">
+                        <button class="btn btn--primary" id="pomodoroIniciar">▶ Iniciar</button>
+                        <button class="btn btn--secondary" id="pomodoroPausar" disabled>⏸ Pausar</button>
+                        <button class="btn btn--danger" id="pomodoroResetar">↺ Resetar</button>
+                    </div>
+                    <p class="text-muted">25 minutos de foco, 5 de descanso.</p>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- PAINEL: ARQUIVOS -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-arquivos">
+                <h2>📁 Arquivos</h2>
+                <div class="upload-area" id="uploadArea">
+                    <p>📤 Arraste ou clique para enviar</p>
+                    <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt" hidden>
+                    <button class="btn btn--primary" id="btnUpload">Selecionar</button>
+                </div>
+                <div id="arquivosLista"></div>
+            </section>
+
+            <!-- ============================================================ -->
             <!-- PAINEL: RECURSOS -->
+            <!-- ============================================================ -->
             <section class="tab-panel" id="panel-recursos">
                 <h2>📦 Recursos</h2>
                 <p class="text-muted">Apostilas, vídeos e simulados.</p>
             </section>
+
+            <!-- ============================================================ -->
+            <!-- PAINEL: CONFIGURAÇÕES -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-configuracoes">
+                <h2>⚙️ Configurações</h2>
+                <div class="dashboard-card">
+                    <p><strong>Tema:</strong> <button class="btn btn--secondary btn--sm" id="configTema">Alternar</button></p>
+                    <p><strong>Exportar Dados:</strong> <button class="btn btn--secondary btn--sm" id="exportarDados">📥 Baixar JSON</button></p>
+                    <p><strong>Limpar Todos os Dados:</strong> <button class="btn btn--danger btn--sm" id="limparDados">🗑️ Limpar</button></p>
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -276,21 +253,48 @@
             </div>
             <div class="modal__body">
                 <div class="prompt-form">
-                    <input type="text" class="prompt-form__input" id="modalEventoTitulo" placeholder="Título do evento...">
+                    <input type="text" class="prompt-form__input" id="modalEventoTitulo" placeholder="Título...">
                     <div class="prompt-form__row">
-                        <input type="time" class="prompt-form__select" id="modalEventoHora" title="Horário">
+                        <input type="time" class="prompt-form__select" id="modalEventoHora">
                         <select class="prompt-form__select" id="modalEventoTipo">
                             <option value="lembrete">🔔 Lembrete</option>
                             <option value="tarefa">✅ Tarefa</option>
                             <option value="estudo">📖 Bloco de Estudo</option>
                         </select>
                     </div>
-                    <textarea class="prompt-form__textarea" id="modalEventoDescricao" rows="2" placeholder="Descrição (opcional)..."></textarea>
                     <button class="btn btn--primary" id="modalSalvarEvento">💾 Salvar</button>
                 </div>
-                <div class="eventos-lista" id="modalEventosLista">
-                    <h4>📌 Eventos neste dia</h4>
-                </div>
+                <div id="modalEventosLista"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE MATÉRIA (ESTUDOS) -->
+    <div class="modal-overlay" id="modalMateriaOverlay">
+        <div class="modal" id="modalMateria">
+            <div class="modal__header">
+                <h3 id="modalMateriaTitulo">Matéria</h3>
+                <button class="modal__fechar" id="modalMateriaFechar">✕</button>
+            </div>
+            <div class="modal__body" id="modalMateriaConteudo">
+                <!-- Conteúdo dinâmico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE PERFIL -->
+    <div class="modal-overlay" id="modalPerfilOverlay">
+        <div class="modal" id="modalPerfil">
+            <div class="modal__header">
+                <h3>👤 Perfil</h3>
+                <button class="modal__fechar" id="modalPerfilFechar">✕</button>
+            </div>
+            <div class="modal__body">
+                <p><strong>Nome:</strong> <span id="perfilNome">Estudante</span></p>
+                <p><strong>Streak:</strong> <span id="perfilStreak">0 dias</span></p>
+                <p><strong>Horas Estudadas:</strong> <span id="perfilHoras">0h</span></p>
+                <p><strong>Metas Ativas:</strong> <span id="perfilMetas">0</span></p>
+                <button class="btn btn--primary btn--sm" id="perfilEditarNome">✏️ Editar Nome</button>
             </div>
         </div>
     </div>

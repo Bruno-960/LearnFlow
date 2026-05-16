@@ -2,8 +2,8 @@
     'use strict';
 
     // ========== HELPERS ==========
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => document.querySelectorAll(sel);
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
     const saveData = (key, data) => localStorage.setItem('learnflow_' + key, JSON.stringify(data));
     const loadData = (key) => JSON.parse(localStorage.getItem('learnflow_' + key) || 'null');
     const todayStr = () => new Date().toISOString().split('T')[0];
@@ -11,20 +11,20 @@
 
     // ========== ESTADO ==========
     let currentTab = 'dashboard';
-    let currentMateria = 'portugues';
-    let currentSubmodulo = 'calendario';
     let calYear, calMonth;
     let pomodoroInterval, pomodoroTime = 25 * 60, pomodoroRunning = false;
-    let streak = 0, pontos = 0, nivel = 1;
-    const today = new Date();
-    calYear = today.getFullYear();
-    calMonth = today.getMonth();
+    let streak = loadData('streak') || 0;
+    let pontos = loadData('pontos') || 0;
+    let nivel = loadData('nivel') || 1;
+    const hoje = new Date();
+    calYear = hoje.getFullYear();
+    calMonth = hoje.getMonth();
 
     // ========== FERIADOS ==========
     const feriados = {
-        '2026-01-01': 'Confraternização Universal',
+        '2026-01-01': 'Confraternização',
         '2026-04-21': 'Tiradentes',
-        '2026-05-01': 'Dia do Trabalho',
+        '2026-05-01': 'Trabalho',
         '2026-06-04': 'Corpus Christi',
         '2026-09-07': 'Independência',
         '2026-10-12': 'Aparecida',
@@ -36,17 +36,20 @@
     // ========== INICIALIZAÇÃO ==========
     function init() {
         carregarTema();
-        carregarDados();
         setupNavegacao();
         setupCalendario();
         setupTarefas();
         setupMetas();
         setupPomodoro();
         setupArquivos();
-        setupPrompts();
-        setupConteudoEstudo();
-        atualizarDashboard();
+        setupConfiguracoes();
+        setupPerfil();
+        setupEstudos();
+        setupDashboard();
+        setupNotificacoes();
         switchTab('dashboard');
+        verificarNotificacoes();
+        setInterval(verificarNotificacoes, 30000);
     }
 
     function carregarTema() {
@@ -62,19 +65,6 @@
         });
     }
 
-    function carregarDados() {
-        const data = loadData('gamificacao');
-        if (data) {
-            streak = data.streak || 0;
-            pontos = data.pontos || 0;
-            nivel = data.nivel || 1;
-        }
-    }
-
-    function salvarGamificacao() {
-        saveData('gamificacao', { streak, pontos, nivel });
-    }
-
     // ========== NAVEGAÇÃO ==========
     function setupNavegacao() {
         $('#tabNav').addEventListener('click', e => {
@@ -85,11 +75,7 @@
             const link = e.target.closest('.sidebar__link');
             if (!link) return;
             const tab = link.dataset.tab;
-            const materia = link.dataset.materia;
-            const sub = link.dataset.submodulo;
-            if (tab === 'estudos' && materia) { switchTab('estudos'); switchMateria(materia); }
-            else if (tab === 'produtividade' && sub) { switchTab('produtividade'); switchSubmodulo(sub); }
-            else if (tab) switchTab(tab);
+            if (tab) switchTab(tab);
             if (window.innerWidth <= 900) closeSidebar();
         });
         $('#menuToggle').addEventListener('click', () => {
@@ -101,31 +87,76 @@
         currentTab = tab;
         $$('.tab-btn').forEach(b => b.classList.toggle('tab-btn--active', b.dataset.tab === tab));
         $$('.tab-panel').forEach(p => p.classList.toggle('tab-panel--active', p.id === `panel-${tab}`));
-        $$('.sidebar__link').forEach(l => {
-            const match = (l.dataset.tab === tab && !l.dataset.materia && !l.dataset.submodulo);
-            l.classList.toggle('sidebar__link--active', match);
-        });
-        if (tab === 'estudos') switchMateria('portugues');
-        if (tab === 'produtividade') switchSubmodulo('calendario');
-    }
-
-    function switchMateria(materia) {
-        currentMateria = materia;
-        $$('#materiaNav .materia-btn').forEach(b => b.classList.toggle('materia-btn--active', b.dataset.materia === materia));
-        $$('#panel-estudos .materia-panel').forEach(p => p.classList.toggle('materia-panel--active', p.id === `materia-${materia}`));
-    }
-
-    function switchSubmodulo(sub) {
-        currentSubmodulo = sub;
-        $$('#produtividadeNav .materia-btn').forEach(b => b.classList.toggle('materia-btn--active', b.dataset.submodulo === sub));
-        $$('#panel-produtividade .materia-panel').forEach(p => p.classList.toggle('materia-panel--active', p.id === `submodulo-${sub}`));
-        if (sub === 'calendario') renderCalendario();
-        if (sub === 'tarefas') renderTarefas();
-        if (sub === 'metas') renderMetas();
-        if (sub === 'arquivos') renderArquivos();
+        $$('.sidebar__link').forEach(l => l.classList.toggle('sidebar__link--active', l.dataset.tab === tab));
+        if (tab === 'dashboard') atualizarDashboard();
+        if (tab === 'calendario') renderCalendario();
+        if (tab === 'tarefas') renderTarefas();
+        if (tab === 'metas') renderMetas();
+        if (tab === 'arquivos') renderArquivos();
+        if (tab === 'estudos') renderMaterias();
     }
 
     function closeSidebar() { $('#sidebar').classList.remove('sidebar--open'); }
+
+    // ========== ESTUDOS ==========
+    const materias = [
+        { id: 'matematica', nome: 'Matemática', icone: '🧮', desc: 'Funções, geometria, trigonometria.' },
+        { id: 'portugues', nome: 'Português', icone: '📝', desc: 'Gramática, literatura, redação.' },
+        { id: 'fisica', nome: 'Física', icone: '⚡', desc: 'Mecânica, termodinâmica, ondas.' },
+        { id: 'quimica', nome: 'Química', icone: '🧪', desc: 'Orgânica, inorgânica, físico-química.' },
+        { id: 'biologia', nome: 'Biologia', icone: '🧬', desc: 'Citologia, genética, ecologia.' },
+        { id: 'historia', nome: 'História', icone: '📜', desc: 'Brasil, geral, contemporânea.' },
+        { id: 'geografia', nome: 'Geografia', icone: '🌍', desc: 'Física, humana, atualidades.' },
+        { id: 'ingles', nome: 'Inglês', icone: '🇬🇧', desc: 'Gramática, vocabulário, leitura.' },
+        { id: 'programacao', nome: 'Programação', icone: '💻', desc: 'Lógica, algoritmos, projetos.' }
+    ];
+
+    function setupEstudos() {
+        renderMaterias();
+    }
+
+    function renderMaterias() {
+        const grid = $('#materiasGrid');
+        if (!grid) return;
+        grid.innerHTML = materias.map(m => `
+            <article class="card card--estudo" data-materia="${m.id}">
+                <div class="card__icon">${m.icone}</div>
+                <h3 class="card__title">${m.nome}</h3>
+                <p class="card__text">${m.desc}</p>
+            </article>
+        `).join('');
+        $$('.card--estudo').forEach(card => {
+            card.addEventListener('click', () => abrirMateria(card.dataset.materia));
+        });
+    }
+
+    function abrirMateria(materiaId) {
+        const materia = materias.find(m => m.id === materiaId);
+        if (!materia) return;
+        $('#modalMateriaTitulo').textContent = `${materia.icone} ${materia.nome}`;
+        $('#modalMateriaConteudo').innerHTML = `
+            <p>${materia.desc}</p>
+            <h4>📖 Conteúdos</h4>
+            <ul>
+                <li>Resumo teórico</li>
+                <li>Exercícios resolvidos</li>
+                <li>Questões de vestibular</li>
+                <li>Revisão rápida</li>
+            </ul>
+            <button class="btn btn--primary btn--sm" id="iniciarEstudoMateria">▶ Iniciar Estudo</button>
+        `;
+        $('#modalMateriaOverlay').classList.add('modal-overlay--visible');
+        $('#iniciarEstudoMateria').addEventListener('click', () => {
+            atualizarStreak();
+            const horas = loadData('horasEstudadas') || 0;
+            saveData('horasEstudadas', horas + 0.5);
+            mostrarToast(`Estudando ${materia.nome}... +30 min`);
+            atualizarDashboard();
+        });
+    }
+
+    $('#modalMateriaFechar').addEventListener('click', () => $('#modalMateriaOverlay').classList.remove('modal-overlay--visible'));
+    $('#modalMateriaOverlay').addEventListener('click', e => { if (e.target === $('#modalMateriaOverlay')) $('#modalMateriaOverlay').classList.remove('modal-overlay--visible'); });
 
     // ========== CALENDÁRIO ==========
     function setupCalendario() {
@@ -138,21 +169,21 @@
     function renderCalendario() {
         const grid = $('#calendarioGrid');
         $('#calTitulo').textContent = new Date(calYear, calMonth).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        const primeiroDia = new Date(calYear, calMonth, 1).getDay();
-        const ultimoDia = new Date(calYear, calMonth + 1, 0).getDate();
+        const primeiro = new Date(calYear, calMonth, 1).getDay();
+        const ultimo = new Date(calYear, calMonth + 1, 0).getDate();
         grid.innerHTML = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => `<div class="calendario-dia-semana">${d}</div>`).join('');
-        for (let i = 0; i < primeiroDia; i++) grid.innerHTML += '<div></div>';
-        const hoje = todayStr();
-        const tarefasDias = (loadData('tarefas') || []).filter(t => !t.concluida).map(t => t.prazo);
-        for (let dia = 1; dia <= ultimoDia; dia++) {
-            const dataStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+        for (let i = 0; i < primeiro; i++) grid.innerHTML += '<div></div>';
+        const hojeStr = todayStr();
+        const eventos = loadData('eventosCalendario') || [];
+        for (let d = 1; d <= ultimo; d++) {
+            const dataStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             let cls = 'calendario-dia';
-            if (dataStr === hoje) cls += ' calendario-dia--hoje';
+            if (dataStr === hojeStr) cls += ' calendario-dia--hoje';
             if (feriados[dataStr]) cls += ' calendario-dia--feriado';
-            if (tarefasDias.includes(dataStr)) cls += ' calendario-dia--tarefa';
-            grid.innerHTML += `<div class="${cls}" data-data="${dataStr}">${dia}</div>`;
+            if (eventos.some(ev => ev.data === dataStr)) cls += ' calendario-dia--tarefa';
+            grid.innerHTML += `<div class="${cls}" data-data="${dataStr}">${d}</div>`;
         }
-        $$('.calendario-dia[data-data]').forEach(el => el.addEventListener('click', (e) => abrirModalDia(e.target.dataset.data)));
+        $$('.calendario-dia[data-data]').forEach(el => el.addEventListener('click', e => abrirModalDia(e.target.dataset.data)));
     }
 
     function abrirModalDia(dataStr) {
@@ -163,36 +194,64 @@
     }
 
     $('#modalDiaFechar').addEventListener('click', () => $('#modalDiaOverlay').classList.remove('modal-overlay--visible'));
-    $('#modalDiaOverlay').addEventListener('click', (e) => { if (e.target === $('#modalDiaOverlay')) $('#modalDiaOverlay').classList.remove('modal-overlay--visible'); });
+    $('#modalDiaOverlay').addEventListener('click', e => { if (e.target === $('#modalDiaOverlay')) $('#modalDiaOverlay').classList.remove('modal-overlay--visible'); });
 
     function renderEventosDia(dataStr) {
-        const eventos = (loadData('eventos') || []).filter(ev => ev.data === dataStr);
+        const eventos = (loadData('eventosCalendario') || []).filter(ev => ev.data === dataStr);
         const lista = $('#modalEventosLista');
         lista.innerHTML = '<h4>📌 Eventos neste dia</h4>';
-        if (eventos.length === 0) lista.innerHTML += '<p class="text-muted">Nenhum evento.</p>';
-        else eventos.forEach(ev => {
-            lista.innerHTML += `<div style="background:var(--bg-input);padding:8px;border-radius:6px;margin-bottom:6px;"><strong>${ev.titulo}</strong> (${ev.tipo}) ${ev.hora ? 'às '+ev.hora : ''}</div>`;
-        });
+        if (!eventos.length) lista.innerHTML += '<p class="text-muted">Nenhum.</p>';
+        else eventos.forEach(ev => lista.innerHTML += `<div class="card" style="margin:4px 0;"><strong>${ev.titulo}</strong> (${ev.tipo}) ${ev.hora||''}</div>`);
     }
 
     $('#modalSalvarEvento').addEventListener('click', () => {
         const data = $('#modalDia').dataset.data;
         const titulo = $('#modalEventoTitulo').value.trim();
         if (!titulo) return mostrarToast('Preencha o título!');
-        const eventos = loadData('eventos') || [];
+        const eventos = loadData('eventosCalendario') || [];
         eventos.push({
             data,
             titulo,
             tipo: $('#modalEventoTipo').value,
             hora: $('#modalEventoHora').value,
-            descricao: $('#modalEventoDescricao').value
+            prioridade: 'media'
         });
-        saveData('eventos', eventos);
+        saveData('eventosCalendario', eventos);
         renderEventosDia(data);
         renderCalendario();
-        mostrarToast('Evento adicionado! ✅');
+        mostrarToast('Evento salvo!');
         $('#modalEventoTitulo').value = '';
     });
+
+    // ========== NOTIFICAÇÕES EM TEMPO REAL ==========
+    function setupNotificacoes() {}
+    function verificarNotificacoes() {
+        const agora = new Date();
+        const horaAtual = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+        const hojeStr = todayStr();
+        const eventos = loadData('eventosCalendario') || [];
+        const notificacoesDisparadas = loadData('notificacoesDisparadas') || [];
+        eventos.forEach(ev => {
+            if (ev.data === hojeStr && ev.hora === horaAtual && !notificacoesDisparadas.includes(ev.titulo+ev.hora)) {
+                mostrarToast(`⏰ ${ev.titulo} agora!`);
+                tocarSom();
+                notificacoesDisparadas.push(ev.titulo+ev.hora);
+                saveData('notificacoesDisparadas', notificacoesDisparadas);
+            }
+        });
+    }
+
+    function tocarSom() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+        } catch(e) {}
+    }
 
     // ========== TAREFAS ==========
     function setupTarefas() {
@@ -208,14 +267,14 @@
             titulo,
             descricao: $('#tarefaDescricao').value,
             prazo: $('#tarefaPrazo').value,
-            nivel: $('#tarefaNivel').value,
+            prioridade: $('#tarefaPrioridade').value,
             hora: $('#tarefaHora').value,
             concluida: false
         });
         saveData('tarefas', tarefas);
         renderTarefas();
         atualizarDashboard();
-        mostrarToast('Tarefa adicionada! ✅');
+        mostrarToast('Tarefa adicionada!');
         $('#tarefaTitulo').value = '';
     }
     function renderTarefas() {
@@ -223,8 +282,8 @@
         const lista = $('#tarefasLista');
         if (!tarefas.length) { lista.innerHTML = '<p class="text-muted">Nenhuma tarefa.</p>'; return; }
         lista.innerHTML = tarefas.map(t => `
-            <div class="card" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-                <div><strong>${t.titulo}</strong> <span class="badge-${t.nivel}">${t.nivel}</span><br><small>${t.prazo ? formatDate(t.prazo) : ''} ${t.hora||''}</small></div>
+            <div class="card" style="margin-bottom:10px;display:flex;justify-content:space-between;">
+                <div><strong>${t.titulo}</strong> <span class="badge-${t.prioridade}">${t.prioridade}</span><br><small>${t.prazo ? formatDate(t.prazo) : ''} ${t.hora||''}</small></div>
                 <div>
                     <button class="btn btn--primary btn--sm" data-concluir="${t.id}">✅</button>
                     <button class="btn btn--danger btn--sm" data-remover="${t.id}">🗑️</button>
@@ -245,12 +304,13 @@
             atualizarStreak();
             renderTarefas();
             atualizarDashboard();
-            mostrarToast('Tarefa concluída! +10 pontos 🎉');
+            mostrarToast('Concluída! +10 pontos');
         }
     }
     function removerTarefa(id) {
         saveData('tarefas', (loadData('tarefas')||[]).filter(t => t.id !== id));
         renderTarefas();
+        atualizarDashboard();
     }
 
     // ========== METAS ==========
@@ -265,7 +325,7 @@
         metas.push({ id: Date.now(), titulo, alvo: parseInt($('#metaAlvo').value)||100, unidade: $('#metaUnidade').value, progresso: 0 });
         saveData('metas', metas);
         renderMetas();
-        mostrarToast('Meta criada! 🎯');
+        mostrarToast('Meta criada!');
         $('#metaTitulo').value = '';
     }
     function renderMetas() {
@@ -316,10 +376,7 @@
                 $('#pomodoroIniciar').disabled = false;
                 $('#pomodoroPausar').disabled = true;
                 tocarSom();
-                mostrarToast('Pomodoro concluído! Hora de descansar. 🎉');
-                const historico = loadData('pomodoroHistorico') || [];
-                historico.push(new Date().toISOString());
-                saveData('pomodoroHistorico', historico);
+                mostrarToast('Pomodoro concluído! Descanse.');
                 atualizarHorasEstudadas(25/60);
             }
         }, 1000);
@@ -335,16 +392,6 @@
         pomodoroTime = 25*60;
         atualizarDisplayPomodoro();
     }
-    function tocarSom() {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, ctx.currentTime);
-        osc.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.2);
-    }
-
     function atualizarHorasEstudadas(horas) {
         const total = (loadData('horasEstudadas') || 0) + horas;
         saveData('horasEstudadas', total);
@@ -372,36 +419,62 @@
     function renderArquivos() {
         const arquivos = loadData('arquivos') || [];
         const lista = $('#arquivosLista');
-        lista.innerHTML = '<h4>📎 Arquivos recentes:</h4>' + (arquivos.length ? arquivos.map(a => `<div style="display:flex;gap:10px;align-items:center;background:var(--bg-card);padding:8px;border-radius:6px;margin-bottom:6px;"><span>📄</span><span>${a.nome}</span></div>`).join('') : '<p class="text-muted">Nenhum arquivo.</p>');
+        lista.innerHTML = arquivos.length ? arquivos.map(a => `<div class="card" style="margin:4px 0;">📄 ${a.nome}</div>`).join('') : '<p class="text-muted">Nenhum arquivo.</p>';
     }
 
-    // ========== PROMPTS ==========
-    function setupPrompts() {
-        $('#gerarPrompt').addEventListener('click', () => {
-            const texto = $('#promptInput').value.trim();
-            if (!texto) return;
-            $('#resultsContent').innerHTML = `<p><strong>${texto}</strong></p><p>Este é um conteúdo simulado. Em breve, IA real.</p>`;
-            $('#resultsArea').style.display = 'block';
+    // ========== CONFIGURAÇÕES ==========
+    function setupConfiguracoes() {
+        $('#configTema').addEventListener('click', () => $('#themeToggle').click());
+        $('#exportarDados').addEventListener('click', () => {
+            const dados = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('learnflow_')) dados[key] = localStorage.getItem(key);
+            }
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'learnflow_backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
         });
-    }
-
-    // ========== CONTEÚDO DE ESTUDO ==========
-    function setupConteudoEstudo() {
-        document.addEventListener('click', e => {
-            const card = e.target.closest('.card--estudo');
-            if (card) {
-                const materia = card.dataset.materia;
-                const tema = card.dataset.tema;
-                if (materia && tema) {
-                    switchTab('estudos');
-                    switchMateria(materia);
-                    mostrarToast(`Abrindo: ${tema} 📖`);
-                }
+        $('#limparDados').addEventListener('click', () => {
+            if (confirm('Limpar todos os dados?')) {
+                Object.keys(localStorage).filter(k => k.startsWith('learnflow_')).forEach(k => localStorage.removeItem(k));
+                location.reload();
             }
         });
     }
 
+    // ========== PERFIL ==========
+    function setupPerfil() {
+        $('#headerAvatar').addEventListener('click', () => {
+            $('#perfilNome').textContent = loadData('nomePerfil') || 'Estudante';
+            $('#perfilStreak').textContent = `${streak} dias`;
+            $('#perfilHoras').textContent = `${(loadData('horasEstudadas')||0).toFixed(1)}h`;
+            $('#perfilMetas').textContent = (loadData('metas')||[]).length;
+            $('#modalPerfilOverlay').classList.add('modal-overlay--visible');
+        });
+        $('#modalPerfilFechar').addEventListener('click', () => $('#modalPerfilOverlay').classList.remove('modal-overlay--visible'));
+        $('#modalPerfilOverlay').addEventListener('click', e => { if (e.target === $('#modalPerfilOverlay')) $('#modalPerfilOverlay').classList.remove('modal-overlay--visible'); });
+        $('#perfilEditarNome').addEventListener('click', () => {
+            const nome = prompt('Seu nome:', loadData('nomePerfil') || 'Estudante');
+            if (nome) { saveData('nomePerfil', nome); $('#perfilNome').textContent = nome; }
+        });
+    }
+
     // ========== DASHBOARD ==========
+    function setupDashboard() {
+        $('#iniciarSessao').addEventListener('click', () => {
+            switchTab('pomodoro');
+            iniciarPomodoro();
+            atualizarStreak();
+            mostrarToast('Sessão de estudo iniciada!');
+        });
+        atualizarDashboard();
+    }
+
     function atualizarDashboard() {
         const tarefas = (loadData('tarefas') || []).filter(t => !t.concluida);
         const metas = loadData('metas') || [];
@@ -412,39 +485,17 @@
         $('#stat-streak').textContent = streak;
         $('#stat-aproveitamento').textContent = aproveitamento + '%';
         $('#headerStreak').textContent = `🔥 ${streak} dias`;
-
-        // Próximos eventos
-        const eventos = (loadData('eventos') || []).filter(ev => ev.data >= todayStr()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3);
-        const proxEl = $('#proximosEventos');
-        proxEl.innerHTML = eventos.length ? eventos.map(e => `<div><strong>${formatDate(e.data)}</strong>: ${e.titulo}</div>`).join('') : '<p class="text-muted">Nenhum evento próximo.</p>';
-
-        // Tarefas de hoje
+        const eventos = (loadData('eventosCalendario') || []).filter(ev => ev.data >= todayStr()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3);
+        $('#proximosEventos').innerHTML = eventos.length ? eventos.map(e => `<div><strong>${formatDate(e.data)}</strong>: ${e.titulo}</div>`).join('') : '<p class="text-muted">Nenhum.</p>';
         const tarefasHoje = tarefas.filter(t => t.prazo === todayStr());
-        const tarefasHojeEl = $('#tarefasHoje');
-        tarefasHojeEl.innerHTML = tarefasHoje.length ? tarefasHoje.map(t => `<div>✅ ${t.titulo}</div>`).join('') : '<p class="text-muted">Nada para hoje.</p>';
-
-        // Recomendação
-        const recomendacoes = ['Revise um conteúdo antigo.','Faça um simulado.','Estude com o Pomodoro.','Crie metas realistas.'];
+        $('#tarefasHoje').innerHTML = tarefasHoje.length ? tarefasHoje.map(t => `<div>✅ ${t.titulo}</div>`).join('') : '<p class="text-muted">Nada.</p>';
+        const recomendacoes = ['Revise um conteúdo antigo.','Faça um simulado.','Estude com Pomodoro.','Crie metas realistas.'];
         $('#recomendacaoDia').textContent = recomendacoes[Math.floor(Math.random()*recomendacoes.length)];
-
-        // Gráfico (canvas simples)
-        const canvas = $('#graficoProgresso');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0,0,canvas.width,canvas.height);
+        const grafico = $('#graficoBarras');
+        if (grafico) {
             const dados = [horas, tarefas.length, streak, aproveitamento];
-            const labels = ['Horas','Tarefas','Streak','Aprov.'];
             const max = Math.max(...dados, 1);
-            const w = canvas.width / dados.length;
-            ctx.fillStyle = 'var(--accent)';
-            dados.forEach((val, i) => {
-                const h = (val / max) * canvas.height;
-                ctx.fillRect(i*w + 5, canvas.height - h, w - 10, h);
-                ctx.fillStyle = 'var(--text-primary)';
-                ctx.font = '10px sans-serif';
-                ctx.fillText(labels[i], i*w + 8, canvas.height - 2);
-                ctx.fillStyle = 'var(--accent)';
-            });
+            grafico.innerHTML = dados.map(v => `<div class="grafico-barra" style="height:${(v/max)*80}px;" title="${v}"></div>`).join('');
         }
     }
 
@@ -454,11 +505,10 @@
         if (ultimo === hoje) return;
         const ontem = new Date();
         ontem.setDate(ontem.getDate()-1);
-        const ontemStr = ontem.toISOString().split('T')[0];
-        if (ultimo === ontemStr) streak++;
+        if (ultimo === ontem.toISOString().split('T')[0]) streak++;
         else streak = 1;
         saveData('ultimoEstudo', hoje);
-        salvarGamificacao();
+        saveData('streak', streak);
         atualizarDashboard();
     }
 
@@ -466,9 +516,10 @@
         const novoNivel = Math.floor(pontos / 50) + 1;
         if (novoNivel > nivel) {
             nivel = novoNivel;
-            mostrarToast(`🎉 Subiu para o nível ${nivel}!`);
+            mostrarToast(`🎉 Nível ${nivel}!`);
         }
-        salvarGamificacao();
+        saveData('pontos', pontos);
+        saveData('nivel', nivel);
     }
 
     // ========== TOAST ==========
