@@ -1,672 +1,485 @@
-/**
- * ============================================================
- * LEARNFLOW - SISTEMA COMPLETO
- * Funcionalidades:
- * - Abas principais + sub-abas de matérias
- * - Sidebar, tema escuro, menu mobile
- * - Gerador de prompts
- * - NOVO: Calendário com feriados e tarefas
- * - NOVO: Gerenciador de tarefas com níveis e prazos
- * - NOVO: Metas com barra de progresso
- * - NOVO: Upload de arquivos (localStorage)
- * - NOVO: Histórico de tarefas concluídas
- * - NOVO: Sistema de folgas automáticas
- * ============================================================
- */
-
 (function () {
     'use strict';
 
-    // ============================================================
-    // REFERÊNCIAS DO DOM
-    // ============================================================
-    const sidebar = document.getElementById('sidebar');
-    const menuToggle = document.getElementById('menuToggle');
-    const themeToggle = document.getElementById('themeToggle');
-    const tabNav = document.getElementById('tabNav');
-    const mainContent = document.getElementById('mainContent');
-    const sidebarOverlay = document.createElement('div');
-    sidebarOverlay.className = 'sidebar-overlay';
-    sidebarOverlay.id = 'sidebarOverlay';
-    document.body.appendChild(sidebarOverlay);
+    // ========== HELPERS ==========
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+    const saveData = (key, data) => localStorage.setItem('learnflow_' + key, JSON.stringify(data));
+    const loadData = (key) => JSON.parse(localStorage.getItem('learnflow_' + key) || 'null');
+    const todayStr = () => new Date().toISOString().split('T')[0];
+    const formatDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
 
-    // ============================================================
-    // ESTADO
-    // ============================================================
+    // ========== ESTADO ==========
     let currentTab = 'dashboard';
     let currentMateria = 'portugues';
     let currentSubmodulo = 'calendario';
+    let calYear, calMonth;
+    let pomodoroInterval, pomodoroTime = 25 * 60, pomodoroRunning = false;
+    let streak = 0, pontos = 0, nivel = 1;
+    const today = new Date();
+    calYear = today.getFullYear();
+    calMonth = today.getMonth();
 
-    // ============================================================
-    // DADOS (localStorage)
-    // ============================================================
-    function getTarefas() { return JSON.parse(localStorage.getItem('learnflow-tarefas') || '[]'); }
-    function setTarefas(data) { localStorage.setItem('learnflow-tarefas', JSON.stringify(data)); }
-    function getMetas() { return JSON.parse(localStorage.getItem('learnflow-metas') || '[]'); }
-    function setMetas(data) { localStorage.setItem('learnflow-metas', JSON.stringify(data)); }
-    function getHistorico() { return JSON.parse(localStorage.getItem('learnflow-historico') || '[]'); }
-    function setHistorico(data) { localStorage.setItem('learnflow-historico', JSON.stringify(data)); }
-    function getArquivos() { return JSON.parse(localStorage.getItem('learnflow-arquivos') || '[]'); }
-    function setArquivos(data) { localStorage.setItem('learnflow-arquivos', JSON.stringify(data)); }
-
-    // ============================================================
-    // INICIALIZAÇÃO
-    // ============================================================
-    function init() {
-        loadTheme();
-        setupMainEvents();
-        setupMateriaNavigation();
-        setupProdutividadeNavigation();
-        setupPromptGenerator();
-        setupConteudoDetalhado();
-        setupCalendario();
-        setupTarefas();
-        setupMetas();
-        setupArquivos();
-        setupHistorico();
-        setupFolgas();
-        setupDashboardStats();
-        switchTab('dashboard');
-        console.log('✅ LearnFlow inicializado com sucesso!');
-    }
-
-    // ============================================================
-    // EVENTOS PRINCIPAIS
-    // ============================================================
-    function setupMainEvents() {
-        if (menuToggle) menuToggle.addEventListener('click', toggleSidebar);
-        if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
-        if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
-
-        if (tabNav) {
-            tabNav.addEventListener('click', function (e) {
-                const btn = e.target.closest('.tab-btn');
-                if (!btn) return;
-                const tab = btn.dataset.tab;
-                if (tab) switchTab(tab);
-            });
-        }
-
-        if (sidebar) {
-            sidebar.addEventListener('click', function (e) {
-                const link = e.target.closest('.sidebar__link');
-                if (!link) return;
-                const tab = link.dataset.tab;
-                const materia = link.dataset.materia;
-                const submodulo = link.dataset.submodulo;
-
-                if (tab === 'estudos' && materia) { switchTab('estudos'); switchMateria(materia); }
-                else if (tab === 'produtividade' && submodulo) { switchTab('produtividade'); switchSubmodulo(submodulo); }
-                else if (tab && !materia && !submodulo) { switchTab(tab); }
-            });
-        }
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && sidebar && sidebar.classList.contains('sidebar--open')) closeSidebar();
-        });
-        window.addEventListener('resize', function () {
-            if (window.innerWidth > 900 && sidebar && sidebar.classList.contains('sidebar--open')) closeSidebar();
-        });
-    }
-
-    // ============================================================
-    // NAVEGAÇÃO DE MATÉRIAS
-    // ============================================================
-    function setupMateriaNavigation() {
-        const materiaNav = document.getElementById('materiaNav');
-        if (materiaNav) {
-            materiaNav.addEventListener('click', function (e) {
-                const btn = e.target.closest('.materia-btn');
-                if (!btn) return;
-                const materia = btn.dataset.materia;
-                if (materia) switchMateria(materia);
-            });
-        }
-        document.addEventListener('click', function (e) {
-            const card = e.target.closest('.card--clickable');
-            if (!card) return;
-            const tab = card.dataset.tab;
-            const materia = card.dataset.materia;
-            const submodulo = card.dataset.submodulo;
-            if (tab === 'estudos' && materia) { switchTab('estudos'); switchMateria(materia); }
-            if (tab === 'produtividade' && submodulo) { switchTab('produtividade'); switchSubmodulo(submodulo); }
-        });
-    }
-
-    function switchMateria(materia) {
-        currentMateria = materia;
-        document.querySelectorAll('.materia-btn').forEach(b => b.classList.remove('materia-btn--active'));
-        document.querySelector(`.materia-btn[data-materia="${materia}"]`)?.classList.add('materia-btn--active');
-        document.querySelectorAll('.materia-panel').forEach(p => p.classList.remove('materia-panel--active'));
-        document.getElementById(`materia-${materia}`)?.classList.add('materia-panel--active');
-        updateSidebarActive();
-    }
-
-    // ============================================================
-    // NAVEGAÇÃO DE PRODUTIVIDADE (SUBMÓDULOS)
-    // ============================================================
-    function setupProdutividadeNavigation() {
-        const prodNav = document.getElementById('produtividadeNav');
-        if (prodNav) {
-            prodNav.addEventListener('click', function (e) {
-                const btn = e.target.closest('.materia-btn');
-                if (!btn) return;
-                const submodulo = btn.dataset.submodulo;
-                if (submodulo) switchSubmodulo(submodulo);
-            });
-        }
-    }
-
-    function switchSubmodulo(submodulo) {
-        currentSubmodulo = submodulo;
-        document.querySelectorAll('#produtividadeNav .materia-btn').forEach(b => b.classList.remove('materia-btn--active'));
-        document.querySelector(`#produtividadeNav .materia-btn[data-submodulo="${submodulo}"]`)?.classList.add('materia-btn--active');
-        document.querySelectorAll('#panel-produtividade .materia-panel').forEach(p => p.classList.remove('materia-panel--active'));
-        document.getElementById(`submodulo-${submodulo}`)?.classList.add('materia-panel--active');
-        updateSidebarActive();
-        // Atualiza componentes específicos
-        if (submodulo === 'calendario') renderCalendario();
-        if (submodulo === 'tarefas') renderTarefas();
-        if (submodulo === 'metas') renderMetas();
-        if (submodulo === 'historico') renderHistorico();
-        if (submodulo === 'arquivos') renderArquivos();
-    }
-
-    function updateSidebarActive() {
-        document.querySelectorAll('.sidebar__link').forEach(l => l.classList.remove('sidebar__link--active'));
-        const activeLink = document.querySelector(`.sidebar__link[data-tab="${currentTab}"][data-materia="${currentMateria}"], .sidebar__link[data-tab="${currentTab}"][data-submodulo="${currentSubmodulo}"]`);
-        if (activeLink) activeLink.classList.add('sidebar__link--active');
-        else {
-            const mainLink = document.querySelector(`.sidebar__link[data-tab="${currentTab}"]:not([data-materia]):not([data-submodulo])`);
-            if (mainLink) mainLink.classList.add('sidebar__link--active');
-        }
-    }
-
-    // ============================================================
-    // SIDEBAR MOBILE
-    // ============================================================
-    function openSidebar() {
-        if (!sidebar) return;
-        sidebar.classList.add('sidebar--open');
-        sidebarOverlay.classList.add('sidebar-overlay--visible');
-        document.body.style.overflow = 'hidden';
-    }
-    function closeSidebar() {
-        if (!sidebar) return;
-        sidebar.classList.remove('sidebar--open');
-        sidebarOverlay.classList.remove('sidebar-overlay--visible');
-        document.body.style.overflow = '';
-    }
-    function toggleSidebar() {
-        sidebar.classList.contains('sidebar--open') ? closeSidebar() : openSidebar();
-    }
-
-    // ============================================================
-    // TEMA
-    // ============================================================
-    function toggleTheme() {
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        if (isDark) {
-            document.documentElement.removeAttribute('data-theme');
-            localStorage.setItem('learnflow-theme', 'light');
-            themeToggle.textContent = '🌙';
-        } else {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            localStorage.setItem('learnflow-theme', 'dark');
-            themeToggle.textContent = '☀️';
-        }
-    }
-    function loadTheme() {
-        if (localStorage.getItem('learnflow-theme') === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            themeToggle.textContent = '☀️';
-        }
-    }
-
-    // ============================================================
-    // ABAS PRINCIPAIS
-    // ============================================================
-    function switchTab(tabName) {
-        currentTab = tabName;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-btn--active'));
-        document.querySelector(`.tab-btn[data-tab="${tabName}"]`)?.classList.add('tab-btn--active');
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('tab-panel--active'));
-        document.getElementById(`panel-${tabName}`)?.classList.add('tab-panel--active');
-        updateSidebarActive();
-        if (tabName === 'estudos') {
-            const active = document.querySelector('.materia-panel--active');
-            if (!active) switchMateria('portugues');
-        }
-        if (tabName === 'produtividade') {
-            const active = document.querySelector('#panel-produtividade .materia-panel--active');
-            if (!active) switchSubmodulo('calendario');
-        }
-        if (window.innerWidth <= 900) closeSidebar();
-    }
-
-    // ============================================================
-    // CONTEÚDO DETALHADO (ESTUDAR AGORA)
-    // ============================================================
-    function setupConteudoDetalhado() {
-        document.addEventListener('click', function (e) {
-            const btn = e.target.closest('.btn--estudar');
-            if (!btn) return;
-            const id = btn.dataset.conteudo;
-            if (id) abrirConteudo(id);
-        });
-        document.addEventListener('click', function (e) {
-            const btn = e.target.closest('.btn--voltar');
-            if (!btn) return;
-            const materia = btn.dataset.voltar;
-            if (materia) voltarParaMateria(materia);
-        });
-        document.addEventListener('click', function (e) {
-            const link = e.target.closest('.indice-links a');
-            if (!link) return;
-            e.preventDefault();
-            const target = document.getElementById(link.getAttribute('href').substring(1));
-            if (target) target.scrollIntoView({ behavior: 'smooth' });
-        });
-    }
-    function abrirConteudo(id) {
-        const ativa = document.querySelector('.materia-panel--active');
-        if (ativa) { const grid = ativa.querySelector('.cards-grid'); if (grid) grid.style.display = 'none'; }
-        document.querySelectorAll('.conteudo-detalhado').forEach(c => c.style.display = 'none');
-        const conteudo = document.getElementById('conteudo-' + id);
-        if (conteudo) { conteudo.style.display = 'block'; conteudo.scrollIntoView({ behavior: 'smooth' }); }
-    }
-    function voltarParaMateria(materia) {
-        document.querySelectorAll('.conteudo-detalhado').forEach(c => c.style.display = 'none');
-        const panel = document.getElementById('materia-' + materia);
-        if (panel) { const grid = panel.querySelector('.cards-grid'); if (grid) grid.style.display = 'grid'; }
-        document.getElementById('materiaNav')?.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // ============================================================
-    // GERADOR DE PROMPTS
-    // ============================================================
-    function setupPromptGenerator() {
-        const btn = document.getElementById('gerarPrompt');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-            const input = document.getElementById('promptInput');
-            const prompt = input.value.trim();
-            if (!prompt) {
-                input.style.borderColor = '#ef4444';
-                setTimeout(() => input.style.borderColor = '', 500);
-                return;
-            }
-            const conteudo = `<div style="padding:16px;background:var(--accent-light);border-radius:12px;margin-bottom:16px;"><strong>📌 Tema:</strong> "${prompt}"</div><p>Conteúdo gerado simulado para: <strong>${prompt}</strong></p><p>Em uma versão futura, este conteúdo será gerado por IA real.</p>`;
-            document.getElementById('resultsContent').innerHTML = conteudo;
-            document.getElementById('resultsArea').style.display = 'block';
-            document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
-        });
-    }
-
-    // ============================================================
-    // CALENDÁRIO COM FERIADOS
-    // ============================================================
+    // ========== FERIADOS ==========
     const feriados = {
         '2026-01-01': 'Confraternização Universal',
         '2026-04-21': 'Tiradentes',
         '2026-05-01': 'Dia do Trabalho',
-        '2026-09-07': 'Independência do Brasil',
-        '2026-10-12': 'Nossa Senhora Aparecida',
+        '2026-06-04': 'Corpus Christi',
+        '2026-09-07': 'Independência',
+        '2026-10-12': 'Aparecida',
         '2026-11-02': 'Finados',
-        '2026-11-15': 'Proclamação da República',
+        '2026-11-15': 'Proclamação',
         '2026-12-25': 'Natal'
     };
 
-    let calData = new Date();
+    // ========== INICIALIZAÇÃO ==========
+    function init() {
+        carregarTema();
+        carregarDados();
+        setupNavegacao();
+        setupCalendario();
+        setupTarefas();
+        setupMetas();
+        setupPomodoro();
+        setupArquivos();
+        setupPrompts();
+        setupConteudoEstudo();
+        atualizarDashboard();
+        switchTab('dashboard');
+    }
 
+    function carregarTema() {
+        if (loadData('tema') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            $('#themeToggle').textContent = '☀️';
+        }
+        $('#themeToggle').addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+            saveData('tema', isDark ? 'light' : 'dark');
+            $('#themeToggle').textContent = isDark ? '🌙' : '☀️';
+        });
+    }
+
+    function carregarDados() {
+        const data = loadData('gamificacao');
+        if (data) {
+            streak = data.streak || 0;
+            pontos = data.pontos || 0;
+            nivel = data.nivel || 1;
+        }
+    }
+
+    function salvarGamificacao() {
+        saveData('gamificacao', { streak, pontos, nivel });
+    }
+
+    // ========== NAVEGAÇÃO ==========
+    function setupNavegacao() {
+        $('#tabNav').addEventListener('click', e => {
+            const btn = e.target.closest('.tab-btn');
+            if (btn) switchTab(btn.dataset.tab);
+        });
+        $('#sidebar').addEventListener('click', e => {
+            const link = e.target.closest('.sidebar__link');
+            if (!link) return;
+            const tab = link.dataset.tab;
+            const materia = link.dataset.materia;
+            const sub = link.dataset.submodulo;
+            if (tab === 'estudos' && materia) { switchTab('estudos'); switchMateria(materia); }
+            else if (tab === 'produtividade' && sub) { switchTab('produtividade'); switchSubmodulo(sub); }
+            else if (tab) switchTab(tab);
+            if (window.innerWidth <= 900) closeSidebar();
+        });
+        $('#menuToggle').addEventListener('click', () => {
+            $('#sidebar').classList.toggle('sidebar--open');
+        });
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        $$('.tab-btn').forEach(b => b.classList.toggle('tab-btn--active', b.dataset.tab === tab));
+        $$('.tab-panel').forEach(p => p.classList.toggle('tab-panel--active', p.id === `panel-${tab}`));
+        $$('.sidebar__link').forEach(l => {
+            const match = (l.dataset.tab === tab && !l.dataset.materia && !l.dataset.submodulo);
+            l.classList.toggle('sidebar__link--active', match);
+        });
+        if (tab === 'estudos') switchMateria('portugues');
+        if (tab === 'produtividade') switchSubmodulo('calendario');
+    }
+
+    function switchMateria(materia) {
+        currentMateria = materia;
+        $$('#materiaNav .materia-btn').forEach(b => b.classList.toggle('materia-btn--active', b.dataset.materia === materia));
+        $$('#panel-estudos .materia-panel').forEach(p => p.classList.toggle('materia-panel--active', p.id === `materia-${materia}`));
+    }
+
+    function switchSubmodulo(sub) {
+        currentSubmodulo = sub;
+        $$('#produtividadeNav .materia-btn').forEach(b => b.classList.toggle('materia-btn--active', b.dataset.submodulo === sub));
+        $$('#panel-produtividade .materia-panel').forEach(p => p.classList.toggle('materia-panel--active', p.id === `submodulo-${sub}`));
+        if (sub === 'calendario') renderCalendario();
+        if (sub === 'tarefas') renderTarefas();
+        if (sub === 'metas') renderMetas();
+        if (sub === 'arquivos') renderArquivos();
+    }
+
+    function closeSidebar() { $('#sidebar').classList.remove('sidebar--open'); }
+
+    // ========== CALENDÁRIO ==========
     function setupCalendario() {
-        document.getElementById('calPrev')?.addEventListener('click', () => { calData.setMonth(calData.getMonth() - 1); renderCalendario(); });
-        document.getElementById('calNext')?.addEventListener('click', () => { calData.setMonth(calData.getMonth() + 1); renderCalendario(); });
+        $('#calPrev').addEventListener('click', () => { calMonth--; if (calMonth < 0) { calYear--; calMonth = 11; } renderCalendario(); });
+        $('#calNext').addEventListener('click', () => { calMonth++; if (calMonth > 11) { calYear++; calMonth = 0; } renderCalendario(); });
+        $('#calHoje').addEventListener('click', () => { const t = new Date(); calYear = t.getFullYear(); calMonth = t.getMonth(); renderCalendario(); });
         renderCalendario();
     }
 
     function renderCalendario() {
-        const grid = document.getElementById('calendarioGrid');
-        const titulo = document.getElementById('calTitulo');
-        if (!grid || !titulo) return;
-
-        const ano = calData.getFullYear();
-        const mes = calData.getMonth();
-        titulo.textContent = new Date(ano, mes).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-
-        const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-        grid.innerHTML = diasSemana.map(d => `<div class="calendario-dia-semana">${d}</div>`).join('');
-
-        const primeiroDia = new Date(ano, mes, 1).getDay();
-        const ultimoDia = new Date(ano, mes + 1, 0).getDate();
-
+        const grid = $('#calendarioGrid');
+        $('#calTitulo').textContent = new Date(calYear, calMonth).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        const primeiroDia = new Date(calYear, calMonth, 1).getDay();
+        const ultimoDia = new Date(calYear, calMonth + 1, 0).getDate();
+        grid.innerHTML = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => `<div class="calendario-dia-semana">${d}</div>`).join('');
         for (let i = 0; i < primeiroDia; i++) grid.innerHTML += '<div></div>';
-
-        const hoje = new Date();
-        const tarefas = getTarefas();
-
+        const hoje = todayStr();
+        const tarefasDias = (loadData('tarefas') || []).filter(t => !t.concluida).map(t => t.prazo);
         for (let dia = 1; dia <= ultimoDia; dia++) {
-            const dataStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-            const isHoje = dia === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear();
-            const isFeriado = feriados[dataStr];
-            const temTarefa = tarefas.some(t => t.prazo === dataStr && !t.concluida);
-
-            let classes = 'calendario-dia';
-            if (isHoje) classes += ' calendario-dia--hoje';
-            if (isFeriado) classes += ' calendario-dia--feriado';
-            if (temTarefa) classes += ' calendario-dia--tarefa';
-
-            let tooltip = '';
-            if (isFeriado) tooltip = ` title="${feriados[dataStr]}"`;
-
-            grid.innerHTML += `<div class="${classes}"${tooltip}>${dia}</div>`;
+            const dataStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+            let cls = 'calendario-dia';
+            if (dataStr === hoje) cls += ' calendario-dia--hoje';
+            if (feriados[dataStr]) cls += ' calendario-dia--feriado';
+            if (tarefasDias.includes(dataStr)) cls += ' calendario-dia--tarefa';
+            grid.innerHTML += `<div class="${cls}" data-data="${dataStr}">${dia}</div>`;
         }
+        $$('.calendario-dia[data-data]').forEach(el => el.addEventListener('click', (e) => abrirModalDia(e.target.dataset.data)));
     }
 
-    // ============================================================
-    // SISTEMA DE FOLGAS
-    // ============================================================
-    function setupFolgas() {
-        const msg = document.getElementById('folgasMensagem');
-        if (!msg) return;
-        const hoje = new Date();
-        const diaSemana = hoje.getDay();
-        let folgaMsg = '';
-
-        if (diaSemana >= 1 && diaSemana <= 5) {
-            folgaMsg = '📅 Você está em dia útil. Sua próxima folga é no <strong>sábado</strong>!';
-        } else if (diaSemana === 6) {
-            folgaMsg = '🎉 Hoje é sábado! Aproveite sua folga merecida!';
-        } else {
-            folgaMsg = '🌅 Hoje é domingo! Descanse e recarregue as energias para amanhã.';
-        }
-
-        const tarefasConcluidas = getTarefas().filter(t => t.concluida).length;
-        if (tarefasConcluidas >= 5) {
-            folgaMsg += '<br><br>🏆 <strong>Você concluiu 5+ tarefas!</strong> Tire uma folga extra merecida!';
-        }
-
-        msg.innerHTML = folgaMsg;
+    function abrirModalDia(dataStr) {
+        $('#modalDiaTitulo').textContent = formatDate(dataStr);
+        $('#modalDia').dataset.data = dataStr;
+        $('#modalDiaOverlay').classList.add('modal-overlay--visible');
+        renderEventosDia(dataStr);
     }
 
-    // ============================================================
-    // GERENCIADOR DE TAREFAS
-    // ============================================================
+    $('#modalDiaFechar').addEventListener('click', () => $('#modalDiaOverlay').classList.remove('modal-overlay--visible'));
+    $('#modalDiaOverlay').addEventListener('click', (e) => { if (e.target === $('#modalDiaOverlay')) $('#modalDiaOverlay').classList.remove('modal-overlay--visible'); });
+
+    function renderEventosDia(dataStr) {
+        const eventos = (loadData('eventos') || []).filter(ev => ev.data === dataStr);
+        const lista = $('#modalEventosLista');
+        lista.innerHTML = '<h4>📌 Eventos neste dia</h4>';
+        if (eventos.length === 0) lista.innerHTML += '<p class="text-muted">Nenhum evento.</p>';
+        else eventos.forEach(ev => {
+            lista.innerHTML += `<div style="background:var(--bg-input);padding:8px;border-radius:6px;margin-bottom:6px;"><strong>${ev.titulo}</strong> (${ev.tipo}) ${ev.hora ? 'às '+ev.hora : ''}</div>`;
+        });
+    }
+
+    $('#modalSalvarEvento').addEventListener('click', () => {
+        const data = $('#modalDia').dataset.data;
+        const titulo = $('#modalEventoTitulo').value.trim();
+        if (!titulo) return mostrarToast('Preencha o título!');
+        const eventos = loadData('eventos') || [];
+        eventos.push({
+            data,
+            titulo,
+            tipo: $('#modalEventoTipo').value,
+            hora: $('#modalEventoHora').value,
+            descricao: $('#modalEventoDescricao').value
+        });
+        saveData('eventos', eventos);
+        renderEventosDia(data);
+        renderCalendario();
+        mostrarToast('Evento adicionado! ✅');
+        $('#modalEventoTitulo').value = '';
+    });
+
+    // ========== TAREFAS ==========
     function setupTarefas() {
-        document.getElementById('btnAddTarefa')?.addEventListener('click', adicionarTarefa);
+        $('#btnAddTarefa').addEventListener('click', adicionarTarefa);
         renderTarefas();
     }
-
     function adicionarTarefa() {
-        const titulo = document.getElementById('tarefaTitulo').value.trim();
-        const descricao = document.getElementById('tarefaDescricao').value.trim();
-        const prazo = document.getElementById('tarefaPrazo').value;
-        const nivel = document.getElementById('tarefaNivel').value;
-
-        if (!titulo) {
-            document.getElementById('tarefaTitulo').style.borderColor = '#ef4444';
-            setTimeout(() => document.getElementById('tarefaTitulo').style.borderColor = '', 500);
-            return;
-        }
-
-        const tarefas = getTarefas();
+        const titulo = $('#tarefaTitulo').value.trim();
+        if (!titulo) return mostrarToast('Título obrigatório');
+        const tarefas = loadData('tarefas') || [];
         tarefas.push({
             id: Date.now(),
             titulo,
-            descricao,
-            prazo,
-            nivel,
-            concluida: false,
-            criadaEm: new Date().toISOString()
+            descricao: $('#tarefaDescricao').value,
+            prazo: $('#tarefaPrazo').value,
+            nivel: $('#tarefaNivel').value,
+            hora: $('#tarefaHora').value,
+            concluida: false
         });
-        setTarefas(tarefas);
+        saveData('tarefas', tarefas);
         renderTarefas();
-        setupFolgas();
-        setupDashboardStats();
-
-        // Limpar formulário
-        document.getElementById('tarefaTitulo').value = '';
-        document.getElementById('tarefaDescricao').value = '';
-        document.getElementById('tarefaPrazo').value = '';
-        document.getElementById('tarefaNivel').value = 'moderado';
+        atualizarDashboard();
+        mostrarToast('Tarefa adicionada! ✅');
+        $('#tarefaTitulo').value = '';
     }
-
     function renderTarefas() {
-        const lista = document.getElementById('tarefasLista');
-        if (!lista) return;
-        const tarefas = getTarefas().filter(t => !t.concluida);
-
-        if (tarefas.length === 0) {
-            lista.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">Nenhuma tarefa pendente. 🎉</p>';
-            return;
-        }
-
+        const tarefas = (loadData('tarefas') || []).filter(t => !t.concluida);
+        const lista = $('#tarefasLista');
+        if (!tarefas.length) { lista.innerHTML = '<p class="text-muted">Nenhuma tarefa.</p>'; return; }
         lista.innerHTML = tarefas.map(t => `
-            <div class="tarefa-item tarefa-item--${t.nivel}">
-                <div class="tarefa-info">
-                    <h4>${t.titulo}</h4>
-                    ${t.descricao ? `<p>${t.descricao}</p>` : ''}
-                    ${t.prazo ? `<p>📅 Prazo: ${new Date(t.prazo + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
-                    <span class="tarefa-nivel nivel-${t.nivel}">${t.nivel === 'urgente' ? '🔴 Urgente' : t.nivel === 'moderado' ? '🟡 Moderado' : '🟢 Tranquilo'}</span>
-                </div>
-                <div class="tarefa-acoes">
-                    <button class="btn btn--success btn--sm" onclick="window.concluirTarefa(${t.id})">✅</button>
-                    <button class="btn btn--danger btn--sm" onclick="window.removerTarefa(${t.id})">🗑️</button>
+            <div class="card" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+                <div><strong>${t.titulo}</strong> <span class="badge-${t.nivel}">${t.nivel}</span><br><small>${t.prazo ? formatDate(t.prazo) : ''} ${t.hora||''}</small></div>
+                <div>
+                    <button class="btn btn--primary btn--sm" data-concluir="${t.id}">✅</button>
+                    <button class="btn btn--danger btn--sm" data-remover="${t.id}">🗑️</button>
                 </div>
             </div>
         `).join('');
-
-        renderCalendario();
+        lista.querySelectorAll('[data-concluir]').forEach(b => b.addEventListener('click', () => concluirTarefa(parseInt(b.dataset.concluir))));
+        lista.querySelectorAll('[data-remover]').forEach(b => b.addEventListener('click', () => removerTarefa(parseInt(b.dataset.remover))));
     }
-
-    window.concluirTarefa = function (id) {
-        const tarefas = getTarefas();
+    function concluirTarefa(id) {
+        const tarefas = loadData('tarefas') || [];
         const idx = tarefas.findIndex(t => t.id === id);
         if (idx >= 0) {
             tarefas[idx].concluida = true;
-            tarefas[idx].concluidaEm = new Date().toISOString();
-            setTarefas(tarefas);
-            const historico = getHistorico();
-            historico.push(tarefas[idx]);
-            setHistorico(historico);
+            saveData('tarefas', tarefas);
+            pontos += 10;
+            verificarNivel();
+            atualizarStreak();
             renderTarefas();
-            renderHistorico();
-            setupFolgas();
-            setupDashboardStats();
+            atualizarDashboard();
+            mostrarToast('Tarefa concluída! +10 pontos 🎉');
         }
-    };
-
-    window.removerTarefa = function (id) {
-        const tarefas = getTarefas().filter(t => t.id !== id);
-        setTarefas(tarefas);
+    }
+    function removerTarefa(id) {
+        saveData('tarefas', (loadData('tarefas')||[]).filter(t => t.id !== id));
         renderTarefas();
-        setupDashboardStats();
-    };
+    }
 
-    // ============================================================
-    // METAS
-    // ============================================================
+    // ========== METAS ==========
     function setupMetas() {
-        document.getElementById('btnAddMeta')?.addEventListener('click', adicionarMeta);
+        $('#btnAddMeta').addEventListener('click', adicionarMeta);
         renderMetas();
     }
-
     function adicionarMeta() {
-        const titulo = document.getElementById('metaTitulo').value.trim();
-        const alvo = parseInt(document.getElementById('metaAlvo').value) || 100;
-        const unidade = document.getElementById('metaUnidade').value;
-
+        const titulo = $('#metaTitulo').value.trim();
         if (!titulo) return;
-
-        const metas = getMetas();
-        metas.push({ id: Date.now(), titulo, alvo, unidade, progresso: 0 });
-        setMetas(metas);
+        const metas = loadData('metas') || [];
+        metas.push({ id: Date.now(), titulo, alvo: parseInt($('#metaAlvo').value)||100, unidade: $('#metaUnidade').value, progresso: 0 });
+        saveData('metas', metas);
         renderMetas();
-        setupDashboardStats();
-        document.getElementById('metaTitulo').value = '';
+        mostrarToast('Meta criada! 🎯');
+        $('#metaTitulo').value = '';
     }
-
     function renderMetas() {
-        const lista = document.getElementById('metasLista');
-        if (!lista) return;
-        const metas = getMetas();
-
-        if (metas.length === 0) {
-            lista.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">Nenhuma meta definida. Crie sua primeira meta! 🎯</p>';
-            return;
-        }
-
+        const metas = loadData('metas') || [];
+        const lista = $('#metasLista');
+        if (!metas.length) { lista.innerHTML = '<p class="text-muted">Nenhuma meta.</p>'; return; }
         lista.innerHTML = metas.map(m => {
-            const pct = Math.min(100, Math.round((m.progresso / m.alvo) * 100));
-            return `
-                <div class="meta-item">
-                    <div class="meta-info">
-                        <h4>${m.titulo}</h4>
-                        <p>${m.progresso} / ${m.alvo} ${m.unidade}</p>
-                        <div class="meta-barra"><div class="meta-barra-preenchida" style="width:${pct}%"></div></div>
-                    </div>
-                    <div class="meta-acoes">
-                        <button class="btn btn--success btn--sm" onclick="window.avancarMeta(${m.id})">+</button>
-                        <button class="btn btn--danger btn--sm" onclick="window.removerMeta(${m.id})">🗑️</button>
-                    </div>
-                </div>
-            `;
+            const pct = Math.min(100, Math.round((m.progresso/m.alvo)*100));
+            return `<div class="card" style="margin-bottom:10px;">
+                <strong>${m.titulo}</strong> (${m.progresso}/${m.alvo} ${m.unidade})
+                <div style="background:var(--bg-input);height:8px;border-radius:4px;margin:8px 0;"><div style="width:${pct}%;height:100%;background:var(--accent);border-radius:4px;"></div></div>
+                <button class="btn btn--primary btn--sm" data-avancar="${m.id}">+1</button>
+            </div>`;
         }).join('');
-    }
-
-    window.avancarMeta = function (id) {
-        const metas = getMetas();
-        const idx = metas.findIndex(m => m.id === id);
-        if (idx >= 0 && metas[idx].progresso < metas[idx].alvo) {
-            metas[idx].progresso++;
-            setMetas(metas);
+        lista.querySelectorAll('[data-avancar]').forEach(b => b.addEventListener('click', () => {
+            const metas = loadData('metas')||[];
+            const idx = metas.findIndex(m => m.id === parseInt(b.dataset.avancar));
+            if (idx>=0 && metas[idx].progresso < metas[idx].alvo) metas[idx].progresso++;
+            saveData('metas', metas);
             renderMetas();
-            setupDashboardStats();
-        }
-    };
+            atualizarDashboard();
+        }));
+    }
 
-    window.removerMeta = function (id) {
-        setMetas(getMetas().filter(m => m.id !== id));
-        renderMetas();
-        setupDashboardStats();
-    };
+    // ========== POMODORO ==========
+    function setupPomodoro() {
+        $('#pomodoroIniciar').addEventListener('click', iniciarPomodoro);
+        $('#pomodoroPausar').addEventListener('click', pausarPomodoro);
+        $('#pomodoroResetar').addEventListener('click', resetarPomodoro);
+    }
+    function atualizarDisplayPomodoro() {
+        const min = Math.floor(pomodoroTime/60);
+        const seg = pomodoroTime%60;
+        $('#pomodoroDisplay').textContent = `${String(min).padStart(2,'0')}:${String(seg).padStart(2,'0')}`;
+    }
+    function iniciarPomodoro() {
+        if (pomodoroRunning) return;
+        pomodoroRunning = true;
+        $('#pomodoroIniciar').disabled = true;
+        $('#pomodoroPausar').disabled = false;
+        pomodoroInterval = setInterval(() => {
+            if (pomodoroTime > 0) {
+                pomodoroTime--;
+                atualizarDisplayPomodoro();
+            } else {
+                clearInterval(pomodoroInterval);
+                pomodoroRunning = false;
+                $('#pomodoroIniciar').disabled = false;
+                $('#pomodoroPausar').disabled = true;
+                tocarSom();
+                mostrarToast('Pomodoro concluído! Hora de descansar. 🎉');
+                const historico = loadData('pomodoroHistorico') || [];
+                historico.push(new Date().toISOString());
+                saveData('pomodoroHistorico', historico);
+                atualizarHorasEstudadas(25/60);
+            }
+        }, 1000);
+    }
+    function pausarPomodoro() {
+        clearInterval(pomodoroInterval);
+        pomodoroRunning = false;
+        $('#pomodoroIniciar').disabled = false;
+        $('#pomodoroPausar').disabled = true;
+    }
+    function resetarPomodoro() {
+        pausarPomodoro();
+        pomodoroTime = 25*60;
+        atualizarDisplayPomodoro();
+    }
+    function tocarSom() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+    }
 
-    // ============================================================
-    // ARQUIVOS (localStorage - simulação)
-    // ============================================================
+    function atualizarHorasEstudadas(horas) {
+        const total = (loadData('horasEstudadas') || 0) + horas;
+        saveData('horasEstudadas', total);
+        atualizarDashboard();
+    }
+
+    // ========== ARQUIVOS ==========
     function setupArquivos() {
-        document.getElementById('btnUpload')?.addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('fileInput')?.addEventListener('change', handleFileUpload);
-        document.getElementById('uploadArea')?.addEventListener('click', (e) => {
-            if (e.target !== document.getElementById('btnUpload')) document.getElementById('fileInput').click();
+        $('#btnUpload').addEventListener('click', () => $('#fileInput').click());
+        $('#fileInput').addEventListener('change', (e) => {
+            const files = e.target.files;
+            const arquivos = loadData('arquivos') || [];
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    arquivos.push({ id: Date.now(), nome: file.name, tamanho: file.size, dataUrl: reader.result });
+                    saveData('arquivos', arquivos);
+                    renderArquivos();
+                };
+                reader.readAsDataURL(file);
+            });
         });
         renderArquivos();
     }
-
-    function handleFileUpload(e) {
-        const files = e.target.files;
-        if (!files.length) return;
-        const arquivos = getArquivos();
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function () {
-                arquivos.push({
-                    id: Date.now() + Math.random(),
-                    nome: file.name,
-                    tipo: file.type,
-                    tamanho: file.size,
-                    data: reader.result,
-                    adicionadoEm: new Date().toISOString()
-                });
-                setArquivos(arquivos);
-                renderArquivos();
-            };
-            reader.readAsDataURL(file);
-        });
-        e.target.value = '';
-    }
-
     function renderArquivos() {
-        const lista = document.getElementById('arquivosLista');
-        if (!lista) return;
-        const arquivos = getArquivos();
-
-        if (arquivos.length === 0) {
-            lista.innerHTML += '<p style="color:var(--text-muted);text-align:center;padding:10px;">Nenhum arquivo importado ainda.</p>';
-            return;
-        }
-
-        lista.innerHTML = '<h4>📎 Arquivos recentes:</h4>' + arquivos.map(a => `
-            <div class="arquivo-item">
-                <div class="arquivo-item__icone">${a.tipo.startsWith('image') ? '🖼️' : '📄'}</div>
-                <div class="arquivo-item__info">
-                    <strong>${a.nome}</strong>
-                    <span>${(a.tamanho / 1024).toFixed(1)} KB • ${new Date(a.adicionadoEm).toLocaleDateString('pt-BR')}</span>
-                </div>
-                <button class="btn btn--danger btn--sm" onclick="window.removerArquivo(${a.id})">🗑️</button>
-            </div>
-        `).join('');
+        const arquivos = loadData('arquivos') || [];
+        const lista = $('#arquivosLista');
+        lista.innerHTML = '<h4>📎 Arquivos recentes:</h4>' + (arquivos.length ? arquivos.map(a => `<div style="display:flex;gap:10px;align-items:center;background:var(--bg-card);padding:8px;border-radius:6px;margin-bottom:6px;"><span>📄</span><span>${a.nome}</span></div>`).join('') : '<p class="text-muted">Nenhum arquivo.</p>');
     }
 
-    window.removerArquivo = function (id) {
-        setArquivos(getArquivos().filter(a => a.id !== id));
-        renderArquivos();
-    };
+    // ========== PROMPTS ==========
+    function setupPrompts() {
+        $('#gerarPrompt').addEventListener('click', () => {
+            const texto = $('#promptInput').value.trim();
+            if (!texto) return;
+            $('#resultsContent').innerHTML = `<p><strong>${texto}</strong></p><p>Este é um conteúdo simulado. Em breve, IA real.</p>`;
+            $('#resultsArea').style.display = 'block';
+        });
+    }
 
-    // ============================================================
-    // HISTÓRICO DE TAREFAS
-    // ============================================================
-    function setupHistorico() {
-        document.getElementById('btnLimparHistorico')?.addEventListener('click', () => {
-            if (confirm('Limpar todo o histórico?')) {
-                setHistorico([]);
-                renderHistorico();
+    // ========== CONTEÚDO DE ESTUDO ==========
+    function setupConteudoEstudo() {
+        document.addEventListener('click', e => {
+            const card = e.target.closest('.card--estudo');
+            if (card) {
+                const materia = card.dataset.materia;
+                const tema = card.dataset.tema;
+                if (materia && tema) {
+                    switchTab('estudos');
+                    switchMateria(materia);
+                    mostrarToast(`Abrindo: ${tema} 📖`);
+                }
             }
         });
-        renderHistorico();
     }
 
-    function renderHistorico() {
-        const lista = document.getElementById('historicoLista');
-        if (!lista) return;
-        const historico = getHistorico();
+    // ========== DASHBOARD ==========
+    function atualizarDashboard() {
+        const tarefas = (loadData('tarefas') || []).filter(t => !t.concluida);
+        const metas = loadData('metas') || [];
+        const horas = loadData('horasEstudadas') || 0;
+        const aproveitamento = metas.length ? Math.round(metas.reduce((s,m)=>s+(m.progresso/m.alvo),0)/metas.length*100) : 0;
+        $('#stat-horas').textContent = horas.toFixed(1) + 'h';
+        $('#stat-tarefas').textContent = tarefas.length;
+        $('#stat-streak').textContent = streak;
+        $('#stat-aproveitamento').textContent = aproveitamento + '%';
+        $('#headerStreak').textContent = `🔥 ${streak} dias`;
 
-        if (historico.length === 0) {
-            lista.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">Nenhuma tarefa concluída ainda.</p>';
-            return;
+        // Próximos eventos
+        const eventos = (loadData('eventos') || []).filter(ev => ev.data >= todayStr()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3);
+        const proxEl = $('#proximosEventos');
+        proxEl.innerHTML = eventos.length ? eventos.map(e => `<div><strong>${formatDate(e.data)}</strong>: ${e.titulo}</div>`).join('') : '<p class="text-muted">Nenhum evento próximo.</p>';
+
+        // Tarefas de hoje
+        const tarefasHoje = tarefas.filter(t => t.prazo === todayStr());
+        const tarefasHojeEl = $('#tarefasHoje');
+        tarefasHojeEl.innerHTML = tarefasHoje.length ? tarefasHoje.map(t => `<div>✅ ${t.titulo}</div>`).join('') : '<p class="text-muted">Nada para hoje.</p>';
+
+        // Recomendação
+        const recomendacoes = ['Revise um conteúdo antigo.','Faça um simulado.','Estude com o Pomodoro.','Crie metas realistas.'];
+        $('#recomendacaoDia').textContent = recomendacoes[Math.floor(Math.random()*recomendacoes.length)];
+
+        // Gráfico (canvas simples)
+        const canvas = $('#graficoProgresso');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            const dados = [horas, tarefas.length, streak, aproveitamento];
+            const labels = ['Horas','Tarefas','Streak','Aprov.'];
+            const max = Math.max(...dados, 1);
+            const w = canvas.width / dados.length;
+            ctx.fillStyle = 'var(--accent)';
+            dados.forEach((val, i) => {
+                const h = (val / max) * canvas.height;
+                ctx.fillRect(i*w + 5, canvas.height - h, w - 10, h);
+                ctx.fillStyle = 'var(--text-primary)';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(labels[i], i*w + 8, canvas.height - 2);
+                ctx.fillStyle = 'var(--accent)';
+            });
         }
-
-        lista.innerHTML = historico.slice().reverse().map(t => `
-            <div class="tarefa-item tarefa-item--concluida">
-                <div class="tarefa-info">
-                    <h4>✅ ${t.titulo}</h4>
-                    <p>Concluída em: ${new Date(t.concluidaEm).toLocaleString('pt-BR')}</p>
-                </div>
-            </div>
-        `).join('');
     }
 
-    // ============================================================
-    // DASHBOARD STATS
-    // ============================================================
-    function setupDashboardStats() {
-        const tarefasConcluidas = getTarefas().filter(t => t.concluida).length;
-        const metasAlcancadas = getMetas().filter(m => m.progresso >= m.alvo).length;
-        const totalMetas = getMetas().length;
-        const aproveitamento = totalMetas > 0 ? Math.round((metasAlcancadas / totalMetas) * 100) : 0;
-
-        const elTarefas = document.getElementById('stat-tarefas');
-        const elMetas = document.getElementById('stat-metas');
-        const elAproveitamento = document.getElementById('stat-aproveitamento');
-
-        if (elTarefas) elTarefas.textContent = tarefasConcluidas;
-        if (elMetas) elMetas.textContent = metasAlcancadas;
-        if (elAproveitamento) elAproveitamento.textContent = aproveitamento + '%';
+    function atualizarStreak() {
+        const hoje = todayStr();
+        const ultimo = loadData('ultimoEstudo');
+        if (ultimo === hoje) return;
+        const ontem = new Date();
+        ontem.setDate(ontem.getDate()-1);
+        const ontemStr = ontem.toISOString().split('T')[0];
+        if (ultimo === ontemStr) streak++;
+        else streak = 1;
+        saveData('ultimoEstudo', hoje);
+        salvarGamificacao();
+        atualizarDashboard();
     }
 
-    // ============================================================
-    // INICIAR
-    // ============================================================
+    function verificarNivel() {
+        const novoNivel = Math.floor(pontos / 50) + 1;
+        if (novoNivel > nivel) {
+            nivel = novoNivel;
+            mostrarToast(`🎉 Subiu para o nível ${nivel}!`);
+        }
+        salvarGamificacao();
+    }
+
+    // ========== TOAST ==========
+    function mostrarToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        $('#toastContainer').appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ========== INICIAR ==========
     init();
-
 })();
