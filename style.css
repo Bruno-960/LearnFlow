@@ -26,7 +26,6 @@
     --accent2: #06b6d4;
     --accent2-light: #cffafe;
     --border: #e2e6ed;
-    --border-light: #eef0f4;
     --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
     --shadow-md: 0 4px 14px rgba(0,0,0,0.08);
     --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
@@ -73,6 +72,9 @@ body {
     transition: background var(--transition-normal), color var(--transition-normal);
 }
 
+/* ============================================================
+   HEADER
+   ============================================================ */
 .header {
     height: var(--header-height);
     background: var(--bg-secondary);
@@ -129,7 +131,9 @@ body {
     justify-content: center;
     cursor: pointer;
     font-size: 1.2rem;
+    transition: transform 0.2s;
 }
+.header__avatar:hover { transform: scale(1.1); }
 .theme-toggle,
 .header__menu-btn {
     border: 1px solid var(--border);
@@ -142,11 +146,26 @@ body {
 }
 .header__menu-btn { display: none; }
 
-.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 90; }
+/* ============================================================
+   OVERLAY MOBILE
+   ============================================================ */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 90;
+}
 .sidebar-overlay--visible { display: block; }
 
+/* ============================================================
+   LAYOUT PRINCIPAL
+   ============================================================ */
 .app-layout { display: flex; flex: 1; min-height: calc(100vh - var(--header-height)); }
 
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
 .sidebar {
     width: var(--sidebar-width);
     background: var(--bg-sidebar);
@@ -157,6 +176,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    transition: left 0.3s ease;
 }
 .sidebar__section-title {
     font-size: 0.7rem;
@@ -185,6 +205,9 @@ body {
 .sidebar__link:hover { background: var(--bg-hover); color: var(--text-primary); }
 .sidebar__link--active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
 
+/* ============================================================
+   CONTEÚDO PRINCIPAL
+   ============================================================ */
 .main-content {
     flex: 1;
     padding: 28px 32px;
@@ -194,6 +217,9 @@ body {
     width: 100%;
 }
 
+/* ============================================================
+   NAVEGAÇÃO DE ABAS (escondida no mobile)
+   ============================================================ */
 .tab-nav {
     display: flex;
     gap: 8px;
@@ -219,10 +245,16 @@ body {
 .tab-btn:hover { background: var(--bg-hover); }
 .tab-btn--active { background: var(--bg-secondary); color: var(--accent); font-weight: 600; box-shadow: var(--shadow-sm); }
 
+/* ============================================================
+   PAINÉIS
+   ============================================================ */
 .tab-panel { display: none; animation: fadeSlideIn 0.4s ease forwards; }
 .tab-panel--active { display: block; }
 @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
 .dashboard-welcome {
     background: linear-gradient(135deg, var(--accent-light), var(--accent2-light));
     border-radius: var(--radius-lg);
@@ -239,7 +271,9 @@ body {
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
     backdrop-filter: blur(6px);
+    transition: transform 0.2s;
 }
+.stat-card:hover { transform: translateY(-2px); }
 .stat-card__value { font-size: 2rem; font-weight: 700; color: var(--accent); }
 .stat-card__label { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
 
@@ -258,8 +292,11 @@ body {
 .text-muted { color: var(--text-muted); font-style: italic; }
 
 .grafico-barras { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
-.grafico-barra { flex: 1; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 4px; }
+.grafico-barra { flex: 1; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s; }
 
+/* ============================================================
+   CARDS DE MATÉRIAS
+   ============================================================ */
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
 .card {
     background: var(--bg-card);
@@ -272,12 +309,35 @@ body {
     backdrop-filter: blur(6px);
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.card--estudo:hover { box-shadow: 0 0 20px rgba(124,58,237,0.15); }
 .card__icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--accent-light); border-radius: var(--radius-sm); font-size: 1.3rem; margin-bottom: 12px; }
 .card__title { font-size: 1.05rem; font-weight: 600; margin: 8px 0 4px; }
 .card__text { color: var(--text-secondary); font-size: 0.9rem; }
 
 .materia-descricao { color: var(--text-secondary); margin-bottom: 20px; }
 
+/* ============================================================
+   CALENDÁRIO
+   ============================================================ */
+.calendario-container { background: var(--bg-card); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border); }
+.calendario-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.calendario-dia-semana { font-weight: 700; color: var(--accent2); font-size: 0.8rem; padding: 8px 0; }
+.calendario-dia { padding: 10px 4px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.1s; position: relative; }
+.calendario-dia:hover { background: var(--bg-hover); }
+.calendario-dia--hoje { background: var(--accent2); color: #fff; font-weight: 700; }
+.calendario-dia--feriado { background: #fef3c7; color: #92400e; }
+.calendario-dia--tarefa::after { content: ""; display: block; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; margin: 2px auto 0; }
+.calendario-legenda { display: flex; gap: 16px; margin-top: 12px; font-size: 0.8rem; }
+.legenda-cor { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.legenda-cor.feriado { background: #fcd34d; }
+.legenda-cor.hoje { background: var(--accent2); }
+.legenda-cor.tarefa-dia { background: var(--accent); }
+
+/* ============================================================
+   TAREFAS & METAS
+   ============================================================ */
+.tarefas-lista, .metas-lista { display: flex; flex-direction: column; gap: 10px; }
 .prompt-form {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -299,8 +359,11 @@ body {
     color: var(--text-primary);
     font-family: inherit;
 }
-.prompt-form__row { display: flex; gap: 10px; flex-wrap: wrap; }
+.prompt-form__row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
+/* ============================================================
+   BOTÕES
+   ============================================================ */
 .btn {
     padding: 10px 20px;
     border: none;
@@ -316,52 +379,89 @@ body {
 .btn--primary { background: var(--accent); color: #fff; }
 .btn--primary:hover { background: var(--accent-hover); }
 .btn--secondary { background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); }
+.btn--secondary:hover { background: var(--bg-hover); }
 .btn--danger { background: #ef4444; color: #fff; }
+.btn--danger:hover { background: #dc2626; }
 .btn--sm { padding: 6px 12px; font-size: 0.85rem; }
 
-.calendario-container { background: var(--bg-card); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border); }
-.calendario-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-.calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
-.calendario-dia-semana { font-weight: 700; color: var(--accent2); font-size: 0.8rem; padding: 8px 0; }
-.calendario-dia { padding: 10px 4px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.1s; }
-.calendario-dia:hover { background: var(--bg-hover); }
-.calendario-dia--hoje { background: var(--accent2); color: #fff; font-weight: 700; }
-.calendario-dia--feriado { background: #fef3c7; color: #92400e; }
-.calendario-dia--tarefa::after { content: ""; display: block; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; margin: 2px auto 0; }
-.calendario-legenda { display: flex; gap: 16px; margin-top: 12px; font-size: 0.8rem; }
-.legenda-cor { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-.legenda-cor.feriado { background: #fcd34d; }
-.legenda-cor.hoje { background: var(--accent2); }
-.legenda-cor.tarefa-dia { background: var(--accent); }
-
+/* ============================================================
+   POMODORO
+   ============================================================ */
 .pomodoro-container { text-align: center; }
-.pomodoro-display { font-size: 4rem; font-weight: 700; color: var(--accent); margin: 20px 0; }
+.pomodoro-display { font-size: 4rem; font-weight: 700; color: var(--accent); margin: 20px 0; font-variant-numeric: tabular-nums; }
 .pomodoro-controls { display: flex; gap: 10px; justify-content: center; }
 
-.upload-area { background: var(--bg-card); border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 30px; text-align: center; cursor: pointer; }
+/* ============================================================
+   ARQUIVOS
+   ============================================================ */
+.upload-area { background: var(--bg-card); border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 30px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+.upload-area:hover { border-color: var(--accent2); }
 
+/* ============================================================
+   MODAIS
+   ============================================================ */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
 .modal-overlay--visible { display: flex; }
-.modal { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+.modal { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: modalSlide 0.3s ease; }
+@keyframes modalSlide { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .modal__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.modal__fechar { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); }
+.modal__fechar { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); transition: color 0.2s; }
+.modal__fechar:hover { color: var(--text-primary); }
 
+/* ============================================================
+   PERFIL
+   ============================================================ */
+.perfil-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-input); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 8px; }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
 .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
-.toast { background: var(--accent); color: #fff; padding: 12px 20px; border-radius: var(--radius-sm); box-shadow: var(--shadow-md); animation: fadeSlideIn 0.3s ease; font-weight: 500; }
+.toast { padding: 12px 20px; border-radius: var(--radius-sm); box-shadow: var(--shadow-md); animation: toastIn 0.3s ease; font-weight: 500; color: #fff; }
+.toast--sucesso { background: #10b981; }
+.toast--erro { background: #ef4444; }
+.toast--aviso { background: #f59e0b; }
+.toast--lembrete { background: var(--accent); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
 
+/* ============================================================
+   SESSÃO DE ESTUDO
+   ============================================================ */
+.sessao-tempo.active { background: var(--accent) !important; color: #fff !important; }
+
+/* ============================================================
+   TAREFA URGENTE
+   ============================================================ */
+.tarefa-urgente { border-left: 4px solid #ef4444 !important; animation: pulsar 2s infinite; }
+@keyframes pulsar { 0%,100% { box-shadow: var(--shadow-sm); } 50% { box-shadow: 0 0 20px rgba(239,68,68,0.3); } }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
 .footer { padding: 20px; text-align: center; border-top: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); font-size: 0.85rem; }
 
+/* ============================================================
+   RESPONSIVIDADE
+   ============================================================ */
 @media (max-width: 900px) {
     .header__menu-btn { display: block; }
-    .sidebar { position: fixed; left: -100%; top: var(--header-height); bottom: 0; z-index: 95; width: 260px; transition: left 0.3s; }
+    .sidebar { position: fixed; left: -100%; top: var(--header-height); bottom: 0; z-index: 95; width: 260px; box-shadow: var(--shadow-lg); }
     .sidebar--open { left: 0; }
+    .tab-nav { display: none !important; }
     .main-content { padding: 16px; }
-    .tab-nav { width: 100%; overflow-x: auto; }
+    .cards-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .pomodoro-display { font-size: 3rem; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .calendario-dia { padding: 8px 2px; font-size: 0.85rem; }
 }
 @media (max-width: 500px) {
     .header { padding: 0 15px; }
     .header__logo { font-size: 1rem; }
-    .tab-btn { padding: 8px 14px; font-size: 0.8rem; }
+    .header__streak { font-size: 0.75rem; }
     .main-content { padding: 12px; }
-    .stats-row { grid-template-columns: 1fr 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card { padding: 16px; }
+    .stat-card__value { font-size: 1.5rem; }
+    .card { padding: 16px; }
+    .modal { width: 95%; padding: 16px; }
 }

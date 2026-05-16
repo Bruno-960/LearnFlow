@@ -17,10 +17,13 @@
         <div class="header__info">
             <span class="header__streak" id="headerStreak" title="Streak de estudos">🔥 0 dias</span>
             <div class="header__avatar" id="headerAvatar" title="Perfil">👤</div>
-            <button class="theme-toggle" id="themeToggle">🌙</button>
-            <button class="header__menu-btn" id="menuToggle">☰</button>
+            <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema">🌙</button>
+            <button class="header__menu-btn" id="menuToggle" aria-label="Menu">☰</button>
         </div>
     </header>
+
+    <!-- OVERLAY MOBILE -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- LAYOUT PRINCIPAL -->
     <div class="app-layout">
@@ -46,7 +49,7 @@
         <!-- CONTEÚDO PRINCIPAL -->
         <main class="main-content" id="mainContent">
 
-            <!-- NAVEGAÇÃO DE ABAS -->
+            <!-- NAVEGAÇÃO DE ABAS (oculta no mobile) -->
             <nav class="tab-nav" id="tabNav">
                 <button class="tab-btn tab-btn--active" data-tab="dashboard">📊 Dashboard</button>
                 <button class="tab-btn" data-tab="estudos">📖 Estudos</button>
@@ -70,7 +73,7 @@
 
                 <div class="stats-row">
                     <div class="stat-card">
-                        <div class="stat-card__value" id="stat-horas">0h</div>
+                        <div class="stat-card__value" id="stat-horas">0.0h</div>
                         <div class="stat-card__label">Horas Estudadas</div>
                     </div>
                     <div class="stat-card">
@@ -88,29 +91,18 @@
                 </div>
 
                 <div class="dashboard-grid">
-                    <!-- PRÓXIMOS EVENTOS -->
                     <div class="dashboard-card">
                         <h3>📅 Próximos Eventos</h3>
-                        <div id="proximosEventos" class="eventos-lista">
-                            <p class="text-muted">Nenhum evento próximo.</p>
-                        </div>
+                        <div id="proximosEventos" class="eventos-lista"><p class="text-muted">Nenhum evento próximo.</p></div>
                     </div>
-
-                    <!-- TAREFAS DO DIA -->
                     <div class="dashboard-card">
                         <h3>📋 Tarefas de Hoje</h3>
-                        <div id="tarefasHoje" class="eventos-lista">
-                            <p class="text-muted">Nenhuma tarefa para hoje.</p>
-                        </div>
+                        <div id="tarefasHoje" class="eventos-lista"><p class="text-muted">Nenhuma tarefa para hoje.</p></div>
                     </div>
-
-                    <!-- GRÁFICO DE PROGRESSO -->
                     <div class="dashboard-card">
                         <h3>📊 Progresso Semanal</h3>
                         <div id="graficoBarras" class="grafico-barras"></div>
                     </div>
-
-                    <!-- RECOMENDAÇÃO DO DIA -->
                     <div class="dashboard-card">
                         <h3>💡 Recomendação do Dia</h3>
                         <p id="recomendacaoDia">Carregando...</p>
@@ -120,14 +112,12 @@
             </section>
 
             <!-- ============================================================ -->
-            <!-- PAINEL: ESTUDOS (NOVO FLUXO) -->
+            <!-- PAINEL: ESTUDOS -->
             <!-- ============================================================ -->
             <section class="tab-panel" id="panel-estudos">
                 <h2>📖 Matérias</h2>
                 <p class="materia-descricao">Escolha uma matéria para estudar.</p>
-                <div class="cards-grid" id="materiasGrid">
-                    <!-- Gerado por JS -->
-                </div>
+                <div class="cards-grid" id="materiasGrid"></div>
             </section>
 
             <!-- ============================================================ -->
@@ -155,17 +145,18 @@
             <!-- ============================================================ -->
             <section class="tab-panel" id="panel-tarefas">
                 <h2>✅ Tarefas</h2>
-                <div class="prompt-form" id="tarefaForm">
+                <div class="prompt-form">
                     <input type="text" class="prompt-form__input" id="tarefaTitulo" placeholder="Título...">
                     <textarea class="prompt-form__textarea" id="tarefaDescricao" rows="2" placeholder="Descrição..."></textarea>
                     <div class="prompt-form__row">
                         <input type="date" class="prompt-form__select" id="tarefaPrazo">
-                        <select class="prompt-form__select" id="tarefaPrioridade">
-                            <option value="alta">🔴 Alta</option>
-                            <option value="media" selected>🟡 Média</option>
-                            <option value="baixa">🟢 Baixa</option>
-                        </select>
                         <input type="time" class="prompt-form__select" id="tarefaHora">
+                        <select class="prompt-form__select" id="tarefaPrioridade">
+                            <option value="baixa">🟢 Baixa</option>
+                            <option value="media" selected>🟡 Média</option>
+                            <option value="alta">🔴 Alta</option>
+                            <option value="urgente">⚡ Urgente</option>
+                        </select>
                     </div>
                     <button class="btn btn--primary" id="btnAddTarefa">➕ Adicionar</button>
                 </div>
@@ -177,7 +168,7 @@
             <!-- ============================================================ -->
             <section class="tab-panel" id="panel-metas">
                 <h2>🎯 Metas</h2>
-                <div class="prompt-form" id="metaForm">
+                <div class="prompt-form">
                     <input type="text" class="prompt-form__input" id="metaTitulo" placeholder="Título...">
                     <div class="prompt-form__row">
                         <input type="number" class="prompt-form__select" id="metaAlvo" value="100" min="1">
@@ -276,8 +267,40 @@
                 <h3 id="modalMateriaTitulo">Matéria</h3>
                 <button class="modal__fechar" id="modalMateriaFechar">✕</button>
             </div>
-            <div class="modal__body" id="modalMateriaConteudo">
-                <!-- Conteúdo dinâmico -->
+            <div class="modal__body" id="modalMateriaConteudo"></div>
+        </div>
+    </div>
+
+    <!-- MODAL DE SESSÃO DE ESTUDO -->
+    <div class="modal-overlay" id="modalSessaoOverlay">
+        <div class="modal" id="modalSessao">
+            <div class="modal__header">
+                <h3>▶ Iniciar Sessão de Estudo</h3>
+                <button class="modal__fechar" id="modalSessaoFechar">✕</button>
+            </div>
+            <div class="modal__body">
+                <div class="prompt-form">
+                    <div class="prompt-form__row">
+                        <select class="prompt-form__select" id="sessaoMateria"></select>
+                    </div>
+                    <div class="prompt-form__row">
+                        <button class="btn btn--secondary btn--sm sessao-tempo" data-tempo="25">25 min</button>
+                        <button class="btn btn--secondary btn--sm sessao-tempo" data-tempo="45">45 min</button>
+                        <button class="btn btn--secondary btn--sm sessao-tempo" data-tempo="60">1h</button>
+                        <button class="btn btn--secondary btn--sm sessao-tempo" data-tempo="120">2h</button>
+                        <input type="number" class="prompt-form__select" id="sessaoTempoCustom" placeholder="Min" min="1" style="width:80px;">
+                    </div>
+                    <input type="text" class="prompt-form__input" id="sessaoObjetivo" placeholder="Objetivo (opcional)...">
+                    <button class="btn btn--primary" id="sessaoIniciar">▶ Iniciar</button>
+                </div>
+                <div id="sessaoContador" style="display:none; text-align:center;">
+                    <div class="pomodoro-display" id="sessaoDisplay">00:00</div>
+                    <div class="pomodoro-controls">
+                        <button class="btn btn--secondary" id="sessaoPausar">⏸ Pausar</button>
+                        <button class="btn btn--danger" id="sessaoEncerrar">⏹ Encerrar</button>
+                    </div>
+                    <p class="text-muted" id="sessaoInfo"></p>
+                </div>
             </div>
         </div>
     </div>
@@ -290,10 +313,15 @@
                 <button class="modal__fechar" id="modalPerfilFechar">✕</button>
             </div>
             <div class="modal__body">
+                <div style="text-align:center;margin-bottom:16px;">
+                    <div class="perfil-avatar" id="perfilAvatar">👤</div>
+                    <button class="btn btn--secondary btn--sm" id="perfilEditarAvatar">✏️ Mudar Avatar</button>
+                </div>
                 <p><strong>Nome:</strong> <span id="perfilNome">Estudante</span></p>
                 <p><strong>Streak:</strong> <span id="perfilStreak">0 dias</span></p>
                 <p><strong>Horas Estudadas:</strong> <span id="perfilHoras">0h</span></p>
                 <p><strong>Metas Ativas:</strong> <span id="perfilMetas">0</span></p>
+                <p><strong>Nível:</strong> <span id="perfilNivel">1</span></p>
                 <button class="btn btn--primary btn--sm" id="perfilEditarNome">✏️ Editar Nome</button>
             </div>
         </div>
@@ -302,7 +330,7 @@
     <!-- TOAST CONTAINER -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <footer class="footer">© 2026 Bruno Santos - LearnFlow</footer>
+    <footer class="footer">© 2026 Bruno Santos — LearnFlow</footer>
     <script src="script.js"></script>
 </body>
 </html>
