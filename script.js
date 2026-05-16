@@ -6,7 +6,6 @@
     const $$ = (s) => document.querySelectorAll(s);
     const saveData = (key, data) => localStorage.setItem('learnflow_' + key, JSON.stringify(data));
     const loadData = (key) => JSON.parse(localStorage.getItem('learnflow_' + key) || 'null');
-    const deleteData = (key) => localStorage.removeItem('learnflow_' + key);
     const todayStr = () => new Date().toISOString().split('T')[0];
     const formatDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
 
@@ -14,7 +13,6 @@
     let currentTab = 'dashboard';
     let calYear, calMonth;
     let pomodoroInterval, pomodoroTime = 25 * 60, pomodoroRunning = false;
-    let sessaoInterval, sessaoTime = 0, sessaoRunning = false, sessaoPausado = false;
     let streak = loadData('streak') || 0;
     let pontos = loadData('pontos') || 0;
     let nivel = loadData('nivel') || 1;
@@ -24,48 +22,88 @@
 
     // ========== FERIADOS ==========
     const feriados = {
-        '2026-01-01': 'Confraternização',
-        '2026-04-21': 'Tiradentes',
-        '2026-05-01': 'Trabalho',
-        '2026-06-04': 'Corpus Christi',
-        '2026-09-07': 'Independência',
-        '2026-10-12': 'Aparecida',
-        '2026-11-02': 'Finados',
-        '2026-11-15': 'Proclamação',
-        '2026-12-25': 'Natal'
+        '2026-01-01': 'Confraternização', '2026-04-21': 'Tiradentes', '2026-05-01': 'Trabalho',
+        '2026-06-04': 'Corpus Christi', '2026-09-07': 'Independência', '2026-10-12': 'Aparecida',
+        '2026-11-02': 'Finados', '2026-11-15': 'Proclamação', '2026-12-25': 'Natal'
     };
 
-    const materias = [
-        { id: 'matematica', nome: 'Matemática', icone: '🧮', desc: 'Funções, geometria, trigonometria.' },
-        { id: 'portugues', nome: 'Português', icone: '📝', desc: 'Gramática, literatura, redação.' },
-        { id: 'fisica', nome: 'Física', icone: '⚡', desc: 'Mecânica, termodinâmica, ondas.' },
-        { id: 'quimica', nome: 'Química', icone: '🧪', desc: 'Orgânica, inorgânica, físico-química.' },
-        { id: 'biologia', nome: 'Biologia', icone: '🧬', desc: 'Citologia, genética, ecologia.' },
-        { id: 'historia', nome: 'História', icone: '📜', desc: 'Brasil, geral, contemporânea.' },
-        { id: 'geografia', nome: 'Geografia', icone: '🌍', desc: 'Física, humana, atualidades.' },
-        { id: 'ingles', nome: 'Inglês', icone: '🇬🇧', desc: 'Gramática, vocabulário, leitura.' },
-        { id: 'programacao', nome: 'Programação', icone: '💻', desc: 'Lógica, algoritmos, projetos.' }
+    // ========== DADOS DOS ESTUDOS ==========
+    const categorias = [
+        { id: 'ensino-medio', nome: 'Ensino Médio', icone: '🏫', desc: 'Matérias do 1º ao 3º ano', materias: ['portugues', 'matematica', 'fisica', 'quimica', 'biologia', 'historia', 'geografia', 'filosofia', 'sociologia'] },
+        { id: 'enem', nome: 'ENEM e Vestibulares', icone: '🎯', desc: 'Preparação para provas', materias: ['portugues', 'matematica', 'fisica', 'quimica', 'biologia', 'historia', 'geografia', 'redacao'] },
+        { id: 'faculdade', nome: 'Faculdade', icone: '🎓', desc: 'Conteúdos universitários', materias: ['calculo', 'estatistica', 'programacao'] },
+        { id: 'programacao', nome: 'Programação', icone: '💻', desc: 'Lógica, web e Python', materias: ['logica', 'html', 'css', 'javascript', 'python'] },
+        { id: 'livres', nome: 'Estudos Livres', icone: '📚', desc: 'O que quiser aprender', materias: ['ingles', 'espanhol', 'musica'] }
     ];
 
-    // ========== NOTIFICAÇÕES ==========
-    function mostrarToast(msg, tipo = 'sucesso') {
-        const toast = document.createElement('div');
-        toast.className = `toast toast--${tipo}`;
-        toast.textContent = msg;
-        $('#toastContainer').appendChild(toast);
-        setTimeout(() => toast.remove(), 3500);
-    }
+    const todasMaterias = {
+        'portugues': { nome: 'Português', icone: '📝', cor: '#7c3aed' },
+        'matematica': { nome: 'Matemática', icone: '🧮', cor: '#06b6d4' },
+        'fisica': { nome: 'Física', icone: '⚡', cor: '#f59e0b' },
+        'quimica': { nome: 'Química', icone: '🧪', cor: '#10b981' },
+        'biologia': { nome: 'Biologia', icone: '🧬', cor: '#3b82f6' },
+        'historia': { nome: 'História', icone: '📜', cor: '#ef4444' },
+        'geografia': { nome: 'Geografia', icone: '🌍', cor: '#8b5cf6' },
+        'filosofia': { nome: 'Filosofia', icone: '🤔', cor: '#6366f1' },
+        'sociologia': { nome: 'Sociologia', icone: '👥', cor: '#ec4899' },
+        'redacao': { nome: 'Redação', icone: '✍️', cor: '#f97316' },
+        'calculo': { nome: 'Cálculo', icone: '📐', cor: '#14b8a6' },
+        'estatistica': { nome: 'Estatística', icone: '📊', cor: '#0ea5e9' },
+        'programacao': { nome: 'Programação', icone: '💻', cor: '#a855f7' },
+        'logica': { nome: 'Lógica', icone: '🧠', cor: '#84cc16' },
+        'html': { nome: 'HTML', icone: '🏗️', cor: '#e67e22' },
+        'css': { nome: 'CSS', icone: '🎨', cor: '#3498db' },
+        'javascript': { nome: 'JavaScript', icone: '📜', cor: '#f1c40f' },
+        'python': { nome: 'Python', icone: '🐍', cor: '#2ecc71' },
+        'ingles': { nome: 'Inglês', icone: '🇬🇧', cor: '#e74c3c' },
+        'espanhol': { nome: 'Espanhol', icone: '🇪🇸', cor: '#f39c12' },
+        'musica': { nome: 'Música', icone: '🎵', cor: '#9b59b6' }
+    };
 
-    function tocarSom() {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, ctx.currentTime);
-            osc.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.25);
-        } catch(e) {}
+    function getModulos(materiaId) {
+        const modulos = {
+            'portugues': [
+                { id: 'substantivos', titulo: 'Substantivos', desc: 'Classificação e flexões', dificuldade: 'basico', tempo: '20min', exercicios: 10 },
+                { id: 'verbos', titulo: 'Verbos', desc: 'Conjugações e modos verbais', dificuldade: 'intermediario', tempo: '30min', exercicios: 15 },
+                { id: 'adjetivos', titulo: 'Adjetivos', desc: 'Graus comparativo e superlativo', dificuldade: 'basico', tempo: '15min', exercicios: 8 },
+                { id: 'sintaxe', titulo: 'Sintaxe', desc: 'Análise sintática completa', dificuldade: 'avancado', tempo: '45min', exercicios: 20 },
+                { id: 'interpretacao', titulo: 'Interpretação Textual', desc: 'Técnicas de leitura', dificuldade: 'intermediario', tempo: '25min', exercicios: 12 },
+                { id: 'redacao', titulo: 'Redação', desc: 'Estrutura dissertativa', dificuldade: 'avancado', tempo: '60min', exercicios: 5 }
+            ],
+            'matematica': [
+                { id: 'funcoes', titulo: 'Funções', desc: 'Funções do 1º e 2º grau', dificuldade: 'intermediario', tempo: '40min', exercicios: 20 },
+                { id: 'equacoes', titulo: 'Equações', desc: 'Resolução de equações', dificuldade: 'basico', tempo: '25min', exercicios: 15 },
+                { id: 'geometria', titulo: 'Geometria', desc: 'Geometria plana e espacial', dificuldade: 'avancado', tempo: '50min', exercicios: 25 },
+                { id: 'trigonometria', titulo: 'Trigonometria', desc: 'Ciclo e funções trigonométricas', dificuldade: 'avancado', tempo: '45min', exercicios: 18 }
+            ],
+            'fisica': [
+                { id: 'newton', titulo: 'Leis de Newton', desc: 'Mecânica clássica', dificuldade: 'intermediario', tempo: '35min', exercicios: 15 }
+            ],
+            'quimica': [
+                { id: 'tabela', titulo: 'Tabela Periódica', desc: 'Propriedades periódicas', dificuldade: 'basico', tempo: '20min', exercicios: 10 }
+            ],
+            'html': [
+                { id: 'tags', titulo: 'Tags Semânticas', desc: 'Estrutura HTML5', dificuldade: 'basico', tempo: '30min', exercicios: 12 },
+                { id: 'formularios', titulo: 'Formulários', desc: 'Inputs e validação', dificuldade: 'intermediario', tempo: '25min', exercicios: 8 }
+            ],
+            'css': [
+                { id: 'flexbox', titulo: 'Flexbox', desc: 'Layout flexível', dificuldade: 'intermediario', tempo: '35min', exercicios: 15 }
+            ],
+            'javascript': [
+                { id: 'variaveis', titulo: 'Variáveis e Tipos', desc: 'Fundamentos JS', dificuldade: 'basico', tempo: '20min', exercicios: 10 },
+                { id: 'funcoes-js', titulo: 'Funções', desc: 'Escopo e arrow functions', dificuldade: 'intermediario', tempo: '30min', exercicios: 12 }
+            ],
+            'python': [
+                { id: 'sintaxe-py', titulo: 'Sintaxe Python', desc: 'Primeiros passos', dificuldade: 'basico', tempo: '25min', exercicios: 15 }
+            ],
+            'logica': [
+                { id: 'algoritmos', titulo: 'Algoritmos', desc: 'Estruturas básicas', dificuldade: 'basico', tempo: '30min', exercicios: 20 }
+            ]
+        };
+        return modulos[materiaId] || [
+            { id: 'modulo-1', titulo: 'Introdução', desc: 'Conceitos iniciais', dificuldade: 'basico', tempo: '15min', exercicios: 5 },
+            { id: 'modulo-2', titulo: 'Avançado', desc: 'Tópicos avançados', dificuldade: 'avancado', tempo: '40min', exercicios: 15 }
+        ];
     }
 
     // ========== INICIALIZAÇÃO ==========
@@ -81,8 +119,6 @@
         setupPerfil();
         setupEstudos();
         setupDashboard();
-        setupSessaoEstudo();
-        setupNotificacoesTarefas();
         switchTab('dashboard');
         verificarNotificacoes();
         setInterval(verificarNotificacoes, 30000);
@@ -104,23 +140,18 @@
 
     // ========== NAVEGAÇÃO ==========
     function setupNavegacao() {
-        $('#tabNav').addEventListener('click', e => {
-            const btn = e.target.closest('.tab-btn');
-            if (btn) switchTab(btn.dataset.tab);
-        });
         $('#sidebar').addEventListener('click', e => {
             const link = e.target.closest('.sidebar__link');
             if (!link) return;
-            const tab = link.dataset.tab;
-            if (tab) { switchTab(tab); if (window.innerWidth <= 900) closeSidebar(); }
+            if (link.dataset.tab) { switchTab(link.dataset.tab); if (window.innerWidth <= 900) closeSidebar(); }
         });
         $('#menuToggle').addEventListener('click', toggleSidebar);
         $('#sidebarOverlay').addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
     }
 
     function switchTab(tab) {
         currentTab = tab;
-        $$('.tab-btn').forEach(b => b.classList.toggle('tab-btn--active', b.dataset.tab === tab));
         $$('.tab-panel').forEach(p => p.classList.toggle('tab-panel--active', p.id === `panel-${tab}`));
         $$('.sidebar__link').forEach(l => l.classList.toggle('sidebar__link--active', l.dataset.tab === tab));
         if (tab === 'dashboard') atualizarDashboard();
@@ -128,148 +159,169 @@
         if (tab === 'tarefas') renderTarefas();
         if (tab === 'metas') renderMetas();
         if (tab === 'arquivos') renderArquivos();
-        if (tab === 'estudos') renderMaterias();
+        if (tab === 'estudos') renderCategorias();
     }
 
-    function toggleSidebar() {
-        $('#sidebar').classList.toggle('sidebar--open');
-        $('#sidebarOverlay').classList.toggle('sidebar-overlay--visible');
-    }
-    function closeSidebar() {
-        $('#sidebar').classList.remove('sidebar--open');
-        $('#sidebarOverlay').classList.remove('sidebar-overlay--visible');
+    function toggleSidebar() { $('#sidebar').classList.toggle('sidebar--open'); $('#sidebarOverlay').classList.toggle('sidebar-overlay--visible'); }
+    function closeSidebar() { $('#sidebar').classList.remove('sidebar--open'); $('#sidebarOverlay').classList.remove('sidebar-overlay--visible'); }
+
+    // ========== NOVA ARQUITETURA DE ESTUDOS ==========
+    let estudoNavegacao = { nivel: 'categorias', categoria: null, materia: null };
+
+    function setupEstudos() {
+        $('#breadHome').addEventListener('click', () => { estudoNavegacao = { nivel: 'categorias', categoria: null, materia: null }; renderCategorias(); });
     }
 
-    // ========== ESTUDOS ==========
-    function setupEstudos() { renderMaterias(); }
-    function renderMaterias() {
-        const grid = $('#materiasGrid');
-        if (!grid) return;
-        const progressos = loadData('progressosMaterias') || {};
-        grid.innerHTML = materias.map(m => {
-            const prog = progressos[m.id] || 0;
-            return `
-                <article class="card card--estudo" data-materia="${m.id}">
-                    <div class="card__icon">${m.icone}</div>
-                    <h3 class="card__title">${m.nome}</h3>
-                    <p class="card__text">${m.desc}</p>
-                    <div style="background:var(--bg-input);height:6px;border-radius:3px;margin-top:8px;"><div style="width:${prog}%;height:100%;background:var(--accent);border-radius:3px;"></div></div>
-                    <small class="text-muted">${prog}% concluído</small>
-                </article>
-            `;
-        }).join('');
-        $$('.card--estudo').forEach(card => {
-            card.addEventListener('click', () => abrirMateria(card.dataset.materia));
-        });
+    function atualizarBreadcrumb() {
+        $('#breadCategoria').textContent = '';
+        $('#breadCategoria').style.display = 'none';
+        $('#breadMateria').textContent = '';
+        $('#breadMateria').style.display = 'none';
+        $('#breadSepMateria').style.display = 'none';
+        if (estudoNavegacao.categoria) {
+            const cat = categorias.find(c => c.id === estudoNavegacao.categoria);
+            if (cat) { $('#breadCategoria').textContent = cat.icone + ' ' + cat.nome; $('#breadCategoria').style.display = 'inline'; }
+        }
+        if (estudoNavegacao.materia) {
+            const mat = todasMaterias[estudoNavegacao.materia];
+            if (mat) { $('#breadMateria').textContent = mat.icone + ' ' + mat.nome; $('#breadMateria').style.display = 'inline'; $('#breadSepMateria').style.display = 'inline'; }
+        }
     }
 
-    function abrirMateria(materiaId) {
-        const materia = materias.find(m => m.id === materiaId);
-        if (!materia) return;
-        const progressos = loadData('progressosMaterias') || {};
-        const prog = progressos[materiaId] || 0;
-        const ultimaSessao = loadData(`ultimaSessao_${materiaId}`);
-        $('#modalMateriaTitulo').textContent = `${materia.icone} ${materia.nome}`;
-        $('#modalMateriaConteudo').innerHTML = `
-            <p>${materia.desc}</p>
-            <div style="background:var(--bg-input);height:8px;border-radius:4px;margin:12px 0;"><div style="width:${prog}%;height:100%;background:var(--accent);border-radius:4px;"></div></div>
-            <p class="text-muted">Progresso: ${prog}%</p>
-            ${ultimaSessao ? `<p class="text-muted">Última sessão: ${new Date(ultimaSessao).toLocaleDateString('pt-BR')}</p>` : ''}
-            <h4>📖 Conteúdos</h4>
-            <ul><li>Resumo teórico</li><li>Exercícios resolvidos</li><li>Questões de vestibular</li><li>Revisão rápida</li></ul>
-            <button class="btn btn--primary btn--sm abrir-sessao" data-materia="${materiaId}">▶ Iniciar Estudo</button>
+    function renderCategorias() {
+        estudoNavegacao = { nivel: 'categorias', categoria: null, materia: null };
+        atualizarBreadcrumb();
+        const container = $('#estudoContainer');
+        container.innerHTML = `
+            <h2 style="margin-bottom:16px;">📖 Escolha uma categoria</h2>
+            <div class="categorias-grid">
+                ${categorias.map(c => `
+                    <div class="categoria-card" data-categoria="${c.id}">
+                        <div class="categoria-card__icone">${c.icone}</div>
+                        <div class="categoria-card__titulo">${c.nome}</div>
+                        <div class="categoria-card__desc">${c.desc}</div>
+                    </div>
+                `).join('')}
+            </div>
         `;
-        $('#modalMateriaOverlay').classList.add('modal-overlay--visible');
-        document.querySelector('.abrir-sessao')?.addEventListener('click', () => {
-            $('#modalMateriaOverlay').classList.remove('modal-overlay--visible');
-            abrirModalSessao(materiaId);
+        $$('.categoria-card').forEach(card => card.addEventListener('click', () => renderMaterias(card.dataset.categoria)));
+    }
+
+    function renderMaterias(categoriaId) {
+        const cat = categorias.find(c => c.id === categoriaId);
+        if (!cat) return;
+        estudoNavegacao = { nivel: 'materias', categoria: categoriaId, materia: null };
+        atualizarBreadcrumb();
+        const container = $('#estudoContainer');
+        const progressos = loadData('progressosMaterias') || {};
+        container.innerHTML = `
+            <button class="btn btn--secondary btn--sm" style="margin-bottom:16px;" id="voltarCategorias">← Voltar</button>
+            <h2 style="margin-bottom:16px;">${cat.icone} ${cat.nome}</h2>
+            <div class="materias-grid">
+                ${cat.materias.map(mId => {
+                    const mat = todasMaterias[mId] || { nome: mId, icone: '📄' };
+                    const modulos = getModulos(mId);
+                    const prog = progressos[mId] || 0;
+                    return `
+                        <div class="materia-card" data-materia="${mId}">
+                            <div class="materia-card__icone">${mat.icone}</div>
+                            <div class="materia-card__titulo">${mat.nome}</div>
+                            <div class="materia-card__modulos">${modulos.length} módulos</div>
+                            <div style="background:var(--bg-input);height:5px;border-radius:3px;margin-top:8px;"><div style="width:${prog}%;height:100%;background:var(--accent);border-radius:3px;"></div></div>
+                            <small class="text-muted">${prog}%</small>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        $('#voltarCategorias').addEventListener('click', renderCategorias);
+        $$('.materia-card').forEach(card => card.addEventListener('click', () => renderModulos(card.dataset.materia)));
+    }
+
+    function renderModulos(materiaId) {
+        const mat = todasMaterias[materiaId] || { nome: materiaId, icone: '📄' };
+        estudoNavegacao = { nivel: 'modulos', categoria: estudoNavegacao.categoria, materia: materiaId };
+        atualizarBreadcrumb();
+        const container = $('#estudoContainer');
+        const modulos = getModulos(materiaId);
+        const progressos = loadData('progressoModulos') || {};
+        container.innerHTML = `
+            <button class="btn btn--secondary btn--sm" style="margin-bottom:16px;" id="voltarMaterias">← Voltar</button>
+            <h2 style="margin-bottom:16px;">${mat.icone} ${mat.nome}</h2>
+            <div class="modulos-grid">
+                ${modulos.map(m => {
+                    const prog = progressos[m.id] || 0;
+                    return `
+                        <div class="modulo-card">
+                            <div class="modulo-card__header">
+                                <span class="modulo-card__titulo">${m.titulo}</span>
+                                <span class="modulo-card__badge badge-${m.dificuldade}">${m.dificuldade}</span>
+                            </div>
+                            <p class="modulo-card__desc">${m.desc}</p>
+                            <div class="modulo-card__info">
+                                <span>⏱ ${m.tempo}</span>
+                                <span>📝 ${m.exercicios} exercícios</span>
+                            </div>
+                            <div class="modulo-card__progresso">
+                                <div class="modulo-card__progresso-bar" style="width:${prog}%;"></div>
+                            </div>
+                            <div class="modulo-card__acoes">
+                                <button class="btn btn--primary btn--sm btn-estudar-modulo" data-modulo="${m.id}" data-materia="${materiaId}">📖 Estudar</button>
+                                ${prog >= 100 ? '<span style="color:#10b981;">✅</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        $('#voltarMaterias').addEventListener('click', () => renderMaterias(estudoNavegacao.categoria));
+        $$('.btn-estudar-modulo').forEach(btn => btn.addEventListener('click', () => abrirModulo(btn.dataset.modulo, btn.dataset.materia)));
+    }
+
+    function abrirModulo(moduloId, materiaId) {
+        const modulos = getModulos(materiaId);
+        const modulo = modulos.find(m => m.id === moduloId);
+        if (!modulo) return;
+        const mat = todasMaterias[materiaId] || { nome: materiaId };
+        $('#modalModuloTitulo').textContent = `${mat.icone} ${modulo.titulo}`;
+        $('#modalModuloConteudo').innerHTML = `
+            <div class="modulo-conteudo">
+                <span class="modulo-card__badge badge-${modulo.dificuldade}">${modulo.dificuldade}</span>
+                <span style="margin-left:8px;">⏱ ${modulo.tempo}</span>
+                <h4>📖 Resumo Teórico</h4>
+                <p>Conteúdo detalhado sobre <strong>${modulo.titulo}</strong> será exibido aqui. Esta seção conterá explicações, exemplos e dicas de estudo.</p>
+                <h4>💡 Exemplos</h4>
+                <p>Exemplos práticos e aplicações do conteúdo.</p>
+                <h4>📝 Exercícios</h4>
+                <p>${modulo.exercicios} exercícios para praticar.</p>
+                <ul>
+                    <li>Exercício 1</li>
+                    <li>Exercício 2</li>
+                    <li>Exercício 3</li>
+                </ul>
+                <button class="btn btn--primary" id="concluirModulo">✅ Marcar como Concluído</button>
+            </div>
+        `;
+        $('#modalModuloOverlay').classList.add('modal-overlay--visible');
+        $('#concluirModulo').addEventListener('click', () => {
+            const progressos = loadData('progressoModulos') || {};
+            progressos[moduloId] = 100;
+            saveData('progressoModulos', progressos);
+            const progressosMat = loadData('progressosMaterias') || {};
+            const modulos = getModulos(materiaId);
+            const concluidos = modulos.filter(m => (progressos[m.id] || 0) >= 100).length + 1;
+            progressosMat[materiaId] = Math.round((concluidos / modulos.length) * 100);
+            saveData('progressosMaterias', progressosMat);
+            mostrarToast('Módulo concluído! 🎉', 'sucesso');
+            atualizarStreak();
+            atualizarDashboard();
+            $('#modalModuloOverlay').classList.remove('modal-overlay--visible');
+            if (estudoNavegacao.nivel === 'modulos') renderModulos(materiaId);
         });
     }
-    $('#modalMateriaFechar').addEventListener('click', () => $('#modalMateriaOverlay').classList.remove('modal-overlay--visible'));
-    $('#modalMateriaOverlay').addEventListener('click', e => { if (e.target === $('#modalMateriaOverlay')) $('#modalMateriaOverlay').classList.remove('modal-overlay--visible'); });
 
-    // ========== SESSÃO DE ESTUDO ==========
-    function setupSessaoEstudo() {
-        const select = $('#sessaoMateria');
-        select.innerHTML = materias.map(m => `<option value="${m.id}">${m.icone} ${m.nome}</option>`).join('');
-        $$('.sessao-tempo').forEach(btn => btn.addEventListener('click', () => {
-            $$('.sessao-tempo').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            $('#sessaoTempoCustom').value = '';
-        }));
-        $('#sessaoIniciar').addEventListener('click', iniciarSessao);
-        $('#sessaoPausar').addEventListener('click', togglePausaSessao);
-        $('#sessaoEncerrar').addEventListener('click', encerrarSessao);
-        $('#modalSessaoFechar').addEventListener('click', () => { if (sessaoRunning) encerrarSessao(); $('#modalSessaoOverlay').classList.remove('modal-overlay--visible'); });
-        $('#modalSessaoOverlay').addEventListener('click', e => { if (e.target === $('#modalSessaoOverlay')) { if (sessaoRunning) encerrarSessao(); $('#modalSessaoOverlay').classList.remove('modal-overlay--visible'); } });
-        $('#iniciarSessao').addEventListener('click', () => abrirModalSessao('matematica'));
-    }
-
-    function abrirModalSessao(materiaId) {
-        $('#sessaoMateria').value = materiaId;
-        $('#sessaoTempoCustom').value = '';
-        $$('.sessao-tempo').forEach(b => b.classList.remove('active'));
-        const btn25 = document.querySelector('.sessao-tempo[data-tempo="25"]');
-        if (btn25) btn25.classList.add('active');
-        $('#sessaoObjetivo').value = '';
-        $('#sessaoContador').style.display = 'none';
-        $('#sessaoIniciar').style.display = '';
-        document.querySelectorAll('#modalSessao .prompt-form__row')[0].style.display = '';
-        document.querySelector('#modalSessao .prompt-form__input')?.parentElement && (document.querySelector('#modalSessao .prompt-form__input').parentElement.style.display = '');
-        $('#modalSessaoOverlay').classList.add('modal-overlay--visible');
-    }
-
-    function iniciarSessao() {
-        const custom = parseInt($('#sessaoTempoCustom').value);
-        const ativo = document.querySelector('.sessao-tempo.active');
-        let minutos = custom > 0 ? custom : (ativo ? parseInt(ativo.dataset.tempo) : 25);
-        sessaoTime = minutos * 60;
-        sessaoRunning = true;
-        sessaoPausado = false;
-        document.querySelectorAll('#modalSessao .prompt-form__row')[0].style.display = 'none';
-        $('#sessaoObjetivo').parentElement.style.display = 'none';
-        $('#sessaoIniciar').style.display = 'none';
-        $('#sessaoContador').style.display = 'block';
-        $('#sessaoInfo').textContent = `Matéria: ${$('#sessaoMateria').selectedOptions[0]?.text || ''} | Objetivo: ${$('#sessaoObjetivo').value || 'Não definido'}`;
-        atualizarDisplaySessao();
-        sessaoInterval = setInterval(() => {
-            if (!sessaoPausado) {
-                if (sessaoTime > 0) { sessaoTime--; atualizarDisplaySessao(); }
-                else { encerrarSessao(true); }
-            }
-        }, 1000);
-    }
-
-    function togglePausaSessao() {
-        sessaoPausado = !sessaoPausado;
-        $('#sessaoPausar').textContent = sessaoPausado ? '▶ Continuar' : '⏸ Pausar';
-    }
-
-    function encerrarSessao(concluido = false) {
-        clearInterval(sessaoInterval);
-        const minutosEstudados = sessaoTime > 0 ? ((sessaoTime / 60) - (concluido ? 0 : (sessaoTime / 60))) : (sessaoTime === 0 && concluido ? sessaoTime / 60 : 0);
-        const horas = (minutosEstudados || 0.5) / 60;
-        if (!concluido) sessaoTime = 0;
-        sessaoRunning = false;
-        sessaoPausado = false;
-        const materiaId = $('#sessaoMateria').value;
-        const progressos = loadData('progressosMaterias') || {};
-        progressos[materiaId] = Math.min(100, (progressos[materiaId] || 0) + 5);
-        saveData('progressosMaterias', progressos);
-        saveData(`ultimaSessao_${materiaId}`, new Date().toISOString());
-        const totalHoras = (loadData('horasEstudadas') || 0) + horas;
-        saveData('horasEstudadas', totalHoras);
-        atualizarStreak();
-        atualizarDashboard();
-        $('#modalSessaoOverlay').classList.remove('modal-overlay--visible');
-        mostrarToast(`Sessão finalizada! +${horas.toFixed(1)}h estudadas`, 'sucesso');
-    }
-
-    function atualizarDisplaySessao() {
-        const min = Math.floor(sessaoTime / 60);
-        const seg = sessaoTime % 60;
-        $('#sessaoDisplay').textContent = `${String(min).padStart(2,'0')}:${String(seg).padStart(2,'0')}`;
-    }
+    $('#modalModuloFechar').addEventListener('click', () => $('#modalModuloOverlay').classList.remove('modal-overlay--visible'));
+    $('#modalModuloOverlay').addEventListener('click', e => { if (e.target === $('#modalModuloOverlay')) $('#modalModuloOverlay').classList.remove('modal-overlay--visible'); });
 
     // ========== CALENDÁRIO ==========
     function setupCalendario() {
@@ -281,21 +333,21 @@
 
     function renderCalendario() {
         const grid = $('#calendarioGrid');
+        if (!grid) return;
         $('#calTitulo').textContent = new Date(calYear, calMonth).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         const primeiro = new Date(calYear, calMonth, 1).getDay();
         const ultimo = new Date(calYear, calMonth + 1, 0).getDate();
-        grid.innerHTML = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => `<div class="calendario-dia-semana">${d}</div>`).join('');
+        grid.innerHTML = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => `<div class="calendario-dia-semana">${d}</div>`).join('');
         for (let i = 0; i < primeiro; i++) grid.innerHTML += '<div></div>';
         const hojeStr = todayStr();
         const eventos = loadData('eventosCalendario') || [];
         for (let d = 1; d <= ultimo; d++) {
-            const dataStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const dataStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             let cls = 'calendario-dia';
             if (dataStr === hojeStr) cls += ' calendario-dia--hoje';
             if (feriados[dataStr]) cls += ' calendario-dia--feriado';
             if (eventos.some(ev => ev.data === dataStr)) cls += ' calendario-dia--tarefa';
-            const count = eventos.filter(ev => ev.data === dataStr).length;
-            grid.innerHTML += `<div class="${cls}" data-data="${dataStr}">${d}${count > 1 ? `<span style="font-size:0.6rem;position:absolute;top:2px;right:4px;">+${count-1}</span>` : ''}</div>`;
+            grid.innerHTML += `<div class="${cls}" data-data="${dataStr}">${d}</div>`;
         }
         $$('.calendario-dia[data-data]').forEach(el => el.addEventListener('click', e => abrirModalDia(e.currentTarget.dataset.data)));
     }
@@ -306,19 +358,21 @@
         $('#modalDiaOverlay').classList.add('modal-overlay--visible');
         renderEventosDia(dataStr);
     }
+
     $('#modalDiaFechar').addEventListener('click', () => $('#modalDiaOverlay').classList.remove('modal-overlay--visible'));
     $('#modalDiaOverlay').addEventListener('click', e => { if (e.target === $('#modalDiaOverlay')) $('#modalDiaOverlay').classList.remove('modal-overlay--visible'); });
 
     function renderEventosDia(dataStr) {
         const eventos = (loadData('eventosCalendario') || []).filter(ev => ev.data === dataStr);
         const lista = $('#modalEventosLista');
+        if (!lista) return;
         lista.innerHTML = '<h4>📌 Eventos neste dia</h4>';
         if (!eventos.length) { lista.innerHTML += '<p class="text-muted">Nenhum.</p>'; return; }
         eventos.forEach((ev, idx) => {
             const div = document.createElement('div');
             div.className = 'card';
             div.style.cssText = 'margin:4px 0;display:flex;justify-content:space-between;align-items:center;padding:12px;';
-            div.innerHTML = `<div><strong>${ev.titulo}</strong> (${ev.tipo}) ${ev.hora||''}</div>
+            div.innerHTML = `<div><strong>${ev.titulo}</strong> (${ev.tipo}) ${ev.hora || ''}</div>
                 <div>
                     <button class="btn btn--secondary btn--sm editar-evento" data-idx="${idx}">✏️</button>
                     <button class="btn btn--danger btn--sm excluir-evento" data-idx="${idx}">🗑️</button>
@@ -346,13 +400,7 @@
             const evtsDoDia = eventos.filter(ev => ev.data === dataStr);
             const ev = evtsDoDia[idx];
             const novoTitulo = prompt('Editar título:', ev.titulo);
-            if (novoTitulo) {
-                ev.titulo = novoTitulo;
-                saveData('eventosCalendario', eventos);
-                renderEventosDia(dataStr);
-                renderCalendario();
-                mostrarToast('Evento atualizado!', 'sucesso');
-            }
+            if (novoTitulo) { ev.titulo = novoTitulo; saveData('eventosCalendario', eventos); renderEventosDia(dataStr); renderCalendario(); mostrarToast('Evento atualizado!', 'sucesso'); }
         }));
     }
 
@@ -372,21 +420,20 @@
     // ========== NOTIFICAÇÕES ==========
     function verificarNotificacoes() {
         const agora = new Date();
-        const horaAtual = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+        const horaAtual = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
         const hojeStr = todayStr();
         const eventos = loadData('eventosCalendario') || [];
         const disparadas = loadData('notificacoesDisparadas') || [];
         eventos.forEach(ev => {
-            if (ev.data === hojeStr && ev.hora === horaAtual && !disparadas.includes(ev.titulo+ev.hora+ev.data)) {
+            if (ev.data === hojeStr && ev.hora === horaAtual && !disparadas.includes(ev.titulo + ev.hora + ev.data)) {
                 mostrarToast(`⏰ ${ev.titulo} agora!`, 'lembrete');
                 tocarSom();
-                disparadas.push(ev.titulo+ev.hora+ev.data);
+                disparadas.push(ev.titulo + ev.hora + ev.data);
                 saveData('notificacoesDisparadas', disparadas);
             }
         });
     }
 
-    function setupNotificacoesTarefas() { verificarPrazosTarefas(); }
     function verificarPrazosTarefas() {
         const agora = new Date();
         const tarefas = (loadData('tarefas') || []).filter(t => !t.concluida && t.prazo && t.hora);
@@ -415,6 +462,7 @@
         $('#btnAddTarefa').addEventListener('click', adicionarTarefa);
         renderTarefas();
     }
+
     function adicionarTarefa() {
         const titulo = $('#tarefaTitulo').value.trim();
         if (!titulo) return mostrarToast('Título obrigatório', 'erro');
@@ -433,16 +481,25 @@
         atualizarDashboard();
         mostrarToast('Tarefa adicionada!', 'sucesso');
         $('#tarefaTitulo').value = '';
+        $('#tarefaDescricao').value = '';
+        $('#tarefaPrazo').value = '';
+        $('#tarefaHora').value = '';
     }
+
     function renderTarefas() {
         const tarefas = (loadData('tarefas') || []).filter(t => !t.concluida);
         const lista = $('#tarefasLista');
+        if (!lista) return;
         if (!tarefas.length) { lista.innerHTML = '<p class="text-muted">Nenhuma tarefa.</p>'; return; }
         lista.innerHTML = tarefas.map(t => {
             let extraCls = t.prioridade === 'urgente' ? ' tarefa-urgente' : '';
             return `
-                <div class="card${extraCls}" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-                    <div><strong>${t.titulo}</strong> <span class="badge-${t.prioridade}">${t.prioridade}</span><br><small>${t.prazo ? formatDate(t.prazo) : ''} ${t.hora||''}</small></div>
+                <div class="card${extraCls}" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;padding:12px;">
+                    <div>
+                        <strong>${t.titulo}</strong>
+                        <span class="badge-${t.prioridade}">${t.prioridade}</span>
+                        <br><small>${t.prazo ? formatDate(t.prazo) : ''} ${t.hora || ''}</small>
+                    </div>
                     <div>
                         <button class="btn btn--primary btn--sm" data-concluir="${t.id}">✅</button>
                         <button class="btn btn--danger btn--sm" data-remover="${t.id}">🗑️</button>
@@ -452,13 +509,24 @@
         lista.querySelectorAll('[data-concluir]').forEach(b => b.addEventListener('click', () => concluirTarefa(parseInt(b.dataset.concluir))));
         lista.querySelectorAll('[data-remover]').forEach(b => b.addEventListener('click', () => removerTarefa(parseInt(b.dataset.remover))));
     }
+
     function concluirTarefa(id) {
         const tarefas = loadData('tarefas') || [];
         const idx = tarefas.findIndex(t => t.id === id);
-        if (idx >= 0) { tarefas[idx].concluida = true; saveData('tarefas', tarefas); pontos += 10; verificarNivel(); atualizarStreak(); renderTarefas(); atualizarDashboard(); mostrarToast('Tarefa concluída! +10 pontos', 'sucesso'); }
+        if (idx >= 0) {
+            tarefas[idx].concluida = true;
+            saveData('tarefas', tarefas);
+            pontos += 10;
+            verificarNivel();
+            atualizarStreak();
+            renderTarefas();
+            atualizarDashboard();
+            mostrarToast('Tarefa concluída! +10 pontos', 'sucesso');
+        }
     }
+
     function removerTarefa(id) {
-        saveData('tarefas', (loadData('tarefas')||[]).filter(t => t.id !== id));
+        saveData('tarefas', (loadData('tarefas') || []).filter(t => t.id !== id));
         renderTarefas();
         atualizarDashboard();
         mostrarToast('Tarefa removida', 'erro');
@@ -469,32 +537,44 @@
         $('#btnAddMeta').addEventListener('click', adicionarMeta);
         renderMetas();
     }
+
     function adicionarMeta() {
         const titulo = $('#metaTitulo').value.trim();
-        if (!titulo) return;
+        if (!titulo) return mostrarToast('Título obrigatório', 'erro');
         const metas = loadData('metas') || [];
-        metas.push({ id: Date.now(), titulo, alvo: parseInt($('#metaAlvo').value)||100, unidade: $('#metaUnidade').value, progresso: 0 });
+        metas.push({ id: Date.now(), titulo, alvo: parseInt($('#metaAlvo').value) || 100, unidade: $('#metaUnidade').value, progresso: 0 });
         saveData('metas', metas);
         renderMetas();
+        atualizarDashboard();
         mostrarToast('Meta criada!', 'sucesso');
         $('#metaTitulo').value = '';
     }
+
     function renderMetas() {
         const metas = loadData('metas') || [];
         const lista = $('#metasLista');
+        if (!lista) return;
         if (!metas.length) { lista.innerHTML = '<p class="text-muted">Nenhuma meta.</p>'; return; }
         lista.innerHTML = metas.map(m => {
-            const pct = Math.min(100, Math.round((m.progresso/m.alvo)*100));
-            return `<div class="card" style="margin-bottom:10px;">
-                <strong>${m.titulo}</strong> (${m.progresso}/${m.alvo} ${m.unidade})
-                <div style="background:var(--bg-input);height:8px;border-radius:4px;margin:8px 0;"><div style="width:${pct}%;height:100%;background:var(--accent);border-radius:4px;"></div></div>
-                <button class="btn btn--primary btn--sm" data-avancar="${m.id}">+1</button>
-            </div>`;
+            const pct = Math.min(100, Math.round((m.progresso / m.alvo) * 100));
+            return `
+                <div class="card" style="margin-bottom:8px;padding:14px;">
+                    <strong>${m.titulo}</strong> (${m.progresso}/${m.alvo} ${m.unidade})
+                    <div style="background:var(--bg-input);height:6px;border-radius:3px;margin:6px 0;">
+                        <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;"></div>
+                    </div>
+                    <button class="btn btn--primary btn--sm" data-avancar="${m.id}">+1</button>
+                </div>`;
         }).join('');
         lista.querySelectorAll('[data-avancar]').forEach(b => b.addEventListener('click', () => {
-            const metas = loadData('metas')||[];
+            const metas = loadData('metas') || [];
             const idx = metas.findIndex(m => m.id === parseInt(b.dataset.avancar));
-            if (idx>=0 && metas[idx].progresso < metas[idx].alvo) { metas[idx].progresso++; saveData('metas', metas); renderMetas(); atualizarDashboard(); }
+            if (idx >= 0 && metas[idx].progresso < metas[idx].alvo) {
+                metas[idx].progresso++;
+                saveData('metas', metas);
+                renderMetas();
+                atualizarDashboard();
+            }
         }));
     }
 
@@ -504,26 +584,48 @@
         $('#pomodoroPausar').addEventListener('click', pausarPomodoro);
         $('#pomodoroResetar').addEventListener('click', resetarPomodoro);
     }
+
     function atualizarDisplayPomodoro() {
-        const min = Math.floor(pomodoroTime/60);
-        const seg = pomodoroTime%60;
-        $('#pomodoroDisplay').textContent = `${String(min).padStart(2,'0')}:${String(seg).padStart(2,'0')}`;
+        const m = Math.floor(pomodoroTime / 60);
+        const s = pomodoroTime % 60;
+        const display = $('#pomodoroDisplay');
+        if (display) display.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
+
     function iniciarPomodoro() {
         if (pomodoroRunning) return;
         pomodoroRunning = true;
         $('#pomodoroIniciar').disabled = true;
         $('#pomodoroPausar').disabled = false;
         pomodoroInterval = setInterval(() => {
-            if (pomodoroTime > 0) { pomodoroTime--; atualizarDisplayPomodoro(); }
-            else { clearInterval(pomodoroInterval); pomodoroRunning = false; $('#pomodoroIniciar').disabled = false; $('#pomodoroPausar').disabled = true; tocarSom(); mostrarToast('Pomodoro concluído! Descanse.', 'sucesso'); atualizarHorasEstudadas(25/60); }
+            if (pomodoroTime > 0) {
+                pomodoroTime--;
+                atualizarDisplayPomodoro();
+            } else {
+                clearInterval(pomodoroInterval);
+                pomodoroRunning = false;
+                $('#pomodoroIniciar').disabled = false;
+                $('#pomodoroPausar').disabled = true;
+                tocarSom();
+                mostrarToast('Pomodoro concluído! Descanse.', 'sucesso');
+                const horas = (loadData('horasEstudadas') || 0) + 25 / 60;
+                saveData('horasEstudadas', horas);
+                atualizarDashboard();
+            }
         }, 1000);
     }
-    function pausarPomodoro() { clearInterval(pomodoroInterval); pomodoroRunning = false; $('#pomodoroIniciar').disabled = false; $('#pomodoroPausar').disabled = true; }
-    function resetarPomodoro() { pausarPomodoro(); pomodoroTime = 25*60; atualizarDisplayPomodoro(); }
-    function atualizarHorasEstudadas(horas) {
-        saveData('horasEstudadas', (loadData('horasEstudadas')||0) + horas);
-        atualizarDashboard();
+
+    function pausarPomodoro() {
+        clearInterval(pomodoroInterval);
+        pomodoroRunning = false;
+        $('#pomodoroIniciar').disabled = false;
+        $('#pomodoroPausar').disabled = true;
+    }
+
+    function resetarPomodoro() {
+        pausarPomodoro();
+        pomodoroTime = 25 * 60;
+        atualizarDisplayPomodoro();
     }
 
     // ========== ARQUIVOS ==========
@@ -534,15 +636,24 @@
             const arquivos = loadData('arquivos') || [];
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
-                reader.onload = () => { arquivos.push({ id: Date.now(), nome: file.name, tamanho: file.size, dataUrl: reader.result }); saveData('arquivos', arquivos); renderArquivos(); };
+                reader.onload = () => {
+                    arquivos.push({ id: Date.now(), nome: file.name, tamanho: file.size, dataUrl: reader.result });
+                    saveData('arquivos', arquivos);
+                    renderArquivos();
+                };
                 reader.readAsDataURL(file);
             });
         });
         renderArquivos();
     }
+
     function renderArquivos() {
         const arquivos = loadData('arquivos') || [];
-        $('#arquivosLista').innerHTML = arquivos.length ? arquivos.map(a => `<div class="card" style="margin:4px 0;">📄 ${a.nome}</div>`).join('') : '<p class="text-muted">Nenhum arquivo.</p>';
+        const lista = $('#arquivosLista');
+        if (!lista) return;
+        lista.innerHTML = arquivos.length
+            ? arquivos.map(a => `<div class="card" style="margin:4px 0;padding:10px;">📄 ${a.nome}</div>`).join('')
+            : '<p class="text-muted">Nenhum arquivo.</p>';
     }
 
     // ========== CONFIGURAÇÕES ==========
@@ -550,12 +661,23 @@
         $('#configTema').addEventListener('click', () => $('#themeToggle').click());
         $('#exportarDados').addEventListener('click', () => {
             const dados = {};
-            for (let i=0;i<localStorage.length;i++) { const k=localStorage.key(i); if(k.startsWith('learnflow_')) dados[k]=localStorage.getItem(k); }
-            const blob = new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});
-            const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='learnflow_backup.json'; a.click(); URL.revokeObjectURL(url);
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k.startsWith('learnflow_')) dados[k] = localStorage.getItem(k);
+            }
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'learnflow_backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
         });
         $('#limparDados').addEventListener('click', () => {
-            if(confirm('Limpar todos os dados?')) { Object.keys(localStorage).filter(k=>k.startsWith('learnflow_')).forEach(k=>localStorage.removeItem(k)); location.reload(); }
+            if (confirm('Limpar todos os dados? Esta ação não pode ser desfeita.')) {
+                Object.keys(localStorage).filter(k => k.startsWith('learnflow_')).forEach(k => localStorage.removeItem(k));
+                location.reload();
+            }
         });
     }
 
@@ -563,28 +685,29 @@
     function setupPerfil() {
         $('#headerAvatar').addEventListener('click', abrirPerfil);
         $('#modalPerfilFechar').addEventListener('click', () => $('#modalPerfilOverlay').classList.remove('modal-overlay--visible'));
-        $('#modalPerfilOverlay').addEventListener('click', e => { if(e.target===$('#modalPerfilOverlay')) $('#modalPerfilOverlay').classList.remove('modal-overlay--visible'); });
+        $('#modalPerfilOverlay').addEventListener('click', e => { if (e.target === $('#modalPerfilOverlay')) $('#modalPerfilOverlay').classList.remove('modal-overlay--visible'); });
         $('#perfilEditarNome').addEventListener('click', () => {
-            const nome = prompt('Seu nome:', loadData('nomePerfil')||'Estudante');
-            if(nome) { saveData('nomePerfil',nome); $('#perfilNome').textContent=nome; }
+            const nome = prompt('Seu nome:', loadData('nomePerfil') || 'Estudante');
+            if (nome) { saveData('nomePerfil', nome); abrirPerfil(); }
         });
         $('#perfilEditarAvatar').addEventListener('click', () => {
-            const avatares = ['👤','👩','👨','👩‍🎓','👨‍🎓','🧑‍💻','👩‍💻','👨‍💻','🦸','🦹'];
+            const avatares = ['👤', '👩', '👨', '👩‍🎓', '👨‍🎓', '🧑‍💻', '👩‍💻', '👨‍💻', '🦸', '🦹'];
             const atual = $('#perfilAvatar').textContent;
             const idx = avatares.indexOf(atual);
-            const novo = avatares[(idx+1)%avatares.length];
-            $('#perfilAvatar').textContent=novo;
-            $('#headerAvatar').textContent=novo;
-            saveData('avatar',novo);
+            const novo = avatares[(idx + 1) % avatares.length];
+            $('#perfilAvatar').textContent = novo;
+            $('#headerAvatar').textContent = novo;
+            saveData('avatar', novo);
         });
     }
+
     function abrirPerfil() {
-        $('#perfilNome').textContent = loadData('nomePerfil')||'Estudante';
+        $('#perfilNome').textContent = loadData('nomePerfil') || 'Estudante';
         $('#perfilStreak').textContent = `${streak} dias`;
-        $('#perfilHoras').textContent = `${(loadData('horasEstudadas')||0).toFixed(1)}h`;
-        $('#perfilMetas').textContent = (loadData('metas')||[]).length;
+        $('#perfilHoras').textContent = `${(loadData('horasEstudadas') || 0).toFixed(1)}h`;
+        $('#perfilMetas').textContent = (loadData('metas') || []).length;
         $('#perfilNivel').textContent = nivel;
-        const avatar = loadData('avatar')||'👤';
+        const avatar = loadData('avatar') || '👤';
         $('#perfilAvatar').textContent = avatar;
         $('#headerAvatar').textContent = avatar;
         $('#modalPerfilOverlay').classList.add('modal-overlay--visible');
@@ -592,47 +715,93 @@
 
     // ========== DASHBOARD ==========
     function setupDashboard() {
-        $('#iniciarSessao').addEventListener('click', () => abrirModalSessao('matematica'));
+        $('#iniciarSessao').addEventListener('click', () => {
+            switchTab('pomodoro');
+            iniciarPomodoro();
+        });
         atualizarDashboard();
     }
+
     function atualizarDashboard() {
-        const tarefas = (loadData('tarefas')||[]).filter(t=>!t.concluida);
-        const metas = loadData('metas')||[];
-        const horas = loadData('horasEstudadas')||0;
-        const aproveitamento = metas.length ? Math.round(metas.reduce((s,m)=>s+(m.progresso/m.alvo),0)/metas.length*100) : 0;
-        $('#stat-horas').textContent = horas.toFixed(1)+'h';
+        const tarefas = (loadData('tarefas') || []).filter(t => !t.concluida);
+        const metas = loadData('metas') || [];
+        const horas = loadData('horasEstudadas') || 0;
+        const modulosProgresso = loadData('progressoModulos') || {};
+        const totalModulos = Object.keys(modulosProgresso).length;
+        const concluidos = Object.values(modulosProgresso).filter(v => v >= 100).length;
+        const aproveitamento = totalModulos > 0 ? Math.round((concluidos / totalModulos) * 100) : 0;
+
+        $('#stat-horas').textContent = horas.toFixed(1) + 'h';
         $('#stat-tarefas').textContent = tarefas.length;
         $('#stat-streak').textContent = streak;
-        $('#stat-aproveitamento').textContent = aproveitamento+'%';
+        $('#stat-aproveitamento').textContent = aproveitamento + '%';
         $('#headerStreak').textContent = `🔥 ${streak} dias`;
-        const eventos = (loadData('eventosCalendario')||[]).filter(ev=>ev.data>=todayStr()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3);
-        $('#proximosEventos').innerHTML = eventos.length ? eventos.map(e=>`<div><strong>${formatDate(e.data)}</strong>: ${e.titulo}</div>`).join('') : '<p class="text-muted">Nenhum.</p>';
-        const tarefasHoje = tarefas.filter(t=>t.prazo===todayStr());
-        $('#tarefasHoje').innerHTML = tarefasHoje.length ? tarefasHoje.map(t=>`<div>✅ ${t.titulo}</div>`).join('') : '<p class="text-muted">Nada.</p>';
-        const recomendacoes = ['Revise um conteúdo antigo.','Faça um simulado.','Estude com Pomodoro.','Crie metas realistas.'];
-        $('#recomendacaoDia').textContent = recomendacoes[Math.floor(Math.random()*recomendacoes.length)];
+
+        const eventos = (loadData('eventosCalendario') || []).filter(ev => ev.data >= todayStr()).sort((a, b) => a.data.localeCompare(b.data)).slice(0, 3);
+        $('#proximosEventos').innerHTML = eventos.length
+            ? eventos.map(e => `<div><strong>${formatDate(e.data)}</strong>: ${e.titulo}</div>`).join('')
+            : '<p class="text-muted">Nenhum.</p>';
+
+        const tarefasHoje = tarefas.filter(t => t.prazo === todayStr());
+        $('#tarefasHoje').innerHTML = tarefasHoje.length
+            ? tarefasHoje.map(t => `<div>✅ ${t.titulo}</div>`).join('')
+            : '<p class="text-muted">Nada.</p>';
+
+        const recomendacoes = ['Explore os módulos de Estudos.', 'Pratique exercícios.', 'Use o Pomodoro.', 'Crie metas realistas.'];
+        $('#recomendacaoDia').textContent = recomendacoes[Math.floor(Math.random() * recomendacoes.length)];
+
         const grafico = $('#graficoBarras');
-        if(grafico) {
+        if (grafico) {
             const dados = [horas, tarefas.length, streak, aproveitamento];
-            const max = Math.max(...dados,1);
-            grafico.innerHTML = dados.map(v=>`<div class="grafico-barra" style="height:${(v/max)*80}px;" title="${v}"></div>`).join('');
+            const max = Math.max(...dados, 1);
+            grafico.innerHTML = dados.map(v => `<div class="grafico-barra" style="height:${(v / max) * 60}px;" title="${v}"></div>`).join('');
         }
     }
+
     function atualizarStreak() {
-        const hoje = todayStr();
+        const hojeStr = todayStr();
         const ultimo = loadData('ultimoEstudo');
-        if(ultimo===hoje) return;
-        const ontem = new Date(); ontem.setDate(ontem.getDate()-1);
-        streak = (ultimo===ontem.toISOString().split('T')[0]) ? streak+1 : 1;
-        saveData('ultimoEstudo',hoje);
-        saveData('streak',streak);
+        if (ultimo === hojeStr) return;
+        const ontem = new Date();
+        ontem.setDate(ontem.getDate() - 1);
+        streak = (ultimo === ontem.toISOString().split('T')[0]) ? streak + 1 : 1;
+        saveData('ultimoEstudo', hojeStr);
+        saveData('streak', streak);
         atualizarDashboard();
     }
+
     function verificarNivel() {
-        const novoNivel = Math.floor(pontos/50)+1;
-        if(novoNivel>nivel) { nivel=novoNivel; mostrarToast(`🎉 Nível ${nivel}!`); }
-        saveData('pontos',pontos);
-        saveData('nivel',nivel);
+        const novoNivel = Math.floor(pontos / 50) + 1;
+        if (novoNivel > nivel) {
+            nivel = novoNivel;
+            mostrarToast(`🎉 Subiu para o nível ${nivel}!`, 'sucesso');
+        }
+        saveData('pontos', pontos);
+        saveData('nivel', nivel);
+    }
+
+    // ========== TOAST E SOM ==========
+    function mostrarToast(msg, tipo = 'sucesso') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast--${tipo}`;
+        toast.textContent = msg;
+        const container = $('#toastContainer');
+        if (container) {
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+    }
+
+    function tocarSom() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.25);
+        } catch (e) {}
     }
 
     // ========== INICIAR ==========
