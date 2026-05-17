@@ -8,7 +8,6 @@
 </head>
 <body>
 
-    <!-- HEADER -->
     <header class="header">
         <a href="#" class="header__logo">
             <span class="header__logo-icon">📚</span>
@@ -16,102 +15,94 @@
         </a>
         <div class="header__info">
             <span class="header__streak" id="headerStreak">🔥 0 dias</span>
-            <div class="header__avatar" id="headerAvatar">👤</div>
-            <button class="theme-toggle" id="themeToggle">🌙</button>
-            <button class="header__menu-btn" id="menuToggle">☰</button>
+            <div class="header__avatar" id="headerAvatar" title="Perfil">👤</div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema">🌙</button>
+            <button class="header__menu-btn" id="menuToggle" aria-label="Menu">☰</button>
         </div>
     </header>
 
-    <!-- OVERLAY MOBILE -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- LAYOUT PRINCIPAL -->
     <div class="app-layout">
 
-        <!-- SIDEBAR -->
+        <!-- SIDEBAR REORGANIZADA -->
         <aside class="sidebar" id="sidebar">
-            <span class="sidebar__section-title">Principal</span>
-            <button class="sidebar__link sidebar__link--active" data-tab="dashboard">🏠 Dashboard</button>
-            <button class="sidebar__link" data-tab="estudos">📖 Estudos</button>
+            <div class="sidebar__nav-top">
+                <span class="sidebar__section-title">Principal</span>
+                <button class="sidebar__link sidebar__link--active" data-tab="dashboard">Dashboard</button>
+                <button class="sidebar__link" data-tab="estudos">Estudos</button>
+                <button class="sidebar__link" data-tab="flashcards">Flashcards</button>
 
-            <span class="sidebar__section-title">Produtividade</span>
-            <button class="sidebar__link" data-tab="calendario">📅 Calendário</button>
-            <button class="sidebar__link" data-tab="tarefas">✅ Tarefas</button>
-            <button class="sidebar__link" data-tab="metas">🎯 Metas</button>
-            <button class="sidebar__link" data-tab="pomodoro">⏳ Pomodoro</button>
-            <button class="sidebar__link" data-tab="arquivos">📁 Arquivos</button>
+                <span class="sidebar__section-title">Produtividade</span>
+                <button class="sidebar__link" data-tab="calendario">Calendário</button>
+                <button class="sidebar__link" data-tab="tarefas">Tarefas</button>
+                <button class="sidebar__link" data-tab="metas">Metas</button>
+                <button class="sidebar__link" data-tab="pomodoro">Pomodoro</button>
+                <button class="sidebar__link" data-tab="performance">Desempenho</button>
 
-            <span class="sidebar__section-title">Outros</span>
-            <button class="sidebar__link" data-tab="recursos">📦 Recursos</button>
-            <button class="sidebar__link" data-tab="configuracoes">⚙️ Configurações</button>
+                <span class="sidebar__section-title">Conta</span>
+                <button class="sidebar__link" data-tab="perfil">Perfil</button>
+                <button class="sidebar__link" data-tab="configuracoes">Configurações</button>
+            </div>
+            <div class="sidebar__perfil" id="sidebarPerfil">
+                <div class="sidebar__perfil-avatar" id="sidebarAvatar">👤</div>
+                <div class="sidebar__perfil-info">
+                    <span class="sidebar__perfil-nome" id="sidebarNome">Estudante</span>
+                    <span class="sidebar__perfil-nivel" id="sidebarNivel">Nível 1</span>
+                </div>
+                <div class="sidebar__perfil-streak" id="sidebarStreak">🔥 0</div>
+            </div>
         </aside>
 
-        <!-- CONTEÚDO PRINCIPAL -->
         <main class="main-content" id="mainContent">
 
-            <!-- PAINEL: DASHBOARD -->
+            <!-- DASHBOARD -->
             <section class="tab-panel tab-panel--active" id="panel-dashboard">
-                <div class="stats-row stats-row--compacto">
-                    <div class="stat-card stat-card--compacto">
-                        <div class="stat-card__value stat-card__value--compacto" id="stat-horas">0.0h</div>
-                        <div class="stat-card__label stat-card__label--compacto">Horas</div>
-                    </div>
-                    <div class="stat-card stat-card--compacto">
-                        <div class="stat-card__value stat-card__value--compacto" id="stat-tarefas">0</div>
-                        <div class="stat-card__label stat-card__label--compacto">Tarefas</div>
-                    </div>
-                    <div class="stat-card stat-card--compacto">
-                        <div class="stat-card__value stat-card__value--compacto" id="stat-streak">0</div>
-                        <div class="stat-card__label stat-card__label--compacto">Streak</div>
-                    </div>
-                    <div class="stat-card stat-card--compacto">
-                        <div class="stat-card__value stat-card__value--compacto" id="stat-aproveitamento">0%</div>
-                        <div class="stat-card__label stat-card__label--compacto">Aproveitamento</div>
+                <h1 class="page-title">Bem-vindo, <span id="dashboardNome">Estudante</span>!</h1>
+                <p class="page-subtitle">Continue sua jornada de estudos.</p>
+
+                <div class="dashboard-section">
+                    <h3 class="dashboard-section__title">Sua Sequência</h3>
+                    <div class="streak-cards">
+                        <div class="streak-card"><div class="streak-card__valor" id="streakDias">0</div><div class="streak-card__label">Dias seguidos</div></div>
+                        <div class="streak-card"><div class="streak-card__valor" id="streakHoras">0.0h</div><div class="streak-card__label">Horas esta semana</div></div>
+                        <div class="streak-card"><div class="streak-card__valor" id="streakPontos">0</div><div class="streak-card__label">Pontos ganhos</div></div>
+                        <div class="streak-card"><div class="streak-card__valor" id="streakNivel">1</div><div class="streak-card__label">Nível atual</div></div>
                     </div>
                 </div>
-                <div class="dashboard-grid dashboard-grid--compacto">
-                    <div class="dashboard-card dashboard-card--compacto">
-                        <h3 class="dashboard-card__titulo">📅 Próximos</h3>
-                        <div id="proximosEventos" class="eventos-lista"></div>
-                    </div>
-                    <div class="dashboard-card dashboard-card--compacto">
-                        <h3 class="dashboard-card__titulo">📋 Hoje</h3>
-                        <div id="tarefasHoje" class="eventos-lista"></div>
-                    </div>
-                    <div class="dashboard-card dashboard-card--compacto">
-                        <h3 class="dashboard-card__titulo">📊 Progresso</h3>
-                        <div id="graficoBarras" class="grafico-barras grafico-barras--compacto"></div>
-                    </div>
-                    <div class="dashboard-card dashboard-card--compacto dashboard-card--recomendacao">
-                        <p id="recomendacaoDia" class="recomendacao-texto"></p>
-                        <button class="btn btn--primary btn--sm btn--compacto" id="iniciarSessao">▶ Estudar</button>
-                    </div>
+
+                <div class="dashboard-section">
+                    <h3 class="dashboard-section__title">Continuar Estudando</h3>
+                    <div class="cards-grid" id="continuarEstudos"><p class="text-muted">Carregando...</p></div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card"><h3 class="dashboard-card__titulo">Agenda de Hoje</h3><div id="agendaHoje" class="eventos-lista"><p class="text-muted">Nenhum evento.</p></div></div>
+                    <div class="dashboard-card"><h3 class="dashboard-card__titulo">Desempenho Semanal</h3><div id="graficoBarras" class="grafico-barras grafico-barras--compacto"></div></div>
+                    <div class="dashboard-card"><h3 class="dashboard-card__titulo">Metas Ativas</h3><div id="metasResumo" class="eventos-lista"><p class="text-muted">Nenhuma meta.</p></div></div>
+                    <div class="dashboard-card dashboard-card--recomendacao"><p id="recomendacaoDia">Carregando...</p><button class="btn btn--primary btn--sm" id="iniciarSessao">Iniciar Pomodoro</button></div>
                 </div>
             </section>
 
-            <!-- PAINEL: ESTUDOS (NOVA ARQUITETURA) -->
+            <!-- ESTUDOS -->
             <section class="tab-panel" id="panel-estudos">
-                <!-- Navegação por breadcrumb -->
-                <div class="estudo-breadcrumb" id="estudoBreadcrumb">
-                    <button class="btn btn--sm btn--text" id="breadHome">📖 Estudos</button>
-                    <span class="bread-sep">›</span>
-                    <span id="breadCategoria" class="bread-atual"></span>
-                    <span class="bread-sep" id="breadSepMateria" style="display:none;">›</span>
-                    <span id="breadMateria" class="bread-atual" style="display:none;"></span>
-                </div>
-
-                <!-- Container dinâmico -->
                 <div id="estudoContainer"></div>
             </section>
 
-            <!-- PAINEL: CALENDÁRIO -->
+            <!-- FLASHCARDS -->
+            <section class="tab-panel" id="panel-flashcards">
+                <h1 class="page-title">Flashcards</h1>
+                <p class="page-subtitle">Sistema de repetição espaçada.</p>
+                <div class="flashcards-grid" id="flashcardsGrid"><p class="text-muted">Nenhum deck criado ainda.</p></div>
+                <button class="btn btn--primary btn--fixo" id="criarDeck">+ Criar Novo Deck</button>
+            </section>
+
+            <!-- CALENDÁRIO -->
             <section class="tab-panel" id="panel-calendario">
+                <h1 class="page-title">Calendário</h1>
                 <div class="calendario-container">
                     <div class="calendario-header">
-                        <button class="btn btn--secondary btn--sm" id="calPrev">←</button>
-                        <h2 id="calTitulo"></h2>
-                        <button class="btn btn--secondary btn--sm" id="calNext">→</button>
-                        <button class="btn btn--primary btn--sm" id="calHoje">Hoje</button>
+                        <button class="btn btn--secondary btn--sm" id="calPrev">←</button><h2 id="calTitulo"></h2><button class="btn btn--secondary btn--sm" id="calNext">→</button><button class="btn btn--primary btn--sm" id="calHoje">Hoje</button>
                     </div>
                     <div class="calendario-grid" id="calendarioGrid"></div>
                     <div class="calendario-legenda">
@@ -122,83 +113,76 @@
                 </div>
             </section>
 
-            <!-- PAINEL: TAREFAS -->
+            <!-- TAREFAS -->
             <section class="tab-panel" id="panel-tarefas">
-                <h2>✅ Tarefas</h2>
+                <h1 class="page-title">Tarefas</h1>
                 <div class="prompt-form">
                     <input type="text" class="prompt-form__input" id="tarefaTitulo" placeholder="Título...">
                     <textarea class="prompt-form__textarea" id="tarefaDescricao" rows="2" placeholder="Descrição..."></textarea>
-                    <div class="prompt-form__row">
-                        <input type="date" class="prompt-form__select" id="tarefaPrazo">
-                        <input type="time" class="prompt-form__select" id="tarefaHora">
-                        <select class="prompt-form__select" id="tarefaPrioridade">
-                            <option value="baixa">🟢 Baixa</option>
-                            <option value="media" selected>🟡 Média</option>
-                            <option value="alta">🔴 Alta</option>
-                            <option value="urgente">⚡ Urgente</option>
-                        </select>
-                    </div>
-                    <button class="btn btn--primary" id="btnAddTarefa">➕ Adicionar</button>
+                    <div class="prompt-form__row"><input type="date" class="prompt-form__select" id="tarefaPrazo"><input type="time" class="prompt-form__select" id="tarefaHora"><select class="prompt-form__select" id="tarefaPrioridade"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+                    <button class="btn btn--primary" id="btnAddTarefa">Adicionar</button>
                 </div>
                 <div class="tarefas-lista" id="tarefasLista"></div>
             </section>
 
-            <!-- PAINEL: METAS -->
+            <!-- METAS -->
             <section class="tab-panel" id="panel-metas">
-                <h2>🎯 Metas</h2>
+                <h1 class="page-title">Metas</h1>
                 <div class="prompt-form">
                     <input type="text" class="prompt-form__input" id="metaTitulo" placeholder="Título...">
-                    <div class="prompt-form__row">
-                        <input type="number" class="prompt-form__select" id="metaAlvo" value="100" min="1">
-                        <select class="prompt-form__select" id="metaUnidade">
-                            <option value="horas">Horas</option>
-                            <option value="topicos">Tópicos</option>
-                            <option value="simulados">Simulados</option>
-                        </select>
-                    </div>
-                    <button class="btn btn--primary" id="btnAddMeta">🎯 Criar Meta</button>
+                    <div class="prompt-form__row"><input type="number" class="prompt-form__select" id="metaAlvo" value="100" min="1"><select class="prompt-form__select" id="metaUnidade"><option value="horas">Horas</option><option value="topicos">Tópicos</option><option value="simulados">Simulados</option></select></div>
+                    <button class="btn btn--primary" id="btnAddMeta">Criar Meta</button>
                 </div>
                 <div class="metas-lista" id="metasLista"></div>
             </section>
 
-            <!-- PAINEL: POMODORO -->
+            <!-- POMODORO -->
             <section class="tab-panel" id="panel-pomodoro">
-                <h2>⏳ Timer Pomodoro</h2>
+                <h1 class="page-title">Timer Pomodoro</h1>
                 <div class="pomodoro-container">
                     <div class="pomodoro-display" id="pomodoroDisplay">25:00</div>
-                    <div class="pomodoro-controls">
-                        <button class="btn btn--primary" id="pomodoroIniciar">▶ Iniciar</button>
-                        <button class="btn btn--secondary" id="pomodoroPausar" disabled>⏸ Pausar</button>
-                        <button class="btn btn--danger" id="pomodoroResetar">↺ Resetar</button>
-                    </div>
+                    <div class="pomodoro-controls"><button class="btn btn--primary" id="pomodoroIniciar">Iniciar</button><button class="btn btn--secondary" id="pomodoroPausar" disabled>Pausar</button><button class="btn btn--danger" id="pomodoroResetar">Resetar</button></div>
                     <p class="text-muted">25 min foco · 5 min descanso</p>
                 </div>
             </section>
 
-            <!-- PAINEL: ARQUIVOS -->
-            <section class="tab-panel" id="panel-arquivos">
-                <h2>📁 Arquivos</h2>
-                <div class="upload-area" id="uploadArea">
-                    <p>📤 Arraste ou clique</p>
-                    <input type="file" id="fileInput" multiple hidden>
-                    <button class="btn btn--primary" id="btnUpload">Selecionar</button>
+            <!-- PERFORMANCE -->
+            <section class="tab-panel" id="panel-performance">
+                <h1 class="page-title">Desempenho</h1>
+                <div class="performance-grid">
+                    <div class="dashboard-card"><h3>Aproveitamento Geral</h3><div class="performance-big-number" id="perfAproveitamento">0%</div></div>
+                    <div class="dashboard-card"><h3>Módulos Concluídos</h3><div class="performance-big-number" id="perfModulos">0</div></div>
+                    <div class="dashboard-card"><h3>Horas Estudadas</h3><div class="performance-big-number" id="perfHoras">0.0h</div></div>
+                    <div class="dashboard-card"><h3>Maior Streak</h3><div class="performance-big-number" id="perfStreak">0 dias</div></div>
                 </div>
-                <div id="arquivosLista"></div>
+                <div class="dashboard-card" style="margin-top:20px;"><h3>Progresso por Matéria</h3><div id="progressoMaterias" class="eventos-lista"></div></div>
             </section>
 
-            <!-- PAINEL: RECURSOS -->
-            <section class="tab-panel" id="panel-recursos">
-                <h2>📦 Recursos</h2>
-                <p class="text-muted">Apostilas, vídeos e simulados.</p>
+            <!-- PERFIL -->
+            <section class="tab-panel" id="panel-perfil">
+                <h1 class="page-title">Perfil</h1>
+                <div class="dashboard-card" style="max-width:500px;">
+                    <div class="perfil-avatar" id="perfilAvatarPainel">👤</div>
+                    <div class="perfil-upload" style="text-align:center;margin:8px 0;">
+                        <input type="file" id="perfilFotoInput" accept="image/*" hidden>
+                        <button class="btn btn--primary btn--sm" id="trocarFotoBtn">Alterar foto</button>
+                    </div>
+                    <p><strong>Nome:</strong> <span id="perfilNomePainel"></span></p>
+                    <p><strong>Streak:</strong> <span id="perfilStreakPainel"></span></p>
+                    <p><strong>Horas:</strong> <span id="perfilHorasPainel"></span></p>
+                    <p><strong>Metas:</strong> <span id="perfilMetasPainel"></span></p>
+                    <p><strong>Nível:</strong> <span id="perfilNivelPainel"></span></p>
+                    <button class="btn btn--primary btn--sm" id="perfilEditarNome">Editar Nome</button>
+                </div>
             </section>
 
-            <!-- PAINEL: CONFIGURAÇÕES -->
+            <!-- CONFIGURAÇÕES -->
             <section class="tab-panel" id="panel-configuracoes">
-                <h2>⚙️ Configurações</h2>
+                <h1 class="page-title">Configurações</h1>
                 <div class="dashboard-card">
                     <p><strong>Tema:</strong> <button class="btn btn--secondary btn--sm" id="configTema">Alternar</button></p>
-                    <p><strong>Exportar:</strong> <button class="btn btn--secondary btn--sm" id="exportarDados">📥 JSON</button></p>
-                    <p><strong>Limpar:</strong> <button class="btn btn--danger btn--sm" id="limparDados">🗑️ Resetar</button></p>
+                    <p><strong>Exportar:</strong> <button class="btn btn--secondary btn--sm" id="exportarDados">JSON</button></p>
+                    <p><strong>Limpar:</strong> <button class="btn btn--danger btn--sm" id="limparDados">Resetar</button></p>
                 </div>
             </section>
 
@@ -207,56 +191,17 @@
 
     <!-- MODAIS -->
     <div class="modal-overlay" id="modalDiaOverlay">
-        <div class="modal" id="modalDia">
-            <div class="modal__header">
-                <h3 id="modalDiaTitulo"></h3>
-                <button class="modal__fechar" id="modalDiaFechar">✕</button>
-            </div>
-            <div class="modal__body">
-                <div class="prompt-form">
-                    <input type="text" class="prompt-form__input" id="modalEventoTitulo" placeholder="Título...">
-                    <div class="prompt-form__row">
-                        <input type="time" class="prompt-form__select" id="modalEventoHora">
-                        <select class="prompt-form__select" id="modalEventoTipo">
-                            <option value="lembrete">🔔 Lembrete</option>
-                            <option value="tarefa">✅ Tarefa</option>
-                            <option value="estudo">📖 Estudo</option>
-                        </select>
-                    </div>
-                    <button class="btn btn--primary" id="modalSalvarEvento">💾 Salvar</button>
-                </div>
-                <div id="modalEventosLista"></div>
-            </div>
-        </div>
+        <div class="modal" id="modalDia"><div class="modal__header"><h3 id="modalDiaTitulo"></h3><button class="modal__fechar" id="modalDiaFechar">✕</button></div><div class="modal__body"><div class="prompt-form"><input type="text" class="prompt-form__input" id="modalEventoTitulo" placeholder="Título..."><div class="prompt-form__row"><input type="time" class="prompt-form__select" id="modalEventoHora"><select class="prompt-form__select" id="modalEventoTipo"><option value="lembrete">Lembrete</option><option value="tarefa">Tarefa</option><option value="estudo">Estudo</option></select></div><button class="btn btn--primary" id="modalSalvarEvento">Salvar</button></div><div id="modalEventosLista"></div></div></div>
     </div>
 
     <div class="modal-overlay" id="modalModuloOverlay">
-        <div class="modal" id="modalModulo">
-            <div class="modal__header">
-                <h3 id="modalModuloTitulo"></h3>
-                <button class="modal__fechar" id="modalModuloFechar">✕</button>
-            </div>
-            <div class="modal__body" id="modalModuloConteudo"></div>
-        </div>
+        <div class="modal" id="modalModulo"><div class="modal__header"><h3 id="modalModuloTitulo"></h3><button class="modal__fechar" id="modalModuloFechar">✕</button></div><div class="modal__body" id="modalModuloConteudo"></div></div>
     </div>
 
-    <div class="modal-overlay" id="modalPerfilOverlay">
-        <div class="modal" id="modalPerfil">
-            <div class="modal__header"><h3>👤 Perfil</h3><button class="modal__fechar" id="modalPerfilFechar">✕</button></div>
-            <div class="modal__body">
-                <div class="perfil-avatar" id="perfilAvatar">👤</div>
-                <button class="btn btn--secondary btn--sm" id="perfilEditarAvatar">✏️ Avatar</button>
-                <p><strong>Nome:</strong> <span id="perfilNome"></span></p>
-                <p><strong>Streak:</strong> <span id="perfilStreak"></span></p>
-                <p><strong>Horas:</strong> <span id="perfilHoras"></span></p>
-                <p><strong>Metas:</strong> <span id="perfilMetas"></span></p>
-                <p><strong>Nível:</strong> <span id="perfilNivel"></span></p>
-                <button class="btn btn--primary btn--sm" id="perfilEditarNome">✏️ Nome</button>
-            </div>
-        </div>
+    <div class="modal-overlay" id="modalElementoOverlay">
+        <div class="modal" id="modalElemento"><div class="modal__header"><h3 id="modalElementoTitulo">Elemento</h3><button class="modal__fechar" id="modalElementoFechar">✕</button></div><div class="modal__body" id="modalElementoConteudo"></div></div>
     </div>
 
-    <!-- TOAST -->
     <div class="toast-container" id="toastContainer"></div>
 
     <footer class="footer footer--compacto">© 2026 Bruno Santos — LearnFlow</footer>
