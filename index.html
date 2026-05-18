@@ -8,14 +8,14 @@
 </head>
 <body>
 
+    <!-- HEADER (sem avatar) -->
     <header class="header">
-        <a href="#" class="header__logo">
-            <span class="header__logo-icon">📚</span>
+        <a href="#" class="header__logo" id="logoHome">
+            <span class="header__logo-icon">📕</span>
             <span>LearnFlow</span>
         </a>
         <div class="header__info">
             <span class="header__streak" id="headerStreak">🔥 0 dias</span>
-            <div class="header__avatar" id="headerAvatar" title="Perfil">👤</div>
             <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema">🌙</button>
             <button class="header__menu-btn" id="menuToggle" aria-label="Menu">☰</button>
         </div>
@@ -25,7 +25,7 @@
 
     <div class="app-layout">
 
-        <!-- SIDEBAR REORGANIZADA -->
+        <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar__nav-top">
                 <span class="sidebar__section-title">Principal</span>
@@ -44,6 +44,7 @@
                 <button class="sidebar__link" data-tab="perfil">Perfil</button>
                 <button class="sidebar__link" data-tab="configuracoes">Configurações</button>
             </div>
+            <!-- PERFIL NA SIDEBAR (ÚNICO ACESSO) -->
             <div class="sidebar__perfil" id="sidebarPerfil">
                 <div class="sidebar__perfil-avatar" id="sidebarAvatar">👤</div>
                 <div class="sidebar__perfil-info">
@@ -200,6 +201,23 @@
 
     <div class="modal-overlay" id="modalElementoOverlay">
         <div class="modal" id="modalElemento"><div class="modal__header"><h3 id="modalElementoTitulo">Elemento</h3><button class="modal__fechar" id="modalElementoFechar">✕</button></div><div class="modal__body" id="modalElementoConteudo"></div></div>
+    </div>
+
+    <!-- MODAL NOVO DECK (FLASHCARDS) -->
+    <div class="modal-overlay" id="modalDeckOverlay">
+        <div class="modal modal-deck">
+            <div class="modal__header">
+                <h3>Criar Novo Deck</h3>
+                <button class="modal__fechar" id="fecharDeckModal">✕</button>
+            </div>
+            <div class="modal__body">
+                <input type="text" id="novoDeckInput" class="prompt-form__input" placeholder="Digite o nome do deck...">
+                <div class="modal__actions">
+                    <button class="btn btn--secondary" id="cancelarDeckBtn">Cancelar</button>
+                    <button class="btn btn--primary" id="salvarDeckBtn">Criar Deck</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
