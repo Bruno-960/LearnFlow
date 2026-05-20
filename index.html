@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>LearnFlow | Plataforma de Estudos</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -168,6 +169,11 @@
                         <input type="file" id="perfilFotoInput" accept="image/*" hidden>
                         <button class="btn btn--primary btn--sm" id="trocarFotoBtn">Alterar foto</button>
                     </div>
+                    <div class="perfil-ajuste-foto">
+                        <label for="perfilFotoPosicao">Enquadramento da foto</label>
+                        <input type="range" id="perfilFotoPosicao" min="0" max="100" value="50">
+                        <small class="text-muted">Mova para centralizar melhor o rosto.</small>
+                    </div>
                     <p><strong>Nome:</strong> <span id="perfilNomePainel"></span></p>
                     <p><strong>Streak:</strong> <span id="perfilStreakPainel"></span></p>
                     <p><strong>Horas:</strong> <span id="perfilHorasPainel"></span></p>
@@ -220,9 +226,20 @@
         </div>
     </div>
 
+    <div class="mascote" id="mascoteAssistente" aria-live="polite">
+        <button class="mascote__botao" id="mascoteToggle" aria-label="Abrir assistente">💡</button>
+        <div class="mascote__painel" id="mascotePainel">
+            <strong id="mascoteTitulo">Dica rápida</strong>
+            <p id="mascoteTexto">Estou aqui para ajudar nos estudos.</p>
+            <button class="btn btn--secondary btn--sm" id="mascoteAcao">Ver sugestão</button>
+        </div>
+    </div>
+
     <div class="toast-container" id="toastContainer"></div>
 
     <footer class="footer footer--compacto">© 2026 Bruno Santos — LearnFlow</footer>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
+
+    
 </body>
 </html>
