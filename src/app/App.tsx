@@ -1073,70 +1073,381 @@ function HomeView({ streakDays }: { streakDays: number }) {
   );
 }
 
+type CalendarReminder = {
+  id: string;
+  date: string;
+  title: string;
+};
+
+type CalendarHoliday = {
+  date: string;
+  name: string;
+  type: "Feriado nacional" | "Ponto facultativo";
+};
+
+const MONTH_NAMES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
+const WEEK_DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+function formatDateKey(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function formatLongDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return `${day} de ${MONTH_NAMES[month - 1]} de ${year}`;
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function dateToKey(date: Date) {
+  return formatDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getEasterDate(year: number) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function getBrazilianHolidays(year: number): CalendarHoliday[] {
+  const easter = getEasterDate(year);
+
+  const holidays: CalendarHoliday[] = [
+    { date: formatDateKey(year, 0, 1), name: "Confraternização Universal", type: "Feriado nacional" },
+    { date: dateToKey(addDays(easter, -48)), name: "Carnaval", type: "Ponto facultativo" },
+    { date: dateToKey(addDays(easter, -47)), name: "Carnaval", type: "Ponto facultativo" },
+    { date: dateToKey(addDays(easter, -46)), name: "Quarta-feira de Cinzas", type: "Ponto facultativo" },
+    { date: dateToKey(addDays(easter, -2)), name: "Sexta-feira Santa", type: "Feriado nacional" },
+    { date: dateToKey(easter), name: "Páscoa", type: "Feriado nacional" },
+    { date: formatDateKey(year, 3, 21), name: "Tiradentes", type: "Feriado nacional" },
+    { date: formatDateKey(year, 4, 1), name: "Dia do Trabalho", type: "Feriado nacional" },
+    { date: dateToKey(addDays(easter, 60)), name: "Corpus Christi", type: "Ponto facultativo" },
+    { date: formatDateKey(year, 8, 7), name: "Independência do Brasil", type: "Feriado nacional" },
+    { date: formatDateKey(year, 9, 12), name: "Nossa Senhora Aparecida", type: "Feriado nacional" },
+    { date: formatDateKey(year, 10, 2), name: "Finados", type: "Feriado nacional" },
+    { date: formatDateKey(year, 10, 15), name: "Proclamação da República", type: "Feriado nacional" },
+    { date: formatDateKey(year, 10, 20), name: "Consciência Negra", type: "Feriado nacional" },
+    { date: formatDateKey(year, 11, 25), name: "Natal", type: "Feriado nacional" },
+  ];
+
+  return holidays.sort((first, second) => first.date.localeCompare(second.date));
+}
+
+function getMonthDays(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getMondayStartOffset(year: number, month: number) {
+  return (new Date(year, month, 1).getDay() + 6) % 7;
+}
+
 function CalendarView() {
-  const daysOfWeek = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-  const currentMonth = "Maio 2024";
+  const today = new Date();
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState(dateToKey(today));
+  const [reminders, setReminders] = useState<CalendarReminder[]>([]);
+  const [reminderDraft, setReminderDraft] = useState("");
+
+  const holidays = getBrazilianHolidays(selectedYear);
+  const holidaysByDate = holidays.reduce<Record<string, CalendarHoliday[]>>((acc, holiday) => {
+    acc[holiday.date] = [...(acc[holiday.date] ?? []), holiday];
+    return acc;
+  }, {});
+  const remindersByDate = reminders.reduce<Record<string, CalendarReminder[]>>((acc, reminder) => {
+    acc[reminder.date] = [...(acc[reminder.date] ?? []), reminder];
+    return acc;
+  }, {});
+
+  const selectedDayHolidays = holidaysByDate[selectedDate] ?? [];
+  const selectedDayReminders = remindersByDate[selectedDate] ?? [];
+  const daysInMonth = getMonthDays(selectedYear, selectedMonth);
+  const monthOffset = getMondayStartOffset(selectedYear, selectedMonth);
+  const todayKey = dateToKey(today);
+
+  const selectMonth = (month: number) => {
+    setSelectedMonth(month);
+    setSelectedDate(formatDateKey(selectedYear, month, 1));
+  };
+
+  const changeMonth = (direction: -1 | 1) => {
+    const nextMonth = selectedMonth + direction;
+    if (nextMonth < 0) {
+      const nextYear = selectedYear - 1;
+      setSelectedYear(nextYear);
+      setSelectedMonth(11);
+      setSelectedDate(formatDateKey(nextYear, 11, 1));
+      return;
+    }
+
+    if (nextMonth > 11) {
+      const nextYear = selectedYear + 1;
+      setSelectedYear(nextYear);
+      setSelectedMonth(0);
+      setSelectedDate(formatDateKey(nextYear, 0, 1));
+      return;
+    }
+
+    setSelectedMonth(nextMonth);
+    setSelectedDate(formatDateKey(selectedYear, nextMonth, 1));
+  };
+
+  const changeYear = (direction: -1 | 1) => {
+    const nextYear = selectedYear + direction;
+    setSelectedYear(nextYear);
+    setSelectedDate(formatDateKey(nextYear, selectedMonth, 1));
+  };
+
+  const addReminder = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const title = reminderDraft.trim();
+    if (!title) return;
+
+    setReminders((current) => [
+      ...current,
+      { id: crypto.randomUUID(), date: selectedDate, title },
+    ]);
+    setReminderDraft("");
+  };
+
+  const removeReminder = (id: string) => {
+    setReminders((current) => current.filter((reminder) => reminder.id !== id));
+  };
 
   return (
     <div className="p-4 md:p-8 xl:p-12">
       <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
-        <div className="bg-card rounded-xl border border-border p-4 md:p-6 xl:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4 md:mb-6">
-            <h2 className="text-base md:text-xl xl:text-2xl font-semibold text-foreground">{currentMonth}</h2>
-            <div className="flex items-center justify-between sm:justify-end gap-2">
-              <button className="rounded-md bg-background px-3 py-1.5 text-sm md:text-base text-primary shadow-sm">Semana</button>
-              <button className="rounded-md px-3 py-1.5 text-sm md:text-base text-muted-foreground hover:text-foreground">Mês</button>
-              <div className="flex gap-1 sm:ml-4">
-                <button className="p-2.5 hover:bg-accent rounded-lg">
-                  <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="rounded-xl border border-border bg-card p-4 md:p-6 xl:p-8">
+            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-xl md:text-2xl font-semibold text-foreground">
+                  {MONTH_NAMES[selectedMonth]} de {selectedYear}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Selecione um dia para ver feriados e criar lembretes.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="rounded-lg border border-border p-2 hover:bg-accent" onClick={() => changeMonth(-1)} type="button">
+                  <ChevronLeft className="h-5 w-5" />
                 </button>
-                <button className="p-2.5 hover:bg-accent rounded-lg">
-                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+                <button className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent" onClick={() => changeYear(-1)} type="button">
+                  {selectedYear - 1}
+                </button>
+                <button className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground" type="button">
+                  {selectedYear}
+                </button>
+                <button className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent" onClick={() => changeYear(1)} type="button">
+                  {selectedYear + 1}
+                </button>
+                <button className="rounded-lg border border-border p-2 hover:bg-accent" onClick={() => changeMonth(1)} type="button">
+                  <ChevronRight className="h-5 w-5" />
                 </button>
               </div>
             </div>
+
+            <div className="grid grid-cols-7 gap-1.5 md:gap-2 lg:gap-3">
+              {WEEK_DAYS.map((day) => (
+                <div key={day} className="py-2 text-center text-xs md:text-sm font-medium text-muted-foreground">
+                  {day}
+                </div>
+              ))}
+              {Array.from({ length: monthOffset }).map((_, index) => (
+                <div key={`empty-${index}`} />
+              ))}
+              {Array.from({ length: daysInMonth }).map((_, index) => {
+                const day = index + 1;
+                const dateKey = formatDateKey(selectedYear, selectedMonth, day);
+                const dayHolidays = holidaysByDate[dateKey] ?? [];
+                const dayReminders = remindersByDate[dateKey] ?? [];
+                const isSelected = selectedDate === dateKey;
+                const isToday = todayKey === dateKey;
+
+                return (
+                  <button
+                    key={dateKey}
+                    className={`min-h-20 rounded-lg border p-2 text-left transition-colors md:min-h-24 ${
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:bg-accent"
+                    }`}
+                    onClick={() => setSelectedDate(dateKey)}
+                    type="button"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold">{day}</span>
+                      {isToday && (
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] ${isSelected ? "bg-white/20" : "bg-primary/10 text-primary"}`}>
+                          Hoje
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {dayHolidays.length > 0 && <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-white" : "bg-green-500"}`} />}
+                      {dayReminders.length > 0 && <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-white" : "bg-orange-500"}`} />}
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {dayHolidays.slice(0, 1).map((holiday) => (
+                        <p key={holiday.name} className={`line-clamp-1 text-[11px] ${isSelected ? "text-primary-foreground" : "text-green-700 dark:text-green-400"}`}>
+                          {holiday.name}
+                        </p>
+                      ))}
+                      {dayReminders.length > 0 && (
+                        <p className={`line-clamp-1 text-[11px] ${isSelected ? "text-primary-foreground" : "text-orange-700 dark:text-orange-400"}`}>
+                          {dayReminders.length} lembrete{dayReminders.length > 1 ? "s" : ""}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1.5 md:gap-2 lg:gap-3">
-            {daysOfWeek.map((day) => (
-              <div key={day} className="text-center text-xs md:text-sm xl:text-base font-medium text-muted-foreground py-2">
-                <span className="hidden sm:inline">{day}</span>
-                <span className="sm:hidden">{day[0]}</span>
-              </div>
-            ))}
-            {[...Array(2)].map((_, i) => <div key={`empty-${i}`} />)}
-            {[...Array(31)].map((_, i) => {
-              const day = i + 1;
-              const hasEvent = [3, 6, 9, 13, 17, 19, 24, 27].includes(day);
-              const isToday = day === 9;
+          <aside className="space-y-4">
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-sm font-medium text-primary">Dia selecionado</p>
+              <h3 className="mt-1 text-lg font-semibold text-foreground">{formatLongDate(selectedDate)}</h3>
 
-              return (
-                <div
-                  key={day}
-                  className={`min-h-14 sm:min-h-16 md:min-h-20 lg:min-h-24 xl:min-h-28 p-2 md:p-3 rounded-lg border transition-colors relative flex flex-col items-start ${
-                    isToday
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border hover:bg-accent"
-                  }`}
-                >
-                  <div className="text-xs md:text-sm xl:text-base font-medium">{day}</div>
-                  {hasEvent && !isToday && (
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <div className="mt-4 space-y-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Feriados</h4>
+                  {selectedDayHolidays.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {selectedDayHolidays.map((holiday) => (
+                        <div key={`${holiday.date}-${holiday.name}`} className="rounded-lg bg-green-50 p-3 text-sm dark:bg-green-950">
+                          <p className="font-medium text-green-800 dark:text-green-300">{holiday.name}</p>
+                          <p className="text-xs text-green-700 dark:text-green-400">{holiday.type}</p>
+                        </div>
+                      ))}
                     </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">Nenhum feriado nacional nesta data.</p>
                   )}
                 </div>
-              );
-            })}
-          </div>
+
+                <form onSubmit={addReminder} className="space-y-2">
+                  <label className="text-sm font-semibold text-foreground" htmlFor="calendar-reminder">
+                    Novo lembrete
+                  </label>
+                  <input
+                    id="calendar-reminder"
+                    value={reminderDraft}
+                    onChange={(event) => setReminderDraft(event.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                    placeholder="Ex: revisar funções às 19h"
+                  />
+                  <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+                    Adicionar lembrete
+                  </button>
+                </form>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Lembretes do dia</h4>
+                  {selectedDayReminders.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {selectedDayReminders.map((reminder) => (
+                        <div key={reminder.id} className="flex items-start justify-between gap-3 rounded-lg bg-muted/60 p-3">
+                          <p className="text-sm text-foreground">{reminder.title}</p>
+                          <button
+                            className="text-xs text-muted-foreground hover:text-destructive"
+                            onClick={() => removeReminder(reminder.id)}
+                            type="button"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">Nenhum lembrete para esta data.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
 
-        <div>
-          <h2 className="text-base md:text-xl font-semibold mb-3 md:mb-4 text-foreground">Hoje - 15 de Maio</h2>
-          <div className="space-y-3">
-            <EventCard time="10:00" title="Química - Massa Atômica" subtitle="Módulo 1 de 6" color="bg-purple-500" />
-            <EventCard time="14:30" title="Física - Energia Mecânica" subtitle="Módulo 2 de 8" color="bg-blue-500" />
-            <EventCard time="16:45" title="Matemática - Funções" subtitle="Módulo 3 de 7" color="bg-indigo-500" />
+        <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
+          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-lg md:text-xl font-semibold text-foreground">Todos os meses de {selectedYear}</h2>
+              <p className="text-sm text-muted-foreground">Visão anual com os feriados nacionais e pontos facultativos principais.</p>
+            </div>
+            <div className="flex gap-2 text-xs">
+              <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400"><span className="h-2 w-2 rounded-full bg-green-500" /> Feriado</span>
+              <span className="inline-flex items-center gap-1 text-orange-700 dark:text-orange-400"><span className="h-2 w-2 rounded-full bg-orange-500" /> Lembrete</span>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {MONTH_NAMES.map((monthName, monthIndex) => {
+              const monthHolidays = holidays.filter((holiday) => Number(holiday.date.slice(5, 7)) === monthIndex + 1);
+              const monthReminderCount = reminders.filter((reminder) => Number(reminder.date.slice(5, 7)) === monthIndex + 1).length;
+
+              return (
+                <button
+                  key={monthName}
+                  className={`rounded-xl border p-4 text-left transition-colors ${
+                    selectedMonth === monthIndex ? "border-primary bg-primary/10" : "border-border hover:bg-accent"
+                  }`}
+                  onClick={() => selectMonth(monthIndex)}
+                  type="button"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-semibold text-foreground">{monthName}</h3>
+                    {monthReminderCount > 0 && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                        {monthReminderCount}
+                      </span>
+                    )}
+                  </div>
+                  {monthHolidays.length > 0 ? (
+                    <div className="mt-3 space-y-1">
+                      {monthHolidays.map((holiday) => (
+                        <p key={`${holiday.date}-${holiday.name}`} className="text-xs text-muted-foreground">
+                          <span className="font-medium text-green-700 dark:text-green-400">{Number(holiday.date.slice(8, 10))}</span> · {holiday.name}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-muted-foreground">Sem feriados cadastrados.</p>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
