@@ -23,36 +23,44 @@ alter table public.flashcard_decks enable row level security;
 drop policy if exists "profiles_select_public" on public.profiles;
 drop policy if exists "profiles_insert_public" on public.profiles;
 drop policy if exists "profiles_update_public" on public.profiles;
+drop policy if exists "profiles_select_own" on public.profiles;
+drop policy if exists "profiles_insert_own" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
 drop policy if exists "flashcard_decks_select_public" on public.flashcard_decks;
 drop policy if exists "flashcard_decks_insert_public" on public.flashcard_decks;
 drop policy if exists "flashcard_decks_update_public" on public.flashcard_decks;
+drop policy if exists "flashcard_decks_delete_public" on public.flashcard_decks;
+drop policy if exists "flashcard_decks_select_own" on public.flashcard_decks;
+drop policy if exists "flashcard_decks_insert_own" on public.flashcard_decks;
+drop policy if exists "flashcard_decks_update_own" on public.flashcard_decks;
+drop policy if exists "flashcard_decks_delete_own" on public.flashcard_decks;
 
-create policy "profiles_select_public"
+create policy "profiles_select_own"
 on public.profiles for select
-using (true);
+using (auth.uid()::text = id);
 
-create policy "profiles_insert_public"
+create policy "profiles_insert_own"
 on public.profiles for insert
-with check (true);
+with check (auth.uid()::text = id);
 
-create policy "profiles_update_public"
+create policy "profiles_update_own"
 on public.profiles for update
-using (true)
-with check (true);
+using (auth.uid()::text = id)
+with check (auth.uid()::text = id);
 
-create policy "flashcard_decks_select_public"
+create policy "flashcard_decks_select_own"
 on public.flashcard_decks for select
-using (true);
+using (auth.uid()::text = profile_id);
 
-create policy "flashcard_decks_insert_public"
+create policy "flashcard_decks_insert_own"
 on public.flashcard_decks for insert
-with check (true);
+with check (auth.uid()::text = profile_id);
 
-create policy "flashcard_decks_update_public"
+create policy "flashcard_decks_update_own"
 on public.flashcard_decks for update
-using (true)
-with check (true);
+using (auth.uid()::text = profile_id)
+with check (auth.uid()::text = profile_id);
 
-insert into public.profiles (id, name, streak_days)
-values ('local-user', 'Estudante', 0)
-on conflict (id) do nothing;
+create policy "flashcard_decks_delete_own"
+on public.flashcard_decks for delete
+using (auth.uid()::text = profile_id);

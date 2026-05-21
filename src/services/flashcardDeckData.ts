@@ -1,5 +1,5 @@
 import { supabase } from "../supabase";
-import { PROFILE_ID } from "./profileData";
+import { getProfileId } from "./profileData";
 
 export type FlashcardDeckData = {
   id: string;
@@ -14,10 +14,12 @@ export type FlashcardDeckData = {
 export async function loadFlashcardDecks(): Promise<FlashcardDeckData[]> {
   if (!supabase) return [];
 
+  const profileId = await getProfileId();
+
   const { data, error } = await supabase
     .from("flashcard_decks")
     .select("id,name,subtitle,progress,icon,cards,created_at")
-    .eq("profile_id", PROFILE_ID)
+    .eq("profile_id", profileId)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -41,9 +43,11 @@ export async function saveFlashcardDeck(deck: FlashcardDeckData): Promise<void> 
     throw new Error("Supabase nao configurado.");
   }
 
+  const profileId = await getProfileId();
+
   const { error } = await supabase.from("flashcard_decks").insert({
     id: deck.id,
-    profile_id: PROFILE_ID,
+    profile_id: profileId,
     name: deck.name,
     subtitle: deck.subtitle,
     progress: deck.progress,
@@ -53,5 +57,6 @@ export async function saveFlashcardDeck(deck: FlashcardDeckData): Promise<void> 
     updated_at: new Date().toISOString(),
   });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message || "Nao foi possivel salvar no Supabase.");
 }
+
