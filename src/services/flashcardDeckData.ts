@@ -11,6 +11,18 @@ export type FlashcardDeckData = {
   createdAt: string;
 };
 
+export function buildFlashcardDeck(name: string): FlashcardDeckData {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    subtitle: "Deck criado pelo usuario",
+    progress: 0,
+    icon: "cards",
+    cards: 0,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export async function loadFlashcardDecks(): Promise<FlashcardDeckData[]> {
   if (!supabase) return [];
 
@@ -58,5 +70,29 @@ export async function saveFlashcardDeck(deck: FlashcardDeckData): Promise<void> 
   });
 
   if (error) throw new Error(error.message || "Nao foi possivel salvar no Supabase.");
+}
+
+export async function createFlashcardDeck(name: string): Promise<FlashcardDeckData> {
+  const deck = buildFlashcardDeck(name);
+  await saveFlashcardDeck(deck);
+  return deck;
+}
+
+export async function updateFlashcardDeckStats(deck: FlashcardDeckData): Promise<void> {
+  if (!supabase) return;
+
+  const profileId = await getProfileId();
+
+  const { error } = await supabase
+    .from("flashcard_decks")
+    .update({
+      cards: deck.cards,
+      progress: deck.progress,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", deck.id)
+    .eq("profile_id", profileId);
+
+  if (error) console.warn("Nao foi possivel atualizar deck no Supabase:", error.message);
 }
 

@@ -5,6 +5,14 @@ export type LearnFlowProfile = {
   id: string;
   name: string;
   streakDays: number;
+  lastStudyDate?: string | null;
+};
+
+export type UserActivityType = "materia" | "calendario" | "flashcard" | "simulado";
+
+export type UserActivityRecord = {
+  streakDays: number;
+  lastStudyDate: string;
 };
 
 const PROFILE_STORAGE_KEY = "learnflow_guest_profile_id";
@@ -13,6 +21,7 @@ export const DEFAULT_PROFILE: LearnFlowProfile = {
   id: "guest-pending",
   name: "Estudante",
   streakDays: 0,
+  lastStudyDate: null,
 };
 
 function createGuestProfileId(): string {
@@ -61,7 +70,7 @@ export async function loadProfile(): Promise<LearnFlowProfile> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,name,streak_days")
+    .select("id,name,streak_days,last_study_date")
     .eq("id", profileId)
     .maybeSingle();
 
@@ -86,6 +95,7 @@ export async function loadProfile(): Promise<LearnFlowProfile> {
     id: data.id,
     name: data.name || DEFAULT_PROFILE.name,
     streakDays: Number(data.streak_days || 0),
+    lastStudyDate: data.last_study_date || null,
   };
 }
 
@@ -98,8 +108,81 @@ export async function saveProfile(profile: LearnFlowProfile): Promise<void> {
     id: profile.id,
     name: profile.name,
     streak_days: profile.streakDays,
+    last_study_date: profile.lastStudyDate ?? null,
     updated_at: new Date().toISOString(),
   }, { onConflict: "id" });
 
   if (error) throw new Error(getSupabaseErrorMessage(error));
+}
+
+function getBahiaDateString(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bahia",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getPreviousDateString(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+export async function recordStudyDay(): Promise<LearnFlowProfile | null> {
+  if (!supabase) return null;
+
+  const profile = await loadProfile();
+  const today = getBahiaDateString();
+
+  if (profile.lastStudyDate === today) return profile;
+
+  const yesterday = getPreviousDateString(today);
+  const nextStreakDays = profile.lastStudyDate === yesterday
+    ? profile.streakDays + 1
+    : 1;
+  const nextProfile = {
+    ...profile,
+    streakDays: nextStreakDays,
+    lastStudyDate: today,
+  };
+
+  await saveProfile(nextProfile);
+  return nextProfile;
+}
+
+export async function recordUserActivity(activityType: UserActivityType): Promise<UserActivityRecord | null> {
+  const authUser = await getCurrentAuthUser();
+  if (!supabase || !authUser) return null;
+
+  const { data, error } = await supabase.rpc("record_user_activity", {
+    p_activity_type: activityType,
+  });
+
+  if (!error) {
+    const row = ((data || []) as { streak_days: number; last_study_date: string }[])[0];
+    return row
+      ? {
+        streakDays: Number(row.streak_days || 0),
+        lastStudyDate: row.last_study_date,
+      }
+      : null;
+  }
+
+  const message = error.message || "";
+  const canFallback = message.includes("record_user_activity") || message.includes("function") || message.includes("schema cache");
+  if (!canFallback) {
+    console.warn("Nao foi possivel registrar atividade do usuario no Supabase:", message);
+    return null;
+  }
+
+  const profile = await recordStudyDay();
+  return profile
+    ? {
+      streakDays: profile.streakDays,
+      lastStudyDate: profile.lastStudyDate ?? "",
+    }
+    : null;
 }
