@@ -3,10 +3,19 @@ create table if not exists public.profiles (
   name text not null default 'Estudante',
   streak_days integer not null default 0,
   last_study_date date,
+  last_activity_at timestamptz,
   updated_at timestamptz not null default now()
 );
 
 alter table public.profiles add column if not exists last_study_date date;
+alter table public.profiles add column if not exists last_activity_at timestamptz;
+
+update public.profiles
+set
+  streak_days = 0,
+  last_study_date = null
+where last_activity_at is null
+  and streak_days > 0;
 
 create table if not exists public.flashcard_decks (
   id uuid primary key,
@@ -148,17 +157,19 @@ set search_path = public
 as $$
 declare
   current_profile_id text := auth.uid()::text;
+  current_activity_at timestamptz := now();
   today date := (now() at time zone 'America/Bahia')::date;
   yesterday date := ((now() at time zone 'America/Bahia')::date - 1);
   previous_study_date date;
+  previous_activity_at timestamptz;
   next_streak integer;
 begin
   if current_profile_id is null then
     raise exception 'Usuario nao autenticado.';
   end if;
 
-  insert into public.profiles (id, name, streak_days, last_study_date, updated_at)
-  values (current_profile_id, 'Estudante', 0, null, now())
+  insert into public.profiles (id, name, streak_days, last_study_date, last_activity_at, updated_at)
+  values (current_profile_id, 'Estudante', 0, null, null, now())
   on conflict (id) do nothing;
 
   insert into public.study_progress (
@@ -178,28 +189,39 @@ begin
   on conflict (profile_id, subject_name, module_title, activity_key)
   do update set answered_at = excluded.answered_at;
 
-  select profiles.last_study_date, profiles.streak_days
-  into previous_study_date, next_streak
+  select profiles.last_study_date, profiles.last_activity_at, profiles.streak_days
+  into previous_study_date, previous_activity_at, next_streak
   from public.profiles
   where profiles.id = current_profile_id
   for update;
 
-  if previous_study_date = today then
+  if previous_activity_at is null then
+    next_streak := 0;
+    previous_activity_at := current_activity_at;
+    previous_study_date := today;
+  elsif previous_study_date = today then
+    next_streak := next_streak;
+  elsif current_activity_at < previous_activity_at + interval '24 hours' then
     next_streak := next_streak;
   elsif previous_study_date = yesterday then
     next_streak := next_streak + 1;
+    previous_activity_at := current_activity_at;
+    previous_study_date := today;
   else
-    next_streak := 1;
+    next_streak := 0;
+    previous_activity_at := current_activity_at;
+    previous_study_date := today;
   end if;
 
   update public.profiles
   set
     streak_days = next_streak,
-    last_study_date = today,
+    last_study_date = previous_study_date,
+    last_activity_at = previous_activity_at,
     updated_at = now()
   where profiles.id = current_profile_id;
 
-  return query select next_streak, today;
+  return query select next_streak, previous_study_date;
 end;
 $$;
 
@@ -218,9 +240,11 @@ set search_path = public
 as $$
 declare
   current_profile_id text := auth.uid()::text;
+  current_activity_at timestamptz := now();
   today date := (now() at time zone 'America/Bahia')::date;
   yesterday date := ((now() at time zone 'America/Bahia')::date - 1);
   previous_study_date date;
+  previous_activity_at timestamptz;
   next_streak integer;
 begin
   if current_profile_id is null then
@@ -231,32 +255,43 @@ begin
     raise exception 'Tipo de atividade invalido: %', p_activity_type;
   end if;
 
-  insert into public.profiles (id, name, streak_days, last_study_date, updated_at)
-  values (current_profile_id, 'Estudante', 0, null, now())
+  insert into public.profiles (id, name, streak_days, last_study_date, last_activity_at, updated_at)
+  values (current_profile_id, 'Estudante', 0, null, null, now())
   on conflict (id) do nothing;
 
-  select profiles.last_study_date, profiles.streak_days
-  into previous_study_date, next_streak
+  select profiles.last_study_date, profiles.last_activity_at, profiles.streak_days
+  into previous_study_date, previous_activity_at, next_streak
   from public.profiles
   where profiles.id = current_profile_id
   for update;
 
-  if previous_study_date = today then
+  if previous_activity_at is null then
+    next_streak := 0;
+    previous_activity_at := current_activity_at;
+    previous_study_date := today;
+  elsif previous_study_date = today then
+    next_streak := next_streak;
+  elsif current_activity_at < previous_activity_at + interval '24 hours' then
     next_streak := next_streak;
   elsif previous_study_date = yesterday then
     next_streak := next_streak + 1;
+    previous_activity_at := current_activity_at;
+    previous_study_date := today;
   else
-    next_streak := 1;
+    next_streak := 0;
+    previous_activity_at := current_activity_at;
+    previous_study_date := today;
   end if;
 
   update public.profiles
   set
     streak_days = next_streak,
-    last_study_date = today,
+    last_study_date = previous_study_date,
+    last_activity_at = previous_activity_at,
     updated_at = now()
   where profiles.id = current_profile_id;
 
-  return query select next_streak, today;
+  return query select next_streak, previous_study_date;
 end;
 $$;
 

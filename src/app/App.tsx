@@ -291,7 +291,7 @@ export default function App() {
         translate="no"
         className={`
           notranslate fixed md:static inset-y-0 left-0 z-40
-          w-64 ${compactSidebar ? "md:w-20 xl:w-20" : "md:w-72 xl:w-80"} bg-sidebar border-r border-sidebar-border flex flex-col
+          w-[min(86vw,20rem)] ${compactSidebar ? "md:w-20 xl:w-20" : "md:w-72 xl:w-80"} bg-sidebar border-r border-sidebar-border flex flex-col
           transform transition-[width,transform] duration-300 ease-out
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
@@ -314,7 +314,7 @@ export default function App() {
         </div>
 
         {/* Navigation */}
-        <nav translate="no" className={`notranslate flex-1 space-y-1.5 overflow-y-auto transition-[padding] duration-300 ease-out ${compactSidebar ? "px-2 md:px-2.5" : "px-3 md:px-4"}`}>
+        <nav translate="no" className={`notranslate flex-1 space-y-1.5 overflow-y-auto transition-[padding] duration-300 ease-out ${compactSidebar ? "px-4 md:px-2.5" : "px-4 md:px-4"}`}>
           {NAV_ITEMS.map(({ view, icon, label }) => (
             <NavItem
               key={view}
@@ -547,14 +547,14 @@ function NavItem({
       translate="no"
       title={compact ? label : undefined}
       onClick={onClick}
-      className={`notranslate w-full flex items-center gap-3 md:gap-4 overflow-hidden rounded-lg transition-all duration-300 ease-out [&>svg]:h-5 [&>svg]:w-5 md:[&>svg]:h-6 md:[&>svg]:w-6 [&>svg]:shrink-0 ${compact ? "md:h-12 md:justify-center md:gap-0 md:px-0 md:py-0" : "px-3 md:px-4 py-2.5 md:py-3.5"} ${
+      className={`notranslate relative w-full flex items-center gap-3 md:gap-4 overflow-visible md:overflow-hidden rounded-lg transition-all duration-300 ease-out [&>svg]:h-5 [&>svg]:w-5 md:[&>svg]:h-6 md:[&>svg]:w-6 [&>svg]:shrink-0 ${compact ? "md:h-12 md:justify-center md:gap-0 md:px-0 md:py-0" : "px-4 md:px-4 py-2.5 md:py-3.5"} ${
         active
           ? "bg-sidebar-primary text-sidebar-primary-foreground"
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       }`}
     >
       {icon}
-      <span translate="no" className={`overflow-hidden whitespace-nowrap text-sm md:text-base font-medium transition-all duration-300 ease-out ${compact ? "md:max-w-0 md:opacity-0 md:-translate-x-1" : "md:max-w-52 md:opacity-100 md:translate-x-0"}`}>{label}</span>
+      <span translate="no" className={`min-w-0 overflow-hidden whitespace-nowrap text-sm md:text-base font-medium transition-all duration-300 ease-out ${compact ? "md:max-w-0 md:opacity-0 md:-translate-x-1" : "md:max-w-52 md:opacity-100 md:translate-x-0"}`}>{label}</span>
     </button>
   );
 }
@@ -4191,7 +4191,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-1.5 md:gap-2 lg:gap-3">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2 lg:gap-3">
               {WEEK_DAYS.map((day) => (
                 <div key={day} className="py-2 text-center text-xs md:text-sm font-medium text-muted-foreground">
                   {day}
@@ -4212,7 +4212,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                 return (
                   <button
                     key={dateKey}
-                    className={`min-h-20 rounded-lg border p-2 text-left transition-colors md:min-h-24 ${
+                    className={`min-h-[4.75rem] rounded-lg border p-1.5 text-left transition-colors sm:min-h-20 sm:p-2 md:min-h-24 ${
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border hover:bg-accent"
@@ -4220,15 +4220,15 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                     onClick={() => setSelectedDate(dateKey)}
                     type="button"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold">{day}</span>
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-sm font-semibold leading-none sm:text-base">{day}</span>
                       {isToday && (
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] ${isSelected ? "bg-white/20" : "bg-primary/10 text-primary"}`}>
+                        <span className={`hidden rounded-full px-1.5 py-0.5 text-[10px] sm:inline-flex ${isSelected ? "bg-white/20" : "bg-primary/10 text-primary"}`}>
                           Hoje
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
+                    <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
                       {dayHolidays.length > 0 && <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-white" : "bg-green-500"}`} />}
                       {dayReminders.length > 0 && <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-white" : "bg-orange-500"}`} />}
                       {dayRuleOccurrences.slice(0, 3).map((occurrence) => (
@@ -4238,7 +4238,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                         />
                       ))}
                     </div>
-                    <div className="mt-2 space-y-1">
+                    <div className="mt-1.5 hidden space-y-1 sm:mt-2 sm:block">
                       {dayHolidays.slice(0, 1).map((holiday) => (
                         <p key={holiday.name} className={`line-clamp-1 text-[11px] ${isSelected ? "text-primary-foreground" : "text-green-700 dark:text-green-400"}`}>
                           {holiday.name}
@@ -5047,6 +5047,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     setSelectedExam(exam);
     setAnswers({});
     setResult(null);
+    onUserActivity("simulado");
   };
 
   const saveAnswer = (questionId: string, value: string) => {
@@ -5535,3 +5536,4 @@ function FlashcardDeck({
     </div>
   );
 }
+

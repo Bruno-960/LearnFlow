@@ -142,7 +142,7 @@ export async function recordStudyDay(): Promise<LearnFlowProfile | null> {
   const yesterday = getPreviousDateString(today);
   const nextStreakDays = profile.lastStudyDate === yesterday
     ? profile.streakDays + 1
-    : 1;
+    : 0;
   const nextProfile = {
     ...profile,
     streakDays: nextStreakDays,
