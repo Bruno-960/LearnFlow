@@ -328,7 +328,7 @@ export default function App() {
         </nav>
 
         {/* Streak Card */}
-        <div className={`mx-3 md:mx-4 mb-4 overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl text-white transition-all duration-300 ease-out ${compactSidebar ? "md:mx-auto md:flex md:h-12 md:w-12 md:items-center md:justify-center md:p-0" : "p-4 md:p-5"}`}>
+        <div className={`mx-3 md:mx-4 mb-4 overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl text-white transition-all duration-300 ease-out ${compactSidebar ? "p-4 md:mx-auto md:flex md:h-12 md:w-12 md:items-center md:justify-center md:p-0" : "p-4 md:p-5"}`}>
           <div className={`flex items-center gap-2 mb-1 ${compactSidebar ? "md:mb-0 md:justify-center md:gap-0" : ""}`}>
             <Flame className={`w-5 h-5 md:w-6 md:h-6 shrink-0 transition-all duration-300 ease-out ${compactSidebar ? "md:hidden" : "md:w-6 md:scale-100 md:opacity-100"}`} />
             <span className={`whitespace-nowrap text-2xl md:text-3xl font-bold leading-none transition-all duration-300 ease-out ${compactSidebar ? "md:hidden" : ""}`}>
@@ -344,9 +344,9 @@ export default function App() {
         </div>
 
         {/* User Profile */}
-        <div className={`border-t border-sidebar-border transition-[padding] duration-300 ease-out ${compactSidebar ? "p-2 md:p-2.5" : "p-3"}`}>
+        <div className={`border-t border-sidebar-border transition-[padding] duration-300 ease-out ${compactSidebar ? "p-3 md:p-2.5" : "p-3"}`}>
           <button
-            className={`w-full flex items-center gap-3 md:gap-4 overflow-hidden rounded-lg hover:bg-sidebar-accent transition-all duration-300 ease-out ${compactSidebar ? "md:h-12 md:justify-center md:gap-0 md:p-0" : "p-2 md:p-3"}`}
+            className={`w-full flex items-center gap-3 md:gap-4 overflow-hidden rounded-lg hover:bg-sidebar-accent transition-all duration-300 ease-out ${compactSidebar ? "p-2 md:h-12 md:justify-center md:gap-0 md:p-0" : "p-2 md:p-3"}`}
             onClick={changeUserName}
             type="button"
           >
@@ -547,7 +547,7 @@ function NavItem({
       translate="no"
       title={compact ? label : undefined}
       onClick={onClick}
-      className={`notranslate relative w-full flex items-center gap-3 md:gap-4 overflow-visible md:overflow-hidden rounded-lg transition-all duration-300 ease-out [&>svg]:h-5 [&>svg]:w-5 md:[&>svg]:h-6 md:[&>svg]:w-6 [&>svg]:shrink-0 ${compact ? "md:h-12 md:justify-center md:gap-0 md:px-0 md:py-0" : "px-4 md:px-4 py-2.5 md:py-3.5"} ${
+      className={`notranslate relative w-full flex items-center gap-3 md:gap-4 overflow-visible md:overflow-hidden rounded-lg transition-all duration-300 ease-out [&>svg]:h-5 [&>svg]:w-5 md:[&>svg]:h-6 md:[&>svg]:w-6 [&>svg]:shrink-0 ${compact ? "px-4 py-2.5 md:h-12 md:justify-center md:gap-0 md:px-0 md:py-0" : "px-4 md:px-4 py-2.5 md:py-3.5"} ${
         active
           ? "bg-sidebar-primary text-sidebar-primary-foreground"
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -4229,12 +4229,12 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                       )}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
-                      {dayHolidays.length > 0 && <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-white" : "bg-green-500"}`} />}
-                      {dayReminders.length > 0 && <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-white" : "bg-orange-500"}`} />}
+                      {dayHolidays.length > 0 && <span className="h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />}
+                      {dayReminders.length > 0 && <span className="h-2.5 w-2.5 rounded-full bg-orange-500 ring-1 ring-background" />}
                       {dayRuleOccurrences.slice(0, 3).map((occurrence) => (
                         <span
                           key={`${occurrence.ruleId}-${dateKey}`}
-                          className={`h-2 w-2 rounded-full ${isSelected ? "bg-white" : CALENDAR_RULE_COLOR_CLASSES[occurrence.color].dot}`}
+                          className={`h-2.5 w-2.5 rounded-full ring-1 ring-background ${CALENDAR_RULE_COLOR_CLASSES[occurrence.color].dot}`}
                         />
                       ))}
                     </div>
