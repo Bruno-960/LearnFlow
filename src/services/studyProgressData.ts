@@ -1,6 +1,6 @@
 import { supabase } from "../supabase";
 import { getCurrentAuthUser } from "./authData";
-import { getProfileId, recordStudyDay } from "./profileData";
+import { getProfileId } from "./profileData";
 
 export type StudyProgressMap = Record<string, Record<string, string[]>>;
 
@@ -120,11 +120,5 @@ export async function saveStudyActivityProgress(
     return null;
   }
 
-  const profile = await recordStudyDay();
-  return profile
-    ? {
-      streakDays: profile.streakDays,
-      lastStudyDate: profile.lastStudyDate ?? "",
-    }
-    : null;
+  return null;
 }

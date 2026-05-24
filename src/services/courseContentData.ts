@@ -236,7 +236,7 @@ function buildContentMap(remote: RemoteContent): SubjectModuleMap {
 
 async function loadRemoteCourseContent(): Promise<SubjectModuleMap> {
   if (!supabase) {
-    throw new Error("Supabase nao esta configurado. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.");
+    throw new Error("Nao foi possivel carregar o conteudo. Tente novamente.");
   }
 
   const [

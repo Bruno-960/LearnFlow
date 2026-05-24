@@ -52,7 +52,7 @@ export async function loadFlashcardDecks(): Promise<FlashcardDeckData[]> {
 
 export async function saveFlashcardDeck(deck: FlashcardDeckData): Promise<void> {
   if (!supabase) {
-    throw new Error("Supabase nao configurado.");
+    throw new Error("A conexao da conta nao esta configurada.");
   }
 
   const profileId = await getProfileId();
@@ -69,7 +69,7 @@ export async function saveFlashcardDeck(deck: FlashcardDeckData): Promise<void> 
     updated_at: new Date().toISOString(),
   });
 
-  if (error) throw new Error(error.message || "Nao foi possivel salvar no Supabase.");
+  if (error) throw new Error(error.message || "Nao foi possivel salvar o deck.");
 }
 
 export async function createFlashcardDeck(name: string): Promise<FlashcardDeckData> {

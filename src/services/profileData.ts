@@ -49,14 +49,14 @@ export async function getProfileId(): Promise<string> {
 }
 
 function getSupabaseErrorMessage(error: { message?: string } | null): string {
-  const message = error?.message || "Erro desconhecido do Supabase.";
+  const message = error?.message || "Erro desconhecido.";
 
   if (message.includes("Could not find the table 'public.profiles'")) {
-    return "A tabela public.profiles ainda nao existe no Supabase. Execute o arquivo supabase-schema.sql no SQL Editor do Supabase.";
+    return "A area de perfil ainda nao esta pronta. Verifique se o esquema de usuarios foi criado.";
   }
 
   if (message.toLowerCase().includes("row-level security")) {
-    return "O Supabase bloqueou a gravacao por politica RLS. Execute as policies do arquivo supabase-schema.sql.";
+    return "Nao foi possivel salvar neste usuario. Entre novamente e tente outra vez.";
   }
 
   return message;
@@ -101,7 +101,7 @@ export async function loadProfile(): Promise<LearnFlowProfile> {
 
 export async function saveProfile(profile: LearnFlowProfile): Promise<void> {
   if (!supabase) {
-    throw new Error("Supabase nao configurado.");
+    throw new Error("A conexao da conta nao esta configurada.");
   }
 
   const { error } = await supabase.from("profiles").upsert({
@@ -172,17 +172,10 @@ export async function recordUserActivity(activityType: UserActivityType): Promis
   }
 
   const message = error.message || "";
-  const canFallback = message.includes("record_user_activity") || message.includes("function") || message.includes("schema cache");
-  if (!canFallback) {
+  const missingActivityFunction = message.includes("record_user_activity") || message.includes("function") || message.includes("schema cache");
+  if (!missingActivityFunction) {
     console.warn("Nao foi possivel registrar atividade do usuario no Supabase:", message);
-    return null;
   }
 
-  const profile = await recordStudyDay();
-  return profile
-    ? {
-      streakDays: profile.streakDays,
-      lastStudyDate: profile.lastStudyDate ?? "",
-    }
-    : null;
+  return null;
 }

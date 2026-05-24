@@ -41,14 +41,14 @@ type CalendarRuleOccurrenceRow = {
 };
 
 function getCalendarErrorMessage(error: { message?: string } | null) {
-  const message = error?.message || "Erro desconhecido do Supabase.";
+  const message = error?.message || "Erro desconhecido.";
 
   if (message.includes("calendar_rules") || message.includes("calendar_reminders")) {
-    return "As tabelas do calendario ainda nao existem no Supabase. Execute supabase-calendar-schema.sql no SQL Editor.";
+    return "O calendario da conta ainda nao esta pronto. Verifique se o esquema de calendario foi criado.";
   }
 
   if (message.toLowerCase().includes("row-level security")) {
-    return "O Supabase bloqueou a gravacao por politica RLS. Entre na sua conta e execute as policies do calendario.";
+    return "Nao foi possivel salvar neste usuario. Entre novamente e tente outra vez.";
   }
 
   return message;
@@ -82,7 +82,7 @@ export async function loadCalendarReminders(year: number): Promise<CalendarRemin
 }
 
 export async function saveCalendarReminder(date: string, title: string): Promise<CalendarReminderData> {
-  if (!supabase) throw new Error("Supabase nao configurado.");
+  if (!supabase) throw new Error("A conexao da conta nao esta configurada.");
 
   const profileId = await getProfileId();
 
@@ -148,7 +148,7 @@ export async function loadCalendarRules(): Promise<CalendarRuleData[]> {
 }
 
 export async function saveCalendarRule(rule: Omit<CalendarRuleData, "id">): Promise<CalendarRuleData> {
-  if (!supabase) throw new Error("Supabase nao configurado.");
+  if (!supabase) throw new Error("A conexao da conta nao esta configurada.");
 
   const profileId = await getProfileId();
 

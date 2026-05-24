@@ -72,7 +72,14 @@ import {
   loadCourseContent,
   type SubjectModuleMap,
 } from "../services/courseContentData";
+import {
+  loadSimuladoAttempts,
+  saveSimuladoAttempt,
+  type SimuladoAttemptData,
+  type SimuladoAttemptQuestionData,
+} from "../services/simuladoAttemptData";
 import type { SubjectModuleContent } from "../data/subjectContent";
+import enem2025Q1SpanishDiversity from "../imports/enem2025/enem-2025-branco-esp-q1-diversidade-linguistica.jpg";
 import enem2025Q2SleepCups from "../imports/enem2025/enem-2025-branco-ing-q2-sleep-cups.png";
 
 type View =
@@ -86,6 +93,11 @@ type View =
   | "configuracoes";
 
 type StudyProgress = StudyProgressMap;
+
+type StudyTarget = {
+  subjectName: string;
+  moduleTitle?: string;
+};
 
 const NAV_ITEMS: { view: View; icon: React.ReactNode; label: string }[] = [
   { view: "home", icon: <Home className="w-5 h-5" />, label: "Início" },
@@ -142,6 +154,7 @@ export default function App() {
   const [courseContentLoading, setCourseContentLoading] = useState(true);
   const [courseContentError, setCourseContentError] = useState("");
   const [studyFocusMode, setStudyFocusMode] = useState(false);
+  const [materiasTarget, setMateriasTarget] = useState<StudyTarget | null>(null);
 
   const applyProfile = (profile: typeof DEFAULT_PROFILE) => {
       setProfileId(profile.id);
@@ -229,6 +242,11 @@ export default function App() {
     setSidebarOpen(false);
   };
 
+  const openMaterias = (target?: StudyTarget) => {
+    setMateriasTarget(target ?? null);
+    navigate("materias");
+  };
+
   const reloadStudyProgress = async () => {
     const snapshot = await loadStudyProgress();
     setStudyProgress(snapshot.progress);
@@ -236,6 +254,10 @@ export default function App() {
   };
 
   const markStudyActivityAnswered = (subjectName: string, moduleTitle: string, activityKey: string) => {
+    if (!authUser) {
+      return;
+    }
+
     setStudyProgress((current) => {
       const subjectProgress = current[subjectName] ?? {};
       const answeredActivities = subjectProgress[moduleTitle] ?? [];
@@ -407,11 +429,35 @@ export default function App() {
               courseContentLoading={courseContentLoading}
               courseContentError={courseContentError}
               onRetryCourseContent={reloadCourseContent}
-              onOpenMaterias={() => navigate("materias")}
+              onOpenMaterias={openMaterias}
             />
           )}
-          {currentView === "calendar" && <CalendarView onUserActivity={markUserActivity} />}
-          {currentView === "flashcards" && <FlashcardsView profileId={profileId} onUserActivity={markUserActivity} />}
+          {currentView === "calendar" && (
+            authUser ? (
+              <CalendarView onUserActivity={markUserActivity} />
+            ) : (
+              <AccountRequiredView
+                title="Calendário da sua conta"
+                description="Entre para criar lembretes, recorrências e folgas sem misturar seus dados com outro dispositivo."
+                authUser={authUser}
+                authReady={authReady}
+                onAuthChanged={reloadProfile}
+              />
+            )
+          )}
+          {currentView === "flashcards" && (
+            authUser ? (
+              <FlashcardsView profileId={profileId} onUserActivity={markUserActivity} />
+            ) : (
+              <AccountRequiredView
+                title="Flashcards salvos por usuário"
+                description="Entre para criar decks, revisar cards e manter seu histórico sincronizado na sua conta."
+                authUser={authUser}
+                authReady={authReady}
+                onAuthChanged={reloadProfile}
+              />
+            )
+          )}
           {currentView === "simulados" && <SimuladosView onUserActivity={markUserActivity} />}
           {currentView === "materias" && (
             <MateriasView
@@ -420,6 +466,8 @@ export default function App() {
               courseContentLoading={courseContentLoading}
               courseContentError={courseContentError}
               onRetryCourseContent={reloadCourseContent}
+              initialTarget={materiasTarget}
+              authUser={authUser}
               onFocusModeChange={setStudyFocusMode}
               onActivityAnswered={markStudyActivityAnswered}
             />
@@ -510,15 +558,15 @@ export default function App() {
               </p>
             )}
 
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
+                className="w-full rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent sm:w-auto"
                 onClick={() => setIsProfileEditorOpen(false)}
               >
                 Cancelar
               </button>
-              <button className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+              <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto">
                 Salvar
               </button>
             </div>
@@ -697,6 +745,19 @@ function getTotalProgressSummary(progress: StudyProgress, courseModules: Subject
   };
 }
 
+function getFirstInProgressModule(
+  progress: StudyProgress,
+  courseModules: SubjectModuleMap,
+  subjectName: string,
+) {
+  const modules = courseModules[subjectName] ?? [];
+
+  return modules.find((module) => {
+    const moduleProgress = getModuleProgressPercent(progress, subjectName, module);
+    return moduleProgress > 0 && moduleProgress < 100;
+  }) ?? modules.find((module) => getModuleProgressPercent(progress, subjectName, module) > 0) ?? null;
+}
+
 function CourseContentState({
   isLoading,
   error,
@@ -714,7 +775,7 @@ function CourseContentState({
             <div>
               <h2 className="text-xl font-semibold text-foreground">Carregando conteúdo...</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Buscando matérias, módulos, aulas e exercícios no Supabase.
+                Carregando matérias, módulos, aulas e exercícios.
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-4">
@@ -731,7 +792,7 @@ function CourseContentState({
             </div>
             <button
               type="button"
-              className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:w-fit"
               onClick={onRetry}
             >
               Tentar novamente
@@ -749,6 +810,8 @@ function MateriasView({
   courseContentLoading,
   courseContentError,
   onRetryCourseContent,
+  initialTarget,
+  authUser,
   onFocusModeChange,
   onActivityAnswered,
 }: {
@@ -757,6 +820,8 @@ function MateriasView({
   courseContentLoading: boolean;
   courseContentError: string;
   onRetryCourseContent: () => void;
+  initialTarget: StudyTarget | null;
+  authUser: AuthUser | null;
   onFocusModeChange?: (isFocused: boolean) => void;
   onActivityAnswered: (subjectName: string, moduleTitle: string, activityKey: string) => void;
 }) {
@@ -767,6 +832,22 @@ function MateriasView({
     onFocusModeChange?.(selected !== null);
     return () => onFocusModeChange?.(false);
   }, [onFocusModeChange, selected]);
+
+  useEffect(() => {
+    if (!initialTarget || courseContentLoading || courseContentError) return;
+
+    const subjectIndex = SUBJECTS.findIndex((subject) => subject.name === initialTarget.subjectName);
+    if (subjectIndex < 0) return;
+
+    const modules = courseModules[initialTarget.subjectName] ?? [];
+    const targetModule =
+      modules.find((module) => module.title === initialTarget.moduleTitle) ??
+      modules[0] ??
+      null;
+
+    setSelected(subjectIndex);
+    setSelectedModuleTitle(targetModule?.title ?? null);
+  }, [courseContentError, courseContentLoading, courseModules, initialTarget]);
 
   const selectSubject = (index: number) => {
     if (courseContentLoading || courseContentError) return;
@@ -891,6 +972,7 @@ function MateriasView({
                   module={activeModule}
                   subjectName={s.name}
                   moduleProgress={getModuleProgressPercent(studyProgress, s.name, activeModule)}
+                  canSaveProgress={Boolean(authUser)}
                   onActivityAnswered={onActivityAnswered}
                 />
               ) : (
@@ -912,7 +994,7 @@ function MateriasView({
     <div className="p-4 md:p-8 xl:p-12">
       <div className="w-full max-w-[1500px] space-y-4 md:space-y-8">
         {/* Summary bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {SUBJECTS.map((s, i) => (
             (() => {
               const moduleCount = getSubjectModuleCount(courseModules, s.name);
@@ -1010,10 +1092,11 @@ function MateriasView({
               {activeModule ? (
                 <ModuleContent
                   module={activeModule}
-                  subjectName={s.name}
-                  moduleProgress={getModuleProgressPercent(studyProgress, s.name, activeModule)}
-                  onActivityAnswered={onActivityAnswered}
-                />
+                      subjectName={s.name}
+                      moduleProgress={getModuleProgressPercent(studyProgress, s.name, activeModule)}
+                      canSaveProgress={Boolean(authUser)}
+                      onActivityAnswered={onActivityAnswered}
+                    />
               ) : (
                 <div className="rounded-xl border border-dashed border-border bg-muted/30 p-5">
                   <h3 className="font-semibold text-foreground">Conteúdo em preparação</h3>
@@ -1107,7 +1190,7 @@ const SUBJECT_IDENTITIES: Record<string, SubjectIdentity> = {
     accent: "text-indigo-700 dark:text-indigo-300",
     soft: "bg-indigo-50 dark:bg-indigo-950/30",
     border: "border-indigo-200 dark:border-indigo-900",
-    icon: "ƒ",
+    icon: "Æ’",
     visualTitle: "Resolução visual",
     reviewTitle: "Revisão por etapas",
   },
@@ -1482,11 +1565,13 @@ function ModuleContent({
   module,
   subjectName,
   moduleProgress,
+  canSaveProgress,
   onActivityAnswered,
 }: {
   module: SubjectModuleContent;
   subjectName: string;
   moduleProgress: number;
+  canSaveProgress: boolean;
   onActivityAnswered: (subjectName: string, moduleTitle: string, activityKey: string) => void;
 }) {
   const sections = module.sections ?? buildFallbackSections(module);
@@ -1494,6 +1579,18 @@ function ModuleContent({
   const learningPath = module.learningPath ?? DEFAULT_LEARNING_PATH;
   const identity = getSubjectIdentity(subjectName);
   const courseBlocks = buildCourseBlocks(subjectName, module);
+  const canCompleteModule = canSaveProgress && getModuleActivityTotal(module) > 0 && moduleProgress < 100;
+  const completeModule = () => {
+    if (!canSaveProgress) return;
+
+    module.activities.forEach((activity) => {
+      onActivityAnswered(subjectName, module.title, activity.question);
+    });
+
+    if (module.miniChallenge) {
+      onActivityAnswered(subjectName, module.title, `desafio:${module.miniChallenge.question ?? module.title}`);
+    }
+  };
 
   return (
     <div className="space-y-6 rounded-xl border border-border bg-background/60 p-4 md:p-6">
@@ -1516,7 +1613,22 @@ function ModuleContent({
             </div>
           </div>
         </div>
-        <p className="mt-2 max-w-4xl text-sm md:text-base leading-relaxed text-muted-foreground">{module.objective}</p>
+        <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <p className="max-w-4xl text-sm md:text-base leading-relaxed text-muted-foreground">{module.objective}</p>
+          <button
+            type="button"
+            className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+            onClick={completeModule}
+            disabled={!canCompleteModule}
+          >
+            {!canSaveProgress ? "Entre para salvar progresso" : moduleProgress >= 100 ? "Aula concluida" : "Marcar aula como concluida"}
+          </button>
+        </div>
+        {!canSaveProgress && (
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+            Voce pode estudar normalmente, mas progresso, sequencia e continuar estudando so ficam salvos depois de entrar na conta.
+          </p>
+        )}
       </div>
 
       <section className="space-y-3">
@@ -2543,7 +2655,7 @@ function TrigonometrySignature({ nodes }: { nodes: string[] }) {
             <polygon points="70,178 330,178 330,48" fill="none" stroke="currentColor" strokeWidth="5" className="text-amber-600" />
             <path d="M94 178 A24 24 0 0 1 111 161" fill="none" stroke="currentColor" strokeWidth="3" className="text-violet-600" />
             <rect x="306" y="154" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground" />
-            <text x="108" y="164" className="fill-violet-700 text-sm font-bold dark:fill-violet-300">θ</text>
+            <text x="108" y="164" className="fill-violet-700 text-sm font-bold dark:fill-violet-300">Î¸</text>
             <text x="170" y="198" className="fill-foreground text-sm font-semibold">cateto adjacente</text>
             <text x="338" y="118" className="fill-foreground text-sm font-semibold">oposto</text>
             <text x="184" y="92" className="fill-foreground text-sm font-semibold">hipotenusa</text>
@@ -3099,7 +3211,7 @@ function ThermochemistrySignature({ nodes }: { nodes: string[] }) {
               <path d="M0,0 L8,4 L0,8 Z" className="fill-green-500" />
             </marker>
           </defs>
-          <text x="258" y="105" className="fill-green-600 text-[12px]">ΔH &lt; 0</text>
+          <text x="258" y="105" className="fill-green-600 text-[12px]">Î”H &lt; 0</text>
         </svg>
       </div>
 
@@ -3109,13 +3221,13 @@ function ThermochemistrySignature({ nodes }: { nodes: string[] }) {
         </p>
         <div className="mt-4 grid gap-3">
           <div className="rounded-lg bg-green-100 p-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-200">
-            <strong>Exotérmica:</strong> libera calor, produtos com menor entalpia, ΔH negativo.
+            <strong>Exotérmica:</strong> libera calor, produtos com menor entalpia, Î”H negativo.
           </div>
           <div className="rounded-lg bg-amber-100 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-            <strong>Endotérmica:</strong> absorve calor, produtos com maior entalpia, ΔH positivo.
+            <strong>Endotérmica:</strong> absorve calor, produtos com maior entalpia, Î”H positivo.
           </div>
           <div className="rounded-lg bg-purple-100 p-3 text-sm text-purple-800 dark:bg-purple-950 dark:text-purple-200">
-            <strong>Lei de Hess:</strong> some caminhos equivalentes e ajuste o ΔH junto com a equação.
+            <strong>Lei de Hess:</strong> some caminhos equivalentes e ajuste o Î”H junto com a equação.
           </div>
         </div>
       </div>
@@ -3326,6 +3438,10 @@ function ModuleActivity({
     selectedChoice !== null &&
     activity.correctChoice !== undefined &&
     selectedChoice === activity.correctChoice;
+  const correctChoiceLabel =
+    hasChoices && activity.correctChoice !== undefined
+      ? `${String.fromCharCode(65 + activity.correctChoice)}. ${activity.choices?.[activity.correctChoice] ?? activity.answer}`
+      : activity.answer;
   const writtenEvaluation = showFeedback && !hasChoices
     ? evaluateWrittenAnswer(activity, writtenAnswer)
     : null;
@@ -3446,7 +3562,7 @@ function ModuleActivity({
 
           {!writtenEvaluation && (
             <>
-              <p>{activity.answer}</p>
+              <p><strong>Resposta correta:</strong> {correctChoiceLabel}</p>
               {activity.explanation && <p className="mt-2">{activity.explanation}</p>}
             </>
           )}
@@ -3459,7 +3575,7 @@ function ModuleActivity({
 function PlaceholderView() {
   return (
     <div className="p-4 md:p-8 xl:p-12">
-      <div className="bg-card rounded-xl p-10 md:p-12 text-center border border-border">
+      <div className="bg-card rounded-xl p-6 text-center border border-border md:p-12">
         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
           <Settings className="w-8 h-8 text-muted-foreground" />
         </div>
@@ -3495,9 +3611,9 @@ function ConfiguracoesView({
     setStatus("");
     try {
       await onUserNameSave(nextName);
-      setStatus("Nome salvo no Supabase.");
+      setStatus("Nome salvo na sua conta.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Nao foi possivel salvar no Supabase.");
+      setStatus(error instanceof Error ? error.message : "Nao foi possivel salvar o perfil.");
     }
   };
 
@@ -3522,7 +3638,7 @@ function ConfiguracoesView({
             />
           </label>
 
-          <button className="px-4 py-2 md:px-5 md:py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm md:text-base">
+          <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto md:px-5 md:py-2.5 md:text-base">
             Salvar nome
           </button>
 
@@ -3540,20 +3656,71 @@ function ConfiguracoesView({
   );
 }
 
-function AuthPanel({
+function AccountRequiredView({
+  title,
+  description,
   authUser,
   authReady,
   onAuthChanged,
 }: {
+  title: string;
+  description: string;
   authUser: AuthUser | null;
   authReady: boolean;
   onAuthChanged: () => Promise<void>;
+}) {
+  return (
+    <div className="p-4 md:p-8 xl:p-12">
+      <div className="w-full max-w-[980px] space-y-5">
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 md:p-6">
+          <p className="text-sm font-medium text-primary">Conta necessaria</p>
+          <h2 className="mt-2 text-2xl font-semibold text-foreground">{title}</h2>
+          <p className="mt-2 text-sm md:text-base text-muted-foreground">{description}</p>
+          <div className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card/70 p-3">Progresso individual</div>
+            <div className="rounded-xl border border-border bg-card/70 p-3">Dados salvos na sua conta</div>
+            <div className="rounded-xl border border-border bg-card/70 p-3">Sincronizacao entre dispositivos</div>
+          </div>
+        </div>
+
+        <AuthPanel
+          authUser={authUser}
+          authReady={authReady}
+          onAuthChanged={onAuthChanged}
+          context="gate"
+        />
+      </div>
+    </div>
+  );
+}
+
+function AuthPanel({
+  authUser,
+  authReady,
+  onAuthChanged,
+  context = "settings",
+}: {
+  authUser: AuthUser | null;
+  authReady: boolean;
+  onAuthChanged: () => Promise<void>;
+  context?: "settings" | "gate";
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localAuthUser, setLocalAuthUser] = useState<AuthUser | null>(authUser);
+
+  useEffect(() => {
+    setLocalAuthUser(authUser);
+    if (authUser) {
+      setEmail("");
+      setPassword("");
+    }
+  }, [authUser]);
+
+  const displayAuthUser = authUser ?? localAuthUser;
 
   const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -3566,9 +3733,17 @@ function AuthPanel({
         setStatus("Login realizado.");
       } else {
         await signUpWithEmail(email.trim(), password);
+        setMode("signin");
         setStatus("Enviamos um e-mail de verificação. Confirme seu e-mail antes de entrar.");
       }
 
+      if (mode === "signup") {
+        setStatus("Conta criada. Enviamos um e-mail de confirmacao. Abra o link do e-mail e depois volte para entrar.");
+      }
+
+      const currentUser = await getCurrentAuthUser();
+      setLocalAuthUser(currentUser);
+      setEmail("");
       setPassword("");
       await onAuthChanged();
     } catch (error) {
@@ -3584,6 +3759,10 @@ function AuthPanel({
 
     try {
       await signOut();
+      setLocalAuthUser(null);
+      setEmail("");
+      setPassword("");
+      setMode("signin");
       await onAuthChanged();
       setStatus("Voce saiu da conta.");
     } catch (error) {
@@ -3593,45 +3772,69 @@ function AuthPanel({
     }
   };
 
+  const title = displayAuthUser
+    ? "Conta conectada"
+    : mode === "signup"
+      ? "Criar conta gratuita"
+      : "Entrar na conta";
+
+  const description = displayAuthUser
+    ? "Seu progresso, flashcards, calendario e simulados ficam vinculados a esta conta."
+    : context === "gate"
+      ? "Entre para usar esta area e manter seus dados separados por usuario."
+      : "Use sua conta para salvar progresso, flashcards, calendario e simulados entre dispositivos.";
+
   return (
     <div className="bg-card rounded-xl p-5 md:p-6 border border-border space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Conta</h2>
-        <p className="text-sm text-muted-foreground">
-          Entre para separar seus dados por usuario e sincronizar entre dispositivos.
-        </p>
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       {!authReady ? (
         <p className="text-sm text-muted-foreground">Verificando sessao...</p>
-      ) : authUser ? (
+      ) : displayAuthUser ? (
         <div className="space-y-4">
           <div className="rounded-lg bg-muted/60 p-4">
             <p className="text-sm text-muted-foreground">Conectado como</p>
-            <p className="font-medium text-foreground">{authUser.email || authUser.id}</p>
+            <p className="font-medium text-foreground">{displayAuthUser.email || displayAuthUser.id}</p>
           </div>
           <button
-            className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             onClick={handleSignOut}
             disabled={isSubmitting}
             type="button"
           >
-            Sair da conta
+            {isSubmitting ? "Saindo..." : "Sair da conta / trocar conta"}
           </button>
         </div>
       ) : (
-        <form onSubmit={handleAuthSubmit} className="space-y-4">
-          <div className="flex gap-2">
+        <form onSubmit={handleAuthSubmit} className="space-y-4" autoComplete="off">
+          <div className="grid gap-2 rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground sm:grid-cols-3">
+            <span>Progresso individual</span>
+            <span>Flashcards privados</span>
+            <span>Calendario sincronizado</span>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
             <button
-              className={`rounded-lg px-4 py-2 text-sm ${mode === "signin" ? "bg-primary text-primary-foreground" : "border border-border text-foreground hover:bg-accent"}`}
-              onClick={() => setMode("signin")}
+              className={`flex-1 rounded-lg px-4 py-2 text-sm sm:flex-none ${mode === "signin" ? "bg-primary text-primary-foreground" : "border border-border text-foreground hover:bg-accent"}`}
+              onClick={() => {
+                setMode("signin");
+                setPassword("");
+                setStatus("");
+              }}
               type="button"
             >
               Entrar
             </button>
             <button
-              className={`rounded-lg px-4 py-2 text-sm ${mode === "signup" ? "bg-primary text-primary-foreground" : "border border-border text-foreground hover:bg-accent"}`}
-              onClick={() => setMode("signup")}
+              className={`flex-1 rounded-lg px-4 py-2 text-sm sm:flex-none ${mode === "signup" ? "bg-primary text-primary-foreground" : "border border-border text-foreground hover:bg-accent"}`}
+              onClick={() => {
+                setMode("signup");
+                setPassword("");
+                setStatus("");
+              }}
               type="button"
             >
               Criar conta
@@ -3646,6 +3849,7 @@ function AuthPanel({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
               placeholder="voce@email.com"
               type="email"
+              autoComplete="email"
               required
             />
           </label>
@@ -3658,13 +3862,14 @@ function AuthPanel({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
               placeholder="Minimo de 6 caracteres"
               type="password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
               minLength={6}
               required
             />
           </label>
 
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Aguarde..." : mode === "signin" ? "Entrar" : "Criar conta"}
@@ -3694,7 +3899,7 @@ function HomeView({
   courseContentLoading: boolean;
   courseContentError: string;
   onRetryCourseContent: () => void;
-  onOpenMaterias: () => void;
+  onOpenMaterias: (target?: StudyTarget) => void;
 }) {
   const { totalModules, completedModules, overallProgress } = getTotalProgressSummary(studyProgress, courseModules);
   const inProgressSubjects = SUBJECTS
@@ -3728,7 +3933,7 @@ function HomeView({
               <div>
                 <h2 className="font-semibold text-foreground">Carregando conteúdo...</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Buscando matérias e módulos no Supabase.
+                  Carregando matérias e módulos.
                 </p>
               </div>
             ) : (
@@ -3739,7 +3944,7 @@ function HomeView({
                 </div>
                 <button
                   type="button"
-                  className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:w-fit"
                   onClick={onRetryCourseContent}
                 >
                   Tentar novamente
@@ -3788,7 +3993,7 @@ function HomeView({
         <div>
           <h2 className="text-base md:text-xl xl:text-2xl font-semibold mb-3 md:mb-5 text-foreground">Continue estudando</h2>
           {inProgressSubjects.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               {inProgressSubjects.map((subject) => (
                 <SubjectCard
                   key={subject.name}
@@ -3797,6 +4002,10 @@ function HomeView({
                   progress={subject.computedProgress}
                   color={subject.color}
                   icon={subject.icon}
+                  onClick={() => {
+                    const module = getFirstInProgressModule(studyProgress, courseModules, subject.name);
+                    onOpenMaterias({ subjectName: subject.name, moduleTitle: module?.title });
+                  }}
                 />
               ))}
             </div>
@@ -3811,13 +4020,13 @@ function HomeView({
         <div>
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <h2 className="text-base md:text-xl xl:text-2xl font-semibold text-foreground">Próxima estudada</h2>
-            <button className="text-sm text-primary hover:underline" onClick={onOpenMaterias} type="button">Ver todas →</button>
+            <button className="text-sm text-primary hover:underline" onClick={() => onOpenMaterias()} type="button">Ver todas →</button>
           </div>
           <div className="space-y-3">
             {lastStudy && lastStudySubject ? (
               <button
                 className="w-full bg-card border border-border rounded-xl p-4 md:p-6 text-left hover:border-primary/50 hover:bg-primary/5 transition-colors"
-                onClick={onOpenMaterias}
+                onClick={() => onOpenMaterias(lastStudy)}
                 type="button"
               >
                 <div className="flex items-center gap-4">
@@ -4266,7 +4475,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
               <p className="text-sm font-medium text-primary">Dia selecionado</p>
               <h3 className="mt-1 text-lg font-semibold text-foreground">{formatLongDate(selectedDate)}</h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                {isCalendarLoading ? "Carregando dados do calendario..." : "Lembretes e recorrencias ficam salvos no Supabase."}
+                {isCalendarLoading ? "Carregando dados do calendario..." : "Lembretes e recorrencias ficam salvos na sua conta."}
               </p>
               {calendarStatus && (
                 <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
@@ -4468,9 +4677,9 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-lg md:text-xl font-semibold text-foreground">Todos os meses de {selectedYear}</h2>
-              <p className="text-sm text-muted-foreground">Visao anual com feriados, lembretes e recorrencias salvas no Supabase.</p>
+              <p className="text-sm text-muted-foreground">Visao anual com feriados, lembretes e recorrencias da sua conta.</p>
             </div>
-            <div className="flex gap-2 text-xs">
+            <div className="flex flex-wrap gap-2 text-xs">
               <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400"><span className="h-2 w-2 rounded-full bg-green-500" /> Feriado</span>
               <span className="inline-flex items-center gap-1 text-orange-700 dark:text-orange-400"><span className="h-2 w-2 rounded-full bg-orange-500" /> Lembrete</span>
               <span className="inline-flex items-center gap-1 text-primary"><span className="h-2 w-2 rounded-full bg-primary" /> Recorrencia</span>
@@ -4623,7 +4832,7 @@ function FlashcardsView({
       setIsCreatingDeck(false);
       onUserActivity("flashcard");
     } catch (error) {
-      setDeckStatus(error instanceof Error ? error.message : "Nao foi possivel criar o deck no Supabase.");
+      setDeckStatus(error instanceof Error ? error.message : "Nao foi possivel criar o deck.");
     }
   };
 
@@ -4665,7 +4874,7 @@ function FlashcardsView({
   return (
     <div className="p-4 md:p-8 xl:p-12">
       <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
-        <div className="flex gap-4 border-b border-border">
+        <div className="flex gap-4 overflow-x-auto border-b border-border">
           <button className="pb-3 px-1 text-sm font-medium text-primary border-b-2 border-primary">
             Meus decks
           </button>
@@ -4674,9 +4883,9 @@ function FlashcardsView({
           </button>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-start sm:justify-end">
           <button
-            className="px-4 py-2 md:px-5 md:py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm md:text-base"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto md:px-5 md:py-2.5 md:text-base"
             onClick={() => setIsCreatingDeck(true)}
             type="button"
           >
@@ -4698,10 +4907,10 @@ function FlashcardsView({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
               placeholder="Ex: Química - Ligações químicas"
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
+                className="w-full rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent sm:w-auto"
                 onClick={() => {
                   setDeckName("");
                   setIsCreatingDeck(false);
@@ -4709,7 +4918,7 @@ function FlashcardsView({
               >
                 Cancelar
               </button>
-              <button className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+              <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto">
                 Criar deck
               </button>
             </div>
@@ -4718,7 +4927,7 @@ function FlashcardsView({
         )}
 
         {isDecksLoading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="h-44 animate-pulse rounded-xl border border-border bg-muted" />
             ))}
@@ -4727,7 +4936,7 @@ function FlashcardsView({
           <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-5">
             <h3 className="font-semibold text-foreground">Flashcards indisponiveis</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nao foi possivel carregar seus decks agora. Isso pode acontecer durante instabilidade ou manutencao do Supabase.
+              Nao foi possivel carregar seus decks agora. Tente novamente em alguns instantes.
             </p>
             <p className="mt-2 text-sm text-destructive">{deckLoadError}</p>
             <button
@@ -4739,7 +4948,7 @@ function FlashcardsView({
             </button>
           </div>
         ) : decks.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {decks.map((deck) => (
               <button
                 key={deck.id}
@@ -4798,7 +5007,7 @@ function FlashcardsView({
                   placeholder="Resposta ou explicação"
                 />
               </label>
-              <button className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+              <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto">
                 Salvar flashcard
               </button>
             </form>
@@ -4845,7 +5054,7 @@ function FlashcardsView({
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <button
                       className="flex-1 rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
                       onClick={() => setIsCardAnswerVisible((visible) => !visible)}
@@ -4882,6 +5091,7 @@ type EnemQuestion = {
   number: number;
   type: "objective" | "open";
   area: string;
+  language?: "english" | "spanish";
   prompt: string;
   support?: string;
   source?: string;
@@ -4907,15 +5117,23 @@ type EnemExam = {
   questions: EnemQuestion[];
 };
 
+type EnemExamResult = {
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  percent: number;
+  byArea: Record<string, { correct: number; total: number }>;
+};
+
 const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
   {
     id: "enem-2025-white-english",
-    title: "ENEM 2025 - Inglês, Caderno Branco",
+    title: "ENEM 2025 - Caderno Branco",
     year: 2025,
     day: 1,
     questionCount: 5,
-    areas: ["Linguagens", "Inglês"],
-    description: "Piloto nativo com as cinco questões de inglês enviadas para importação.",
+    areas: ["Linguagens", "Caderno Branco"],
+    description: "Questões oficiais de língua estrangeira do ENEM 2025 em formato nativo, com alternativas clicáveis e correção ao finalizar.",
     pdfUrl: "",
     officialUrl: "",
     answerKeyUrl: "",
@@ -4926,7 +5144,13 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
       4: "D",
       5: "D",
     },
-    spanishAnswerKey: {},
+    spanishAnswerKey: {
+      1: "D",
+      2: "C",
+      3: "B",
+      4: "A",
+      5: "D",
+    },
     answerKey: {},
     questions: [
       {
@@ -4934,9 +5158,10 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
         number: 1,
         type: "objective",
         area: "Inglês",
+        language: "english",
         support: "It is true that all children are special, simply because they are children. But most adults are not special, and children end up as adults pretty quickly. Life then can be difficult and even disappointing. The shock of this may account for the emergence of the “snowflake generation” of university students, who are so delicate they can’t handle controversial ideas being put forward in their lectures. The roots of this fragility run deep in modern culture. So, an approach of the world that states: “Life is wonderful, you’re special and, if you are a good boy/girl, life will be amazing forever” is not a message designed to aid bouncing back from failure or confronting catastrophe. Resilience is not about feeding ego — telling your children how wonderful they are — but strengthening it.",
         prompt: "Nesse texto, a expressão “snowflake generation” é usada para",
-        source: "ENEM 2025, Inglês, Caderno Branco, Questão 01.",
+        source: "ENEM 2025, Caderno Branco, Questão 01.",
         options: [
           "abordar obstáculos impostos a universitários.",
           "destacar mensagens de incentivo a estudantes.",
@@ -4950,9 +5175,10 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
         number: 2,
         type: "objective",
         area: "Inglês",
+        language: "english",
         support: "A imagem mostra copos de café com mensagens relacionadas ao sono: “What is sleep?”, “Slept 5-7 hours” e “Slept 8-10 hours”.",
         prompt: "Nesse texto, a pergunta “What is sleep?”, em uma das embalagens do produto, está relacionada ao(à)",
-        source: "ENEM 2025, Inglês, Caderno Branco, Questão 02.",
+        source: "ENEM 2025, Caderno Branco, Questão 02.",
         image: enem2025Q2SleepCups,
         imageAlt: "Foto de copos de café organizados por quantidade de sono.",
         options: [
@@ -4968,9 +5194,10 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
         number: 3,
         type: "objective",
         area: "Inglês",
+        language: "english",
         support: "Glory Ames, from the White Earth reservation, is frustrated that despite the presence of several indigenous reservations near Moorhead, local Halloween stores still feature a western section with costumes such as “pow wow princess”. Even worse, despite a long-running debate about racism and cultural appropriation, often prompted by backlash against celebrities and politicians for donning offensive costumes, people continue to wear such costumes. Last Halloween, Ames spotted a photo on Instagram of a girl dressed as a Native American with a bullet in her forehead. She immediately reported it to the social media platform and had it removed. “They blatantly take certain aspects of our culture, race, religion, and use it for their advantage and ignore the people living it”, said Ames.",
         prompt: "Ao abordar um aspecto da celebração do Halloween, esse texto tem por objetivo",
-        source: "ENEM 2025, Inglês, Caderno Branco, Questão 03.",
+        source: "ENEM 2025, Caderno Branco, Questão 03.",
         options: [
           "denunciar a violência contra crianças indígenas.",
           "descrever costumes tradicionais em celebrações indígenas.",
@@ -4984,9 +5211,10 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
         number: 4,
         type: "objective",
         area: "Inglês",
+        language: "english",
         support: "My idea of philosophy is that if it is not relevant to human problems, if it does not tell us how we can go about eradicating some of the misery in this world, then it is not worth the name of philosophy. I think Socrates made a very profound statement when he asserted that philosophy is to teach us proper living. In this day and age “proper living” means liberation from the urgent problems of poverty, economic necessity and indoctrination, mental oppression.",
         prompt: "Nesse texto, ao discorrer sobre a relevância da filosofia, a escritora Angela Davis tem por objetivo",
-        source: "ENEM 2025, Inglês, Caderno Branco, Questão 04.",
+        source: "ENEM 2025, Caderno Branco, Questão 04.",
         options: [
           "criticá-la pela restrição temática.",
           "vinculá-la ao universo acadêmico.",
@@ -5000,9 +5228,10 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
         number: 5,
         type: "objective",
         area: "Inglês",
+        language: "english",
         support: "Remember the sky that you were born under, know each of the star’s stories. Remember the moon, know who she is. Remember the sun’s birth at dawn. [...] Remember your birth, how your mother struggled to give you form and breath [...] Remember the earth whose skin you are: red earth, black earth, yellow earth, white earth, brown earth, we are earth. Remember the plants, trees, animal life who all have their tribes, their families, their histories, too [...] Remember you are all people and all people are you. Remember you are this universe and this universe is you. Remember all is in motion, is growing, is you.",
         prompt: "Nesse poema, de uma autora de ascendência indígena, o eu lírico ressalta a",
-        source: "ENEM 2025, Inglês, Caderno Branco, Questão 05.",
+        source: "ENEM 2025, Caderno Branco, Questão 05.",
         options: [
           "potência dos astros celestes.",
           "origem das plantas e dos animais.",
@@ -5011,6 +5240,62 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
           "conexão entre o tempo real e o tempo imaginário.",
         ],
       },
+      {
+        id: "enem-2025-branco-esp-q1",
+        number: 1,
+        type: "objective",
+        area: "Espanhol",
+        language: "spanish",
+        prompt: "Na charge, a diversidade linguística está representada pelo uso de",
+        source: "ENEM 2025, Caderno Branco, Questão 01.",
+        image: enem2025Q1SpanishDiversity,
+        imageAlt: "Charge em espanhol sobre o Dia da Paz, com marcas de fala regional.",
+        options: ["estruturas verbais com valor de futuro próximo.","expressões idiomáticas características de uma região.","advérbios característicos do repertório vocabular dos jovens.","marcas da oralidade expressas na representação escrita da fala.","enunciados interrogativos em situação comunicativa com um interlocutor."],
+      },
+      {
+        id: "enem-2025-branco-esp-q2",
+        number: 2,
+        type: "objective",
+        area: "Espanhol",
+        language: "spanish",
+        support: "¿Qué es la generación Alfa? Hacer cortes generacionales no es una ciencia exacta. Sin embargo, según un análisis de 2018 del centro de estudios Pew Research Center, analizar las generaciones ofrece una manera de entender cómo los acontecimientos globales y los cambios tecnológicos, económicos y sociales interactúan para definir la forma en que la gente ve el mundo. Y está claro cómo ve el mundo la próxima generación: a través de una pantalla. Antes las generaciones se definían a partir de sucesos históricos o sociales importantes. Hoy se delimitan por el uso de determinada tecnología. Ninguna de las generaciones anteriores será comparable a nivel digital con los Alfa.",
+        prompt: "Nesse texto, a expressão “a través de una pantalla” evidencia que a geração Alfa estabelece com o mundo uma relação marcada pelo(a)",
+        source: "ENEM 2025, Caderno Branco, Questão 02.",
+        options: ["conflito etário.","efemeridade da tecnologia.","dependência de recursos digitais.","valor dos acontecimentos sociais.","indiferença em relação a fatos históricos."],
+      },
+      {
+        id: "enem-2025-branco-esp-q3",
+        number: 3,
+        type: "objective",
+        area: "Espanhol",
+        language: "spanish",
+        support: "Letra da canção Polvorado, de Nacho Vegas, sobre patrões e trabalhadores.",
+        prompt: "Na letra da canção Polvorado, ao apresentar as reflexões do eu poético, o cantor espanhol Nacho Vegas",
+        source: "ENEM 2025, Caderno Branco, Questão 03.",
+        options: ["demonstra o orgulho dos trabalhadores para com artistas de referência.","critica a postura dos patrões frente aos direitos dos trabalhadores.","apresenta propostas para diminuir as desigualdades sociais.","evidencia o diálogo horizontal entre patrão e trabalhadores.","questiona a insalubridade do ambiente de trabalho."],
+      },
+      {
+        id: "enem-2025-branco-esp-q4",
+        number: 4,
+        type: "objective",
+        area: "Espanhol",
+        language: "spanish",
+        support: "Texto sobre a palavra guagua, usada nas Ilhas Canárias e em países da América do Sul, com sentidos ligados a ônibus e bebê, e possíveis origens em Cuba, no quechua e no mapuche.",
+        prompt: "Ao abordar a trajetória da palavra guagua, o texto destaca a",
+        source: "ENEM 2025, Caderno Branco, Questão 04.",
+        options: ["presença de empréstimo linguístico no espanhol.","validação de um vocábulo por uma instituição renomada.","concorrência entre línguas indígenas e a língua espanhola.","valorização da língua de um país em detrimento da de outro.","disputa entre hispano-americanos e espanhóis por sua origem."],
+      },
+      {
+        id: "enem-2025-branco-esp-q5",
+        number: 5,
+        type: "objective",
+        area: "Espanhol",
+        language: "spanish",
+        support: "Trecho da canção Cuando yo era chiquito, com versos que retomam ações e sensações da infância: todo quedaba cerca, el sueño me alcanzaba, yo sí podía, me iba pa’l río.",
+        prompt: "O recurso que caracteriza essa letra de canção como um relato das memórias do eu poético é o uso de",
+        source: "ENEM 2025, Caderno Branco, Questão 05.",
+        options: ["palavras no grau diminutivo.","adjetivos na descrição da paisagem.","vocábulos relacionados à fauna cubana.","verbos no pretérito imperfeito do indicativo.","marcas linguísticas de uma variedade caribenha."],
+      }
     ],
   },
 ];
@@ -5031,22 +5316,73 @@ function getOfficialAnswer(exam: EnemExam, questionNumber: number, language: "en
   return exam.answerKey[questionNumber];
 }
 
+
+function getOptionLabel(question: EnemQuestion, optionLetter: string | undefined) {
+  if (!optionLetter) return "Sem resposta";
+
+  const optionIndex = OBJECTIVE_OPTIONS.indexOf(optionLetter);
+  const optionText = optionIndex >= 0 ? question.options?.[optionIndex] : null;
+
+  return optionText ? `${optionLetter}. ${optionText}` : optionLetter;
+}
+
+function getSimuladoRecommendation(area: string, language: "english" | "spanish") {
+  if (area === "Inglês" || area === "Espanhol") {
+    const languageName = language === "english" ? "Inglês" : "Espanhol";
+    return {
+      title: `Reforce interpretação em ${languageName}`,
+      body: "Priorize leitura por contexto, cognatos, conectivos, intenção do autor e inferência. Na aba Matérias, revise Interpretação de Texto antes de refazer a prova.",
+    };
+  }
+
+  if (area === "Linguagens") {
+    return {
+      title: "Reforce Linguagens",
+      body: "Revise interpretação de texto, intenção comunicativa, gênero textual e relações entre linguagem verbal e visual.",
+    };
+  }
+
+  if (area === "Ciências Humanas") {
+    return {
+      title: "Reforce Ciências Humanas",
+      body: "Revise leitura de fontes, contexto histórico, escala geográfica e relações entre sociedade, território e poder.",
+    };
+  }
+
+  return {
+    title: `Reforce ${area}`,
+    body: "Use a área de Matérias para revisar os conceitos antes de refazer o simulado.",
+  };
+}
+
 function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: UserActivityType) => void }) {
+  const [activeTab, setActiveTab] = useState<"official" | "history">("official");
   const [selectedExam, setSelectedExam] = useState<EnemExam | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [languageChoice, setLanguageChoice] = useState<"english" | "spanish">("english");
-  const [result, setResult] = useState<{
-    correct: number;
-    wrong: number;
-    unanswered: number;
-    percent: number;
-    byArea: Record<string, { correct: number; total: number }>;
-  } | null>(null);
+  const [result, setResult] = useState<EnemExamResult | null>(null);
+  const [attempts, setAttempts] = useState<SimuladoAttemptData[]>([]);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
+  const [resultStatus, setResultStatus] = useState("");
+
+  const refreshAttempts = async () => {
+    setAttemptsLoading(true);
+    try {
+      setAttempts(await loadSimuladoAttempts());
+    } finally {
+      setAttemptsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshAttempts();
+  }, []);
 
   const openExam = (exam: EnemExam) => {
     setSelectedExam(exam);
     setAnswers({});
     setResult(null);
+    setResultStatus("");
     onUserActivity("simulado");
   };
 
@@ -5056,9 +5392,76 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
       [questionId]: value,
     }));
     setResult(null);
+    setResultStatus("");
   };
 
-  const finishExam = (exam: EnemExam) => {
+  const goToQuestion = (questionNumber: number) => {
+    setAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      __currentQuestion: String(questionNumber),
+    }));
+  };
+
+  const persistResult = async (
+    exam: EnemExam,
+    nextResult: EnemExamResult,
+    answeredCount: number,
+    recommendationArea: string | null,
+    attemptQuestions: EnemQuestion[],
+  ) => {
+    const examAnswers = Object.fromEntries(
+      Object.entries(answers).filter(([key, value]) => key !== "__currentQuestion" && Boolean(value)),
+    );
+
+    const questionDetails: SimuladoAttemptQuestionData[] = attemptQuestions.map((question) => {
+      const studentAnswer = answers[String(question.number)] || null;
+      const officialAnswer = getOfficialAnswer(exam, question.number, languageChoice) || null;
+      const isCorrect = Boolean(studentAnswer && officialAnswer && studentAnswer === officialAnswer);
+      const status = !studentAnswer ? "unanswered" : isCorrect ? "correct" : "wrong";
+
+      return {
+        questionId: question.id,
+        questionNumber: question.number,
+        area: question.area,
+        languageChoice: question.language ?? languageChoice,
+        prompt: question.prompt,
+        studentAnswer,
+        studentAnswerText: getOptionLabel(question, studentAnswer ?? undefined),
+        officialAnswer,
+        officialAnswerText: getOptionLabel(question, officialAnswer ?? undefined),
+        isCorrect,
+        status,
+      };
+    });
+
+    const savedAttempt = await saveSimuladoAttempt({
+      examId: exam.id,
+      examTitle: exam.title,
+      examYear: exam.year,
+      examDay: exam.day,
+      languageChoice,
+      questionCount: exam.questionCount,
+      answeredCount,
+      correctCount: nextResult.correct,
+      wrongCount: nextResult.wrong,
+      unansweredCount: nextResult.unanswered,
+      percent: nextResult.percent,
+      byArea: nextResult.byArea,
+      answers: examAnswers,
+      recommendationArea,
+      questions: questionDetails,
+    });
+
+    if (savedAttempt) {
+      setAttempts((currentAttempts) => [savedAttempt, ...currentAttempts].slice(0, 10));
+      setResultStatus("Resultado salvo no seu histórico.");
+      return;
+    }
+
+    setResultStatus("Resultado calculado. Entre na conta para salvar o histórico.");
+  };
+
+  const finishExam = async (exam: EnemExam) => {
     const byArea: Record<string, { correct: number; total: number }> = {
       Linguagens: { correct: 0, total: 45 },
       "Ciências Humanas": { correct: 0, total: 45 },
@@ -5083,18 +5486,32 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     }
 
     const wrong = exam.questionCount - correct - unanswered;
-    setResult({
+    const nextResult = {
       correct,
       wrong,
       unanswered,
       percent: Math.round((correct / exam.questionCount) * 100),
       byArea,
-    });
+    };
+    const weakestAreaEntry = Object.entries(nextResult.byArea).sort(([, first], [, second]) =>
+      first.correct / first.total - second.correct / second.total,
+    )[0];
+
+    setResult(nextResult);
     onUserActivity("simulado");
+    await persistResult(
+      exam,
+      nextResult,
+      exam.questionCount - unanswered,
+      weakestAreaEntry?.[0] ?? null,
+      exam.questions,
+    );
   };
 
   if (selectedExam) {
-    const importedQuestions = selectedExam.questions;
+    const availableLanguages = Array.from(new Set(selectedExam.questions.map((question) => question.language).filter(Boolean))) as Array<"english" | "spanish">;
+    const languageLabels: Record<"english" | "spanish", string> = { english: "Inglês", spanish: "Espanhol" };
+    const importedQuestions = selectedExam.questions.filter((question) => !question.language || question.language === languageChoice);
     const [firstQuestion] = importedQuestions;
     const currentNumber = Number((answers.__currentQuestion as string | undefined) ?? firstQuestion?.number ?? 1);
     const visibleQuestion = importedQuestions.find((question) => question.number === currentNumber) ?? firstQuestion ?? null;
@@ -5104,7 +5521,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
       Boolean(getOfficialAnswer(selectedExam, question.number, languageChoice)),
     );
 
-    const finishImportedExam = () => {
+    const finishImportedExam = async () => {
       if (!hasOfficialAnswerKey) return;
 
       const byArea: Record<string, { correct: number; total: number }> = {};
@@ -5131,14 +5548,26 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
       }
 
       const wrong = totalImported - correct - unanswered;
-      setResult({
+      const nextResult = {
         correct,
         wrong,
         unanswered,
         percent: totalImported > 0 ? Math.round((correct / totalImported) * 100) : 0,
         byArea,
-      });
+      };
+      const weakestAreaEntry = Object.entries(nextResult.byArea).sort(([, first], [, second]) =>
+        first.correct / first.total - second.correct / second.total,
+      )[0];
+
+      setResult(nextResult);
       onUserActivity("simulado");
+      await persistResult(
+        selectedExam,
+        nextResult,
+        answeredCount,
+        weakestAreaEntry?.[0] ?? null,
+        importedQuestions,
+      );
     };
 
     const weakestArea = result
@@ -5146,6 +5575,24 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
           first.correct / first.total - second.correct / second.total,
         )[0]
       : null;
+
+    const recommendation = weakestArea ? getSimuladoRecommendation(weakestArea[0], languageChoice) : null;
+    const questionReview = result
+      ? importedQuestions.map((question) => {
+          const studentAnswer = answers[String(question.number)];
+          const officialAnswer = getOfficialAnswer(selectedExam, question.number, languageChoice);
+          const isCorrect = Boolean(studentAnswer && officialAnswer && studentAnswer === officialAnswer);
+
+          return {
+            question,
+            studentAnswer,
+            officialAnswer,
+            isCorrect,
+            status: !studentAnswer ? "Não respondida" : isCorrect ? "Correta" : "Incorreta",
+          };
+        })
+      : [];
+    const needsReview = questionReview.filter((item) => !item.isCorrect);
 
     return (
       <div className="p-4 md:p-8 xl:p-12">
@@ -5206,6 +5653,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
           </div>
 
           {visibleQuestion ? (
+            <>
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
               <div className="rounded-xl border border-border bg-card p-5 md:p-7 xl:p-10">
                 <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -5274,8 +5722,27 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
 
               <div className="space-y-4">
                 <div className="rounded-xl border border-border bg-card p-4 md:p-5">
-                  <h3 className="font-semibold text-foreground">Idioma da prova</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Inglês, Caderno Branco.</p>
+                  <h3 className="font-semibold text-foreground">Idioma selecionado</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Caderno Branco.</p>
+                  {availableLanguages.length > 1 && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {availableLanguages.map((language) => (
+                        <button
+                          key={language}
+                          className={"rounded-lg border px-3 py-2 text-sm transition-colors " + (languageChoice === language ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:bg-accent")}
+                          onClick={() => {
+                            setLanguageChoice(language);
+                            setAnswers({ __currentQuestion: "1" });
+                            setResult(null);
+                            setResultStatus("");
+                          }}
+                          type="button"
+                        >
+                          {languageLabels[language]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-xl border border-border bg-card p-4 md:p-5">
@@ -5298,14 +5765,14 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
                       Correção desativada até adicionarmos o gabarito oficial dessas 5 questões.
                     </p>
                   )}
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 md:grid-cols-9">
                     {importedQuestions.map((question) => {
                       const questionKey = String(question.number);
                       return (
                         <button
                           key={question.id}
                           className={`rounded-lg border px-2 py-2 text-sm ${visibleQuestion.number === question.number ? "border-primary bg-primary text-primary-foreground" : answers[questionKey] ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-accent"}`}
-                          onClick={() => saveAnswer("__currentQuestion", String(question.number))}
+                          onClick={() => goToQuestion(question.number)}
                           type="button"
                         >
                           {question.number}
@@ -5318,7 +5785,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
                 {result && (
                   <div className="rounded-xl border border-border bg-card p-4 md:p-5">
                     <h3 className="text-lg font-semibold text-foreground">Resultado</h3>
-                    <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                    <div className="mt-4 grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
                       <div className="rounded-lg bg-muted p-3">
                         <div className="text-2xl font-bold text-foreground">{result.correct}</div>
                         <div className="text-xs text-muted-foreground">acertos</div>
@@ -5332,18 +5799,76 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
                         <div className="text-xs text-muted-foreground">percentual</div>
                       </div>
                     </div>
-                    {weakestArea && (
+                    {recommendation && (
                       <div className="mt-4 rounded-lg border border-primary/20 bg-primary/10 p-3">
-                        <h4 className="font-medium text-foreground">Recomendação</h4>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Priorize {weakestArea[0]} na aba Matérias antes de refazer estas questões.
-                        </p>
+                        <h4 className="font-medium text-foreground">{recommendation.title}</h4>
+                        <p className="mt-1 text-sm text-muted-foreground">{recommendation.body}</p>
                       </div>
+                    )}
+                    {resultStatus && (
+                      <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+                        {resultStatus}
+                      </p>
                     )}
                   </div>
                 )}
               </div>
             </div>
+
+            {result && (
+              <div className="rounded-xl border border-border bg-card p-5 md:p-7 xl:p-8">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-lg md:text-xl font-semibold text-foreground">Revisão das respostas</h3>
+                    <p className="mt-1 text-sm md:text-base text-muted-foreground">
+                      Confira o que marcou e compare com o gabarito oficial.
+                    </p>
+                  </div>
+                  <span className="w-fit rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
+                    {needsReview.length === 0 ? "Tudo correto" : `${needsReview.length} para revisar`}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  {questionReview.map(({ question, studentAnswer, officialAnswer, isCorrect, status }) => {
+                    const wasUnanswered = !studentAnswer;
+                    return (
+                      <button
+                        key={question.id}
+                        className={`rounded-xl border p-4 text-left transition-colors hover:bg-accent ${isCorrect ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/30" : "border-rose-300 bg-rose-50/60 dark:border-rose-900 dark:bg-rose-950/30"}`}
+                        onClick={() => goToQuestion(question.number)}
+                        type="button"
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="font-semibold text-foreground">Questão {question.number}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{question.prompt}</p>
+                          </div>
+                          <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${isCorrect ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"}`}>
+                            {status}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 md:grid-cols-2">
+                          <div className="rounded-lg bg-background/80 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sua resposta</p>
+                            <p className="mt-1 text-sm text-foreground">{getOptionLabel(question, studentAnswer)}</p>
+                            {wasUnanswered && (
+                              <p className="mt-1 text-xs text-muted-foreground">A questão ficou em branco.</p>
+                            )}
+                          </div>
+                          <div className="rounded-lg bg-background/80 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gabarito</p>
+                            <p className="mt-1 text-sm text-foreground">{getOptionLabel(question, officialAnswer)}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            </>
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-card p-8 md:p-10 text-center">
               <h3 className="mb-2 text-lg md:text-xl font-semibold text-foreground">Questões ainda não importadas</h3>
@@ -5362,18 +5887,31 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     <div className="p-4 md:p-8 xl:p-12">
       <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
         <div className="flex gap-4 border-b border-border overflow-x-auto">
-          <button className="pb-3 px-1 text-sm md:text-base font-medium text-primary border-b-2 border-primary whitespace-nowrap">
+          <button
+            className={`pb-3 px-1 text-sm md:text-base font-medium whitespace-nowrap ${activeTab === "official" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+            onClick={() => setActiveTab("official")}
+            type="button"
+          >
             Provas oficiais
           </button>
-          <button className="pb-3 px-1 text-sm md:text-base font-medium text-muted-foreground whitespace-nowrap" disabled>
+          <button
+            className={`pb-3 px-1 text-sm md:text-base font-medium whitespace-nowrap ${activeTab === "history" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+            onClick={() => {
+              setActiveTab("history");
+              refreshAttempts();
+            }}
+            type="button"
+          >
             Minhas respostas
           </button>
         </div>
 
+        {activeTab === "official" ? (
+          <>
         <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
           <h2 className="text-lg md:text-xl font-semibold text-foreground">Banco ENEM</h2>
           <p className="mt-2 max-w-3xl text-sm md:text-base text-muted-foreground">
-            Catálogo em formato nativo. A primeira prova importada é o bloco de inglês do ENEM 2025, Caderno Branco.
+            Catálogo em formato nativo. A primeira prova importada é o Caderno Branco do ENEM 2025, com questões de língua estrangeira.
           </p>
         </div>
 
@@ -5382,6 +5920,101 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
             <EnemExamCard key={exam.id} exam={exam} onOpen={openExam} />
           ))}
         </div>
+          </>
+        ) : (
+          <SimuladoAttemptsHistory attempts={attempts} isLoading={attemptsLoading} onRetry={refreshAttempts} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SimuladoAttemptsHistory({
+  attempts,
+  isLoading,
+  onRetry,
+}: {
+  attempts: SimuladoAttemptData[];
+  isLoading: boolean;
+  onRetry: () => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid gap-3 md:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div key={index} className="h-36 animate-pulse rounded-xl border border-border bg-muted" />
+        ))}
+      </div>
+    );
+  }
+
+  if (attempts.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+        <h2 className="text-lg font-semibold text-foreground">Nenhuma resposta salva ainda</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+          Finalize uma prova usando sua conta para acompanhar acertos, erros, percentual e recomendações de estudo.
+        </p>
+        <button
+          className="mt-4 rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
+          onClick={onRetry}
+          type="button"
+        >
+          Atualizar histórico
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-card p-5 md:p-6">
+        <h2 className="text-lg md:text-xl font-semibold text-foreground">Histórico de simulados</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Tentativas finalizadas nesta conta, com recomendação baseada na área com menor aproveitamento.
+        </p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {attempts.map((attempt) => (
+          <div key={attempt.id} className="rounded-xl border border-border bg-card p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground">{attempt.examTitle}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {new Intl.DateTimeFormat("pt-BR", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  }).format(new Date(attempt.finishedAt))}
+                </p>
+              </div>
+              <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                {attempt.percent}%
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-xl font-bold text-foreground">{attempt.correctCount}</div>
+                <div className="text-xs text-muted-foreground">acertos</div>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-xl font-bold text-foreground">{attempt.wrongCount}</div>
+                <div className="text-xs text-muted-foreground">erros</div>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-xl font-bold text-foreground">{attempt.answeredCount}</div>
+                <div className="text-xs text-muted-foreground">respondidas</div>
+              </div>
+            </div>
+
+            {attempt.recommendationArea && (
+              <p className="mt-4 rounded-lg border border-primary/20 bg-primary/10 p-3 text-sm text-muted-foreground">
+                Reforce {attempt.recommendationArea} antes da próxima tentativa.
+              </p>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -5389,7 +6022,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
 
 function EnemExamCard({ exam, onOpen }: { exam: EnemExam; onOpen: (exam: EnemExam) => void }) {
   const hasQuestions = exam.questions.length > 0;
-  const hasCorrection = Object.keys(exam.answerKey).length > 0 || Object.keys(exam.englishAnswerKey ?? {}).length > 0;
+  const hasCorrection = Object.keys(exam.answerKey).length > 0 || Object.keys(exam.englishAnswerKey ?? {}).length > 0 || Object.keys(exam.spanishAnswerKey ?? {}).length > 0;
 
   return (
     <div className="bg-card border border-border rounded-xl p-4 md:p-6 xl:p-8 hover:shadow-md transition-shadow">
@@ -5456,15 +6089,23 @@ function SubjectCard({
   progress,
   color,
   icon,
+  onClick,
 }: {
   name: string;
   subtitle: string;
   progress: number;
   color: string;
   icon: string;
+  onClick?: () => void;
 }) {
+  const Component = onClick ? "button" : "div";
+
   return (
-    <div className="bg-card border border-border rounded-xl p-3 md:p-5 xl:p-6 hover:shadow-md transition-shadow">
+    <Component
+      className="bg-card border border-border rounded-xl p-3 text-left md:p-5 xl:p-6 hover:shadow-md transition-shadow"
+      onClick={onClick}
+      type={onClick ? "button" : undefined}
+    >
       <div className={`w-10 h-10 md:w-12 md:h-12 ${color} rounded-xl flex items-center justify-center text-xl md:text-2xl mb-3`}>
         {icon === "cards" ? <CreditCard className="h-5 w-5 text-primary" /> : icon}
       </div>
@@ -5474,7 +6115,7 @@ function SubjectCard({
         <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
       </div>
       <p className="text-xs text-muted-foreground">{progress}%</p>
-    </div>
+    </Component>
   );
 }
 
@@ -5536,4 +6177,6 @@ function FlashcardDeck({
     </div>
   );
 }
+
+
 

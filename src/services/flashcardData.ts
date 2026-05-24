@@ -31,11 +31,11 @@ function getFlashcardErrorMessage(error: { message?: string } | null): string {
   const message = error?.message || "";
 
   if (message.includes("Could not find the table 'public.flashcards'")) {
-    return "A tabela de flashcards ainda não existe no Supabase. Execute o supabase-schema.sql atualizado no SQL Editor antes de salvar cards.";
+    return "A area de flashcards ainda nao esta pronta. Verifique se o esquema de flashcards foi criado.";
   }
 
   if (message.toLowerCase().includes("row-level security")) {
-    return "O Supabase bloqueou o flashcard por política de segurança. Execute as policies atualizadas do supabase-schema.sql.";
+    return "Nao foi possivel salvar este flashcard no usuario atual. Entre novamente e tente outra vez.";
   }
 
   return message || "Não foi possível salvar o flashcard.";
@@ -70,7 +70,7 @@ export async function loadFlashcards(deckId: string): Promise<FlashcardData[]> {
 
 export async function saveFlashcard(card: FlashcardData): Promise<void> {
   if (!supabase) {
-    throw new Error("Supabase nao configurado.");
+    throw new Error("A conexao da conta nao esta configurada.");
   }
 
   const profileId = await getProfileId();
