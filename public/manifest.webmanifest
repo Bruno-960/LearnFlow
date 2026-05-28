@@ -1,0 +1,49 @@
+{
+  "name": "LearnFlow",
+  "short_name": "LearnFlow",
+  "description": "Calendário, simulados, flashcards e acompanhamento de estudos.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#6c53d6",
+  "categories": ["education", "productivity"],
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Calendário",
+      "short_name": "Calendário",
+      "description": "Abrir o calendário de estudos",
+      "url": "/?view=calendar",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Simulados",
+      "short_name": "Simulados",
+      "description": "Abrir simulados",
+      "url": "/?view=simulados",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
