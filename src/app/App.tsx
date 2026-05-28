@@ -166,6 +166,7 @@ export default function App() {
   const [materiasTarget, setMateriasTarget] = useState<StudyTarget | null>(null);
   const [examReviewAlerts, setExamReviewAlerts] = useState<UpcomingExamAlert[]>([]);
   const [isExamReviewAlertOpen, setIsExamReviewAlertOpen] = useState(false);
+  const [deviceNotificationStatus, setDeviceNotificationStatus] = useState("");
 
   const applyProfile = (profile: typeof DEFAULT_PROFILE) => {
       setProfileId(profile.id);
@@ -325,6 +326,20 @@ export default function App() {
   const openExamReviewTarget = (view: "calendar" | "simulados") => {
     dismissExamReviewAlert();
     navigate(view);
+  };
+
+  const enablePopupDeviceNotifications = async () => {
+    setDeviceNotificationStatus("");
+    try {
+      const permission = await enableDevicePushNotifications();
+      setDeviceNotificationStatus(
+        permission === "granted"
+          ? "Notificações ativadas neste dispositivo."
+          : "Permissão não concedida. Abra as permissões do site no navegador e libere notificações.",
+      );
+    } catch (error) {
+      setDeviceNotificationStatus(error instanceof Error ? error.message : "Não foi possível ativar notificações.");
+    }
   };
 
   const openMaterias = (target?: StudyTarget) => {
@@ -587,7 +602,9 @@ export default function App() {
       {isExamReviewAlertOpen && examReviewAlerts.length > 0 && (
         <ExamReviewAlertPopup
           alerts={examReviewAlerts}
+          deviceNotificationStatus={deviceNotificationStatus}
           onClose={dismissExamReviewAlert}
+          onEnableDeviceNotifications={enablePopupDeviceNotifications}
           onOpenCalendar={() => openExamReviewTarget("calendar")}
           onOpenSimulados={() => openExamReviewTarget("simulados")}
         />
@@ -683,12 +700,16 @@ export default function App() {
 
 function ExamReviewAlertPopup({
   alerts,
+  deviceNotificationStatus,
   onClose,
+  onEnableDeviceNotifications,
   onOpenCalendar,
   onOpenSimulados,
 }: {
   alerts: UpcomingExamAlert[];
+  deviceNotificationStatus: string;
   onClose: () => void;
+  onEnableDeviceNotifications: () => void;
   onOpenCalendar: () => void;
   onOpenSimulados: () => void;
 }) {
@@ -714,6 +735,19 @@ function ExamReviewAlertPopup({
         {extraCount > 0 && (
           <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
             Mais {extraCount} compromisso{extraCount > 1 ? "s" : ""} também estão marcados para amanhã.
+          </p>
+        )}
+
+        <button
+          className="mt-5 w-full rounded-lg bg-orange-600 px-4 py-2 text-sm text-white hover:bg-orange-700"
+          onClick={onEnableDeviceNotifications}
+          type="button"
+        >
+          Ativar notificações no dispositivo
+        </button>
+        {deviceNotificationStatus && (
+          <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+            {deviceNotificationStatus}
           </p>
         )}
 
@@ -4352,12 +4386,7 @@ function formatCalendarNotificationTitle(title: string, shouldNotify: boolean) {
 }
 
 async function requestDeviceNotificationPermission() {
-  try {
-    return await enableDevicePushNotifications();
-  } catch (error) {
-    console.warn("Nao foi possivel ativar notificacoes push:", error);
-    return "unsupported";
-  }
+  return enableDevicePushNotifications();
 }
 
 function notifyDeviceCalendarAlerts(userId: string, alerts: UpcomingExamAlert[]) {
@@ -4593,7 +4622,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
       onUserActivity("calendario");
     } catch (error) {
       setCalendarStatusTone("error");
-      setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel salvar o lembrete.");
+      setCalendarStatus(error instanceof Error ? error.message : "Não foi possível salvar o lembrete.");
     }
   };
 
@@ -4630,7 +4659,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
       onUserActivity("calendario");
     } catch (error) {
       setCalendarStatusTone("error");
-      setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel marcar o simulado.");
+      setCalendarStatus(error instanceof Error ? error.message : "Não foi possível marcar o simulado.");
     }
   };
 
@@ -4679,7 +4708,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
       onUserActivity("calendario");
     } catch (error) {
       setCalendarStatusTone("error");
-      setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel salvar a recorrencia.");
+      setCalendarStatus(error instanceof Error ? error.message : "Não foi possível salvar a recorrência.");
     }
   };
 
