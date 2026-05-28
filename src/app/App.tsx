@@ -263,8 +263,24 @@ export default function App() {
 
     loadExamReviewAlerts();
 
+    const refreshAlerts = () => {
+      loadExamReviewAlerts();
+    };
+    const refreshAlertsOnVisible = () => {
+      if (document.visibilityState === "visible") loadExamReviewAlerts();
+    };
+    const refreshInterval = window.setInterval(loadExamReviewAlerts, 60_000);
+
+    window.addEventListener("focus", refreshAlerts);
+    window.addEventListener("learnflow:calendar-updated", refreshAlerts);
+    document.addEventListener("visibilitychange", refreshAlertsOnVisible);
+
     return () => {
       isMounted = false;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshAlerts);
+      window.removeEventListener("learnflow:calendar-updated", refreshAlerts);
+      document.removeEventListener("visibilitychange", refreshAlertsOnVisible);
     };
   }, [authUser?.id]);
 
@@ -4573,6 +4589,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
         setCalendarStatusTone("success");
         setCalendarStatus("Lembrete salvo. O aviso aparece no site; ative notificações do navegador para receber fora da página.");
       }
+      window.dispatchEvent(new Event("learnflow:calendar-updated"));
       onUserActivity("calendario");
     } catch (error) {
       setCalendarStatusTone("error");
@@ -4609,6 +4626,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
       } else {
         setCalendarStatus("Simulado marcado.");
       }
+      window.dispatchEvent(new Event("learnflow:calendar-updated"));
       onUserActivity("calendario");
     } catch (error) {
       setCalendarStatusTone("error");
@@ -4622,6 +4640,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
     try {
       await deleteCalendarReminder(id);
       setReminders((current) => current.filter((reminder) => reminder.id !== id));
+      window.dispatchEvent(new Event("learnflow:calendar-updated"));
     } catch (error) {
       setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel remover o lembrete.");
@@ -4656,6 +4675,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
         setCalendarStatusTone("success");
         setCalendarStatus("Recorrência criada. O aviso aparece no site; ative notificações do navegador para receber fora da página.");
       }
+      window.dispatchEvent(new Event("learnflow:calendar-updated"));
       onUserActivity("calendario");
     } catch (error) {
       setCalendarStatusTone("error");
@@ -4670,6 +4690,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
       await deleteCalendarRule(id);
       setRules((current) => current.filter((rule) => rule.id !== id));
       setRuleOccurrences((current) => current.filter((occurrence) => occurrence.ruleId !== id));
+      window.dispatchEvent(new Event("learnflow:calendar-updated"));
     } catch (error) {
       setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel remover a recorrencia.");

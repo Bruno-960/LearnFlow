@@ -77,5 +77,13 @@ export async function enableDevicePushNotifications(): Promise<"granted" | "deni
     throw new Error(error.message || "Não foi possível salvar a notificação do dispositivo.");
   }
 
+  await readyRegistration.showNotification("LearnFlow: notificações ativadas", {
+    body: "Este dispositivo está pronto para receber avisos mesmo fora da página.",
+    tag: "learnflow-push-enabled",
+    data: {
+      url: "/",
+    },
+  });
+
   return "granted";
 }
