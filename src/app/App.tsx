@@ -11,6 +11,7 @@ import {
   Moon,
   Sun,
   Bell,
+  AlertTriangle,
   ChevronDown,
   Flame,
   ChevronLeft,
@@ -78,6 +79,7 @@ import {
   type SimuladoAttemptData,
   type SimuladoAttemptQuestionData,
 } from "../services/simuladoAttemptData";
+import { enableDevicePushNotifications } from "../services/pushNotificationData";
 import type { SubjectModuleContent } from "../data/subjectContent";
 import enem2025Q1SpanishDiversity from "../imports/enem2025/enem-2025-branco-esp-q1-diversidade-linguistica.jpg";
 import enem2025Q2SleepCups from "../imports/enem2025/enem-2025-branco-ing-q2-sleep-cups.png";
@@ -97,6 +99,13 @@ type StudyProgress = StudyProgressMap;
 type StudyTarget = {
   subjectName: string;
   moduleTitle?: string;
+};
+
+type UpcomingExamAlert = {
+  id: string;
+  date: string;
+  title: string;
+  source: "reminder" | "rule";
 };
 
 const NAV_ITEMS: { view: View; icon: React.ReactNode; label: string }[] = [
@@ -155,6 +164,8 @@ export default function App() {
   const [courseContentError, setCourseContentError] = useState("");
   const [studyFocusMode, setStudyFocusMode] = useState(false);
   const [materiasTarget, setMateriasTarget] = useState<StudyTarget | null>(null);
+  const [examReviewAlerts, setExamReviewAlerts] = useState<UpcomingExamAlert[]>([]);
+  const [isExamReviewAlertOpen, setIsExamReviewAlertOpen] = useState(false);
 
   const applyProfile = (profile: typeof DEFAULT_PROFILE) => {
       setProfileId(profile.id);
@@ -212,6 +223,51 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadExamReviewAlerts = async () => {
+      if (!authUser) {
+        setExamReviewAlerts([]);
+        setIsExamReviewAlertOpen(false);
+        return;
+      }
+
+      const tomorrow = addDays(new Date(), 1);
+      const tomorrowKey = dateToKey(tomorrow);
+      const years = Array.from(new Set([new Date().getFullYear(), tomorrow.getFullYear()]));
+
+      try {
+        const [remindersByYear, occurrencesByYear] = await Promise.all([
+          Promise.all(years.map((year) => loadCalendarReminders(year))),
+          Promise.all(years.map((year) => loadCalendarRuleOccurrences(year))),
+        ]);
+
+        if (!isMounted) return;
+
+        const alerts = buildCalendarReviewAlerts(
+          remindersByYear.flat(),
+          occurrencesByYear.flat(),
+          tomorrowKey,
+        );
+        setExamReviewAlerts(alerts);
+
+        const dismissKey = getExamReviewDismissKey(authUser.id, tomorrowKey);
+        const wasDismissed = window.localStorage.getItem(dismissKey) === "true";
+        setIsExamReviewAlertOpen(alerts.length > 0 && !wasDismissed);
+        notifyDeviceCalendarAlerts(authUser.id, alerts);
+      } catch (error) {
+        console.warn("Nao foi possivel carregar avisos de revisao:", error);
+      }
+    };
+
+    loadExamReviewAlerts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authUser?.id]);
+
   const changeUserName = () => {
     setProfileDraftName(userName);
     setIsProfileEditorOpen(true);
@@ -240,6 +296,19 @@ export default function App() {
     setCurrentView(view);
     if (view !== "materias") setStudyFocusMode(false);
     setSidebarOpen(false);
+  };
+
+  const dismissExamReviewAlert = () => {
+    const alertDate = examReviewAlerts[0]?.date;
+    if (authUser && alertDate) {
+      window.localStorage.setItem(getExamReviewDismissKey(authUser.id, alertDate), "true");
+    }
+    setIsExamReviewAlertOpen(false);
+  };
+
+  const openExamReviewTarget = (view: "calendar" | "simulados") => {
+    dismissExamReviewAlert();
+    navigate(view);
   };
 
   const openMaterias = (target?: StudyTarget) => {
@@ -402,8 +471,18 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-1 md:gap-3 flex-shrink-0">
-            <button className="p-2 hover:bg-accent rounded-lg transition-colors">
+            <button
+              className="relative p-2 hover:bg-accent rounded-lg transition-colors"
+              onClick={() => {
+                if (examReviewAlerts.length > 0) setIsExamReviewAlertOpen(true);
+              }}
+              type="button"
+              aria-label="Avisos"
+            >
               <Bell className="w-5 h-5 text-muted-foreground" />
+              {examReviewAlerts.length > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-card" />
+              )}
             </button>
             <button
               onClick={toggleTheme}
@@ -489,6 +568,15 @@ export default function App() {
         </div>
       </main>
 
+      {isExamReviewAlertOpen && examReviewAlerts.length > 0 && (
+        <ExamReviewAlertPopup
+          alerts={examReviewAlerts}
+          onClose={dismissExamReviewAlert}
+          onOpenCalendar={() => openExamReviewTarget("calendar")}
+          onOpenSimulados={() => openExamReviewTarget("simulados")}
+        />
+      )}
+
       {/* Bottom Nav — mobile only */}
       <nav translate="no" className="notranslate fixed bottom-0 inset-x-0 z-20 md:hidden bg-card border-t border-border flex">
         {BOTTOM_NAV.map(({ view, icon, label }) => (
@@ -573,6 +661,71 @@ export default function App() {
           </form>
         </div>
       )}
+    </div>
+  );
+}
+
+function ExamReviewAlertPopup({
+  alerts,
+  onClose,
+  onOpenCalendar,
+  onOpenSimulados,
+}: {
+  alerts: UpcomingExamAlert[];
+  onClose: () => void;
+  onOpenCalendar: () => void;
+  onOpenSimulados: () => void;
+}) {
+  const [firstAlert] = alerts;
+  const extraCount = Math.max(0, alerts.length - 1);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 sm:items-center">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-primary">Aviso amanhã</p>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">{getCalendarDisplayTitle(firstAlert.title)}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Marcado para {formatLongDate(firstAlert.date)}. Confira hoje para não perder esse compromisso.
+            </p>
+          </div>
+        </div>
+
+        {extraCount > 0 && (
+          <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+            Mais {extraCount} compromisso{extraCount > 1 ? "s" : ""} também estão marcados para amanhã.
+          </p>
+        )}
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <button
+            className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+            onClick={onOpenCalendar}
+            type="button"
+          >
+            Ver calendário
+          </button>
+          <button
+            className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
+            onClick={onOpenSimulados}
+            type="button"
+          >
+            Abrir simulados
+          </button>
+        </div>
+
+        <button
+          className="mt-3 w-full rounded-lg px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          onClick={onClose}
+          type="button"
+        >
+          Agora não
+        </button>
+      </div>
     </div>
   );
 }
@@ -4136,6 +4289,8 @@ const CALENDAR_RULE_COLOR_OPTIONS: { value: CalendarRuleColor; label: string }[]
   { value: "slate", label: "Cinza" },
 ];
 
+const CALENDAR_NOTIFY_MARKER = "[avisar-1d]";
+
 function formatDateKey(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
@@ -4158,6 +4313,93 @@ function addDays(date: Date, days: number) {
 
 function dateToKey(date: Date) {
   return formatDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function normalizeCalendarText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function getCalendarDisplayTitle(title: string) {
+  return title.replace(CALENDAR_NOTIFY_MARKER, "").trim();
+}
+
+function hasCalendarNotification(title: string) {
+  return title.trim().startsWith(CALENDAR_NOTIFY_MARKER);
+}
+
+function formatCalendarNotificationTitle(title: string, shouldNotify: boolean) {
+  const displayTitle = getCalendarDisplayTitle(title);
+  return shouldNotify ? `${CALENDAR_NOTIFY_MARKER} ${displayTitle}` : displayTitle;
+}
+
+async function requestDeviceNotificationPermission() {
+  try {
+    return await enableDevicePushNotifications();
+  } catch (error) {
+    console.warn("Nao foi possivel ativar notificacoes push:", error);
+    return "unsupported";
+  }
+}
+
+function notifyDeviceCalendarAlerts(userId: string, alerts: UpcomingExamAlert[]) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  alerts.slice(0, 3).forEach((alert) => {
+    const notificationKey = `learnflow:device-calendar-alert:${userId}:${alert.id}:${alert.date}`;
+    if (window.localStorage.getItem(notificationKey) === "true") return;
+
+    new Notification("LearnFlow: compromisso amanhã", {
+      body: `${getCalendarDisplayTitle(alert.title)} em ${formatLongDate(alert.date)}.`,
+      tag: notificationKey,
+    });
+    window.localStorage.setItem(notificationKey, "true");
+  });
+}
+
+function isExamLikeCalendarTitle(title: string) {
+  const normalizedTitle = normalizeCalendarText(getCalendarDisplayTitle(title));
+  return ["simulado", "prova", "avaliacao", "enem", "vestibular"].some((term) =>
+    normalizedTitle.includes(term),
+  );
+}
+
+function getExamReviewDismissKey(userId: string, dateKey: string) {
+  return `learnflow:exam-review-alert:${userId}:${dateKey}`;
+}
+
+function buildCalendarReviewAlerts(
+  reminders: CalendarReminderData[],
+  occurrences: CalendarRuleOccurrenceData[],
+  dateKey: string,
+): UpcomingExamAlert[] {
+  const reminderAlerts = reminders
+    .filter((reminder) =>
+      reminder.date === dateKey
+      && (hasCalendarNotification(reminder.title) || isExamLikeCalendarTitle(reminder.title))
+    )
+    .map((reminder) => ({
+      id: `reminder-${reminder.id}`,
+      date: reminder.date,
+      title: reminder.title,
+      source: "reminder" as const,
+    }));
+
+  const occurrenceAlerts = occurrences
+    .filter((occurrence) =>
+      occurrence.date === dateKey
+      && (hasCalendarNotification(occurrence.title) || occurrence.type === "simulado" || occurrence.type === "folga")
+    )
+    .map((occurrence) => ({
+      id: `rule-${occurrence.ruleId}-${occurrence.date}`,
+      date: occurrence.date,
+      title: occurrence.title,
+      source: "rule" as const,
+    }));
+
+  return [...reminderAlerts, ...occurrenceAlerts];
 }
 
 function getEasterDate(year: number) {
@@ -4219,16 +4461,22 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
   const [rules, setRules] = useState<CalendarRuleData[]>([]);
   const [ruleOccurrences, setRuleOccurrences] = useState<CalendarRuleOccurrenceData[]>([]);
   const [reminderDraft, setReminderDraft] = useState("");
+  const [reminderNotifyBefore, setReminderNotifyBefore] = useState(false);
+  const [simuladoDraft, setSimuladoDraft] = useState("Simulado ENEM");
+  const [simuladoNotifyBefore, setSimuladoNotifyBefore] = useState(true);
   const [ruleTitle, setRuleTitle] = useState("Folga");
   const [ruleType, setRuleType] = useState<CalendarRuleType>("folga");
   const [ruleFrequency, setRuleFrequency] = useState<CalendarRuleFrequency>("weekly");
   const [ruleColor, setRuleColor] = useState<CalendarRuleColor>("orange");
+  const [ruleNotifyBefore, setRuleNotifyBefore] = useState(true);
   const [calendarStatus, setCalendarStatus] = useState("");
+  const [calendarStatusTone, setCalendarStatusTone] = useState<"error" | "success">("error");
   const [isCalendarLoading, setIsCalendarLoading] = useState(false);
 
   const reloadCalendarData = async () => {
     setIsCalendarLoading(true);
     setCalendarStatus("");
+    setCalendarStatusTone("error");
     try {
       const [nextReminders, nextRules, nextOccurrences] = await Promise.all([
         loadCalendarReminders(selectedYear),
@@ -4239,6 +4487,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
       setRules(nextRules);
       setRuleOccurrences(nextOccurrences);
     } catch (error) {
+      setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel carregar o calendario.");
     } finally {
       setIsCalendarLoading(false);
@@ -4309,22 +4558,72 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
     if (!title) return;
 
     setCalendarStatus("");
+    setCalendarStatusTone("error");
     try {
-      const reminder = await saveCalendarReminder(selectedDate, title);
+      const permission = reminderNotifyBefore
+        ? await requestDeviceNotificationPermission()
+        : null;
+      const reminder = await saveCalendarReminder(
+        selectedDate,
+        formatCalendarNotificationTitle(title, reminderNotifyBefore),
+      );
       setReminders((current) => [...current, reminder]);
       setReminderDraft("");
+      if (reminderNotifyBefore && permission !== "granted") {
+        setCalendarStatusTone("success");
+        setCalendarStatus("Lembrete salvo. O aviso aparece no site; ative notificações do navegador para receber fora da página.");
+      }
       onUserActivity("calendario");
     } catch (error) {
+      setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel salvar o lembrete.");
+    }
+  };
+
+  const addSimuladoReminder = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const title = simuladoDraft.trim() || "Simulado";
+    const reminderTitle = title.toLowerCase().includes("simulado") || title.toLowerCase().includes("prova")
+      ? title
+      : `Simulado: ${title}`;
+
+    setCalendarStatus("");
+    setCalendarStatusTone("error");
+    try {
+      const permission = simuladoNotifyBefore
+        ? await requestDeviceNotificationPermission()
+        : null;
+      const reminder = await saveCalendarReminder(
+        selectedDate,
+        formatCalendarNotificationTitle(reminderTitle, simuladoNotifyBefore),
+      );
+      setReminders((current) => [...current, reminder]);
+      setSimuladoDraft("Simulado ENEM");
+      setCalendarStatusTone("success");
+      if (simuladoNotifyBefore) {
+        setCalendarStatus(
+          permission === "granted"
+            ? "Simulado marcado. O aviso aparece no site e como notificação do dispositivo quando o navegador permitir."
+            : "Simulado marcado. O aviso aparece no site; ative notificações do navegador para receber fora da página.",
+        );
+      } else {
+        setCalendarStatus("Simulado marcado.");
+      }
+      onUserActivity("calendario");
+    } catch (error) {
+      setCalendarStatusTone("error");
+      setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel marcar o simulado.");
     }
   };
 
   const removeReminder = async (id: string) => {
     setCalendarStatus("");
+    setCalendarStatusTone("error");
     try {
       await deleteCalendarReminder(id);
       setReminders((current) => current.filter((reminder) => reminder.id !== id));
     } catch (error) {
+      setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel remover o lembrete.");
     }
   };
@@ -4335,9 +4634,13 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
     if (!title) return;
 
     setCalendarStatus("");
+    setCalendarStatusTone("error");
     try {
+      const permission = ruleNotifyBefore
+        ? await requestDeviceNotificationPermission()
+        : null;
       const rule = await saveCalendarRule({
-        title,
+        title: formatCalendarNotificationTitle(title, ruleNotifyBefore),
         type: ruleType,
         weekday: getDateWeekdayIndex(selectedDate),
         frequency: ruleFrequency,
@@ -4349,19 +4652,26 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
       setRuleTitle(ruleType === "folga" ? "Folga" : "");
       const nextOccurrences = await loadCalendarRuleOccurrences(selectedYear);
       setRuleOccurrences(nextOccurrences);
+      if (ruleNotifyBefore && permission !== "granted") {
+        setCalendarStatusTone("success");
+        setCalendarStatus("Recorrência criada. O aviso aparece no site; ative notificações do navegador para receber fora da página.");
+      }
       onUserActivity("calendario");
     } catch (error) {
+      setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel salvar a recorrencia.");
     }
   };
 
   const removeCalendarRule = async (id: string) => {
     setCalendarStatus("");
+    setCalendarStatusTone("error");
     try {
       await deleteCalendarRule(id);
       setRules((current) => current.filter((rule) => rule.id !== id));
       setRuleOccurrences((current) => current.filter((occurrence) => occurrence.ruleId !== id));
     } catch (error) {
+      setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Nao foi possivel remover a recorrencia.");
     }
   };
@@ -4460,7 +4770,7 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                       )}
                       {dayRuleOccurrences.slice(0, 1).map((occurrence) => (
                         <p key={occurrence.ruleId} className={`line-clamp-1 text-[11px] ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
-                          {occurrence.title}
+                          {getCalendarDisplayTitle(occurrence.title)}
                         </p>
                       ))}
                     </div>
@@ -4478,15 +4788,21 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                 {isCalendarLoading ? "Carregando dados do calendario..." : "Lembretes e recorrencias ficam salvos na sua conta."}
               </p>
               {calendarStatus && (
-                <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
-                  <p className="text-sm text-destructive">{calendarStatus}</p>
-                  <button
-                    className="mt-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground hover:bg-accent"
-                    onClick={reloadCalendarData}
-                    type="button"
-                  >
-                    Tentar novamente
-                  </button>
+                <div className={`mt-3 rounded-lg border p-3 ${
+                  calendarStatusTone === "success"
+                    ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950"
+                    : "border-destructive/20 bg-destructive/10"
+                }`}>
+                  <p className={`text-sm ${calendarStatusTone === "success" ? "text-green-700 dark:text-green-300" : "text-destructive"}`}>{calendarStatus}</p>
+                  {calendarStatusTone === "error" && (
+                    <button
+                      className="mt-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground hover:bg-accent"
+                      onClick={reloadCalendarData}
+                      type="button"
+                    >
+                      Tentar novamente
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -4515,10 +4831,15 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                         const color = CALENDAR_RULE_COLOR_CLASSES[occurrence.color];
                         return (
                           <div key={occurrence.ruleId} className={`rounded-lg border p-3 text-sm ${color.border} ${color.badge}`}>
-                            <p className="font-medium">{occurrence.title}</p>
+                            <p className="font-medium">{getCalendarDisplayTitle(occurrence.title)}</p>
                             <p className="text-xs opacity-80">
                               {CALENDAR_RULE_TYPE_LABELS[occurrence.type]} · {CALENDAR_RULE_FREQUENCY_LABELS[occurrence.frequency]}
                             </p>
+                            {(hasCalendarNotification(occurrence.title) || occurrence.type === "folga" || occurrence.type === "simulado") && (
+                              <span className="mt-2 inline-flex rounded-full bg-background/70 px-2 py-0.5 text-xs">
+                                aviso 1 dia antes
+                              </span>
+                            )}
                           </div>
                         );
                       })}
@@ -4527,6 +4848,41 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                     <p className="mt-2 text-sm text-muted-foreground">Nenhuma recorrencia nesta data.</p>
                   )}
                 </div>
+
+                <form onSubmit={addSimuladoReminder} className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Timer className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">Marcar simulado</h4>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        O site avisa 1 dia antes no calendário e, se permitido, no dispositivo.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="block space-y-1 text-sm">
+                    <span className="font-medium text-foreground">Nome da prova</span>
+                    <input
+                      value={simuladoDraft}
+                      onChange={(event) => setSimuladoDraft(event.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                      placeholder="Ex: Simulado ENEM, Prova de Matemática"
+                    />
+                  </label>
+                  <label className="flex items-start gap-2 rounded-lg bg-background/70 p-2 text-sm text-foreground">
+                    <input
+                      checked={simuladoNotifyBefore}
+                      onChange={(event) => setSimuladoNotifyBefore(event.target.checked)}
+                      className="mt-1"
+                      type="checkbox"
+                    />
+                    <span>Avisar 1 dia antes</span>
+                  </label>
+                  <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+                    Marcar simulado
+                  </button>
+                </form>
 
                 <form onSubmit={addReminder} className="space-y-2">
                   <label className="text-sm font-semibold text-foreground" htmlFor="calendar-reminder">
@@ -4539,6 +4895,15 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
                     placeholder="Ex: revisar funções às 19h"
                   />
+                  <label className="flex items-start gap-2 text-sm text-foreground">
+                    <input
+                      checked={reminderNotifyBefore}
+                      onChange={(event) => setReminderNotifyBefore(event.target.checked)}
+                      className="mt-1"
+                      type="checkbox"
+                    />
+                    <span>Avisar 1 dia antes</span>
+                  </label>
                   <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
                     Adicionar lembrete
                   </button>
@@ -4548,18 +4913,28 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                   <h4 className="text-sm font-semibold text-foreground">Lembretes do dia</h4>
                   {selectedDayReminders.length > 0 ? (
                     <div className="mt-2 space-y-2">
-                      {selectedDayReminders.map((reminder) => (
-                        <div key={reminder.id} className="flex items-start justify-between gap-3 rounded-lg bg-muted/60 p-3">
-                          <p className="text-sm text-foreground">{reminder.title}</p>
-                          <button
-                            className="text-xs text-muted-foreground hover:text-destructive"
-                            onClick={() => removeReminder(reminder.id)}
-                            type="button"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      ))}
+                      {selectedDayReminders.map((reminder) => {
+                        const shouldNotifyReminder = hasCalendarNotification(reminder.title) || isExamLikeCalendarTitle(reminder.title);
+                        return (
+                          <div key={reminder.id} className="flex items-start justify-between gap-3 rounded-lg bg-muted/60 p-3">
+                            <div className="min-w-0">
+                              <p className="text-sm text-foreground">{getCalendarDisplayTitle(reminder.title)}</p>
+                              {shouldNotifyReminder && (
+                                <span className="mt-2 inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                                  aviso 1 dia antes
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              className="text-xs text-muted-foreground hover:text-destructive"
+                              onClick={() => removeReminder(reminder.id)}
+                              type="button"
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="mt-2 text-sm text-muted-foreground">Nenhum lembrete para esta data.</p>
@@ -4594,6 +4969,9 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                           setRuleType(nextType);
                           if (!ruleTitle.trim() || ruleTitle === CALENDAR_RULE_TYPE_LABELS[ruleType]) {
                             setRuleTitle(CALENDAR_RULE_TYPE_LABELS[nextType]);
+                          }
+                          if (nextType === "folga" || nextType === "simulado") {
+                            setRuleNotifyBefore(true);
                           }
                         }}
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
@@ -4631,6 +5009,16 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                     </select>
                   </label>
 
+                  <label className="flex items-start gap-2 rounded-lg bg-background/70 p-2 text-sm text-foreground">
+                    <input
+                      checked={ruleNotifyBefore}
+                      onChange={(event) => setRuleNotifyBefore(event.target.checked)}
+                      className="mt-1"
+                      type="checkbox"
+                    />
+                    <span>Avisar 1 dia antes</span>
+                  </label>
+
                   <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
                     Criar recorrencia
                   </button>
@@ -4645,13 +5033,18 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                         return (
                           <div key={rule.id} className={`flex items-start justify-between gap-3 rounded-lg border p-3 ${color.border}`}>
                             <div>
-                              <p className="text-sm font-medium text-foreground">{rule.title}</p>
+                              <p className="text-sm font-medium text-foreground">{getCalendarDisplayTitle(rule.title)}</p>
                               <p className="text-xs text-muted-foreground">
                                 {WEEK_DAYS[rule.weekday]} · {CALENDAR_RULE_FREQUENCY_LABELS[rule.frequency]}
                               </p>
                               <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs ${color.badge}`}>
                                 {CALENDAR_RULE_TYPE_LABELS[rule.type]}
                               </span>
+                              {(hasCalendarNotification(rule.title) || rule.type === "folga" || rule.type === "simulado") && (
+                                <span className="ml-2 mt-2 inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                                  aviso 1 dia antes
+                                </span>
+                              )}
                             </div>
                             <button
                               className="text-xs text-muted-foreground hover:text-destructive"
@@ -5356,7 +5749,7 @@ function getSimuladoRecommendation(area: string, language: "english" | "spanish"
 }
 
 function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: UserActivityType) => void }) {
-  const [activeTab, setActiveTab] = useState<"official" | "history">("official");
+  const [activeTab, setActiveTab] = useState<"official" | "custom" | "history">("official");
   const [selectedExam, setSelectedExam] = useState<EnemExam | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [languageChoice, setLanguageChoice] = useState<"english" | "spanish">("english");
@@ -5895,6 +6288,13 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
             Provas oficiais
           </button>
           <button
+            className={`pb-3 px-1 text-sm md:text-base font-medium whitespace-nowrap ${activeTab === "custom" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+            onClick={() => setActiveTab("custom")}
+            type="button"
+          >
+            Personalizado
+          </button>
+          <button
             className={`pb-3 px-1 text-sm md:text-base font-medium whitespace-nowrap ${activeTab === "history" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
             onClick={() => {
               setActiveTab("history");
@@ -5921,10 +6321,134 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
           ))}
         </div>
           </>
+        ) : activeTab === "custom" ? (
+          <PersonalizedSimuladoBuilder attempts={attempts} onOpen={openExam} />
         ) : (
           <SimuladoAttemptsHistory attempts={attempts} isLoading={attemptsLoading} onRetry={refreshAttempts} />
         )}
       </div>
+    </div>
+  );
+}
+
+function buildPersonalizedExam(
+  focusArea: string,
+  languageChoice: "english" | "spanish",
+  questionLimit: number,
+): EnemExam {
+  const baseExam = ENEM_OFFICIAL_EXAMS[0];
+  const languageQuestions = baseExam.questions.filter((question) =>
+    !question.language || question.language === languageChoice,
+  );
+  const selectedQuestions = [...languageQuestions]
+    .sort((first, second) => Number(second.area === focusArea) - Number(first.area === focusArea))
+    .slice(0, questionLimit);
+  const areas = Array.from(new Set(selectedQuestions.map((question) => question.area)));
+
+  return {
+    ...baseExam,
+    id: `personalizado-${focusArea}-${languageChoice}-${questionLimit}`,
+    title: `Simulado personalizado: ${focusArea}`,
+    description: "Seleção montada a partir do banco ENEM e do foco escolhido para revisar os pontos mais importantes.",
+    questionCount: selectedQuestions.length,
+    areas,
+    questions: selectedQuestions,
+  };
+}
+
+function PersonalizedSimuladoBuilder({
+  attempts,
+  onOpen,
+}: {
+  attempts: SimuladoAttemptData[];
+  onOpen: (exam: EnemExam) => void;
+}) {
+  const latestWeakArea = attempts.find((attempt) => attempt.recommendationArea)?.recommendationArea ?? "Inglês";
+  const availableAreas = Array.from(
+    new Set(ENEM_OFFICIAL_EXAMS.flatMap((exam) => exam.questions.map((question) => question.area))),
+  );
+  const [focusArea, setFocusArea] = useState(
+    availableAreas.includes(latestWeakArea) ? latestWeakArea : availableAreas[0] ?? "Inglês",
+  );
+  const [languageChoice, setLanguageChoice] = useState<"english" | "spanish">("english");
+  const [questionLimit, setQuestionLimit] = useState(5);
+  const availableQuestionCount = ENEM_OFFICIAL_EXAMS[0].questions.filter((question) =>
+    !question.language || question.language === languageChoice,
+  ).length;
+
+  const generateExam = () => {
+    onOpen(buildPersonalizedExam(focusArea, languageChoice, Math.min(questionLimit, availableQuestionCount)));
+  };
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
+        <h2 className="text-lg md:text-xl font-semibold text-foreground">Simulado personalizado</h2>
+        <p className="mt-2 max-w-3xl text-sm md:text-base text-muted-foreground">
+          Monte uma prova curta com foco na área que precisa de reforço. Quando houver histórico, o app sugere a área mais fraca.
+        </p>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <label className="block space-y-2 text-sm">
+            <span className="font-medium text-foreground">Foco</span>
+            <select
+              value={focusArea}
+              onChange={(event) => setFocusArea(event.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            >
+              {availableAreas.map((area) => (
+                <option key={area} value={area}>{area}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block space-y-2 text-sm">
+            <span className="font-medium text-foreground">Língua</span>
+            <select
+              value={languageChoice}
+              onChange={(event) => setLanguageChoice(event.target.value as "english" | "spanish")}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            >
+              <option value="english">Inglês</option>
+              <option value="spanish">Espanhol</option>
+            </select>
+          </label>
+
+          <label className="block space-y-2 text-sm">
+            <span className="font-medium text-foreground">Questões</span>
+            <select
+              value={questionLimit}
+              onChange={(event) => setQuestionLimit(Number(event.target.value))}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            >
+              {[5, 10].filter((amount) => amount <= availableQuestionCount).map((amount) => (
+                <option key={amount} value={amount}>{amount} questões</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <button
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto"
+          onClick={generateExam}
+          type="button"
+        >
+          <Timer className="h-4 w-4" />
+          Gerar simulado
+        </button>
+      </div>
+
+      <aside className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-foreground">Foco sugerido</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {attempts.length > 0
+            ? `Ultima recomendacao: reforce ${latestWeakArea}.`
+            : "Finalize uma prova para o app sugerir o foco automaticamente."}
+        </p>
+        <div className="mt-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+          A próxima etapa técnica é conectar este fluxo a uma função de IA no backend para criar questões novas com gabarito e justificativa.
+        </div>
+      </aside>
     </div>
   );
 }

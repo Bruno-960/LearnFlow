@@ -1,4 +1,5 @@
 .env
+.supabase-function-secrets.local
 node_modules/
 dist/
 .vscode/
