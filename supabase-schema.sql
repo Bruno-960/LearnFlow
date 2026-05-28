@@ -10,13 +10,6 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists last_study_date date;
 alter table public.profiles add column if not exists last_activity_at timestamptz;
 
-update public.profiles
-set
-  streak_days = 0,
-  last_study_date = null
-where last_activity_at is null
-  and streak_days > 0;
-
 create table if not exists public.flashcard_decks (
   id uuid primary key,
   profile_id text not null references public.profiles(id) on delete cascade,
@@ -196,9 +189,9 @@ begin
   for update;
 
   if previous_activity_at is null then
-    next_streak := 0;
+    next_streak := greatest(coalesce(next_streak, 0), 0);
     previous_activity_at := current_activity_at;
-    previous_study_date := today;
+    previous_study_date := coalesce(previous_study_date, today);
   elsif previous_study_date = today then
     next_streak := next_streak;
   elsif current_activity_at < previous_activity_at + interval '24 hours' then
@@ -266,9 +259,9 @@ begin
   for update;
 
   if previous_activity_at is null then
-    next_streak := 0;
+    next_streak := greatest(coalesce(next_streak, 0), 0);
     previous_activity_at := current_activity_at;
-    previous_study_date := today;
+    previous_study_date := coalesce(previous_study_date, today);
   elsif previous_study_date = today then
     next_streak := next_streak;
   elsif current_activity_at < previous_activity_at + interval '24 hours' then

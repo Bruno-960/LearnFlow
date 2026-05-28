@@ -8,6 +8,14 @@ export type LearnFlowProfile = {
   lastStudyDate?: string | null;
 };
 
+type ProfileUpsertPayload = {
+  id: string;
+  name: string;
+  streak_days: number;
+  updated_at: string;
+  last_study_date?: string | null;
+};
+
 export type UserActivityType = "materia" | "calendario" | "flashcard" | "simulado";
 
 export type UserActivityRecord = {
@@ -104,13 +112,18 @@ export async function saveProfile(profile: LearnFlowProfile): Promise<void> {
     throw new Error("A conexao da conta nao esta configurada.");
   }
 
-  const { error } = await supabase.from("profiles").upsert({
+  const payload: ProfileUpsertPayload = {
     id: profile.id,
     name: profile.name,
     streak_days: profile.streakDays,
-    last_study_date: profile.lastStudyDate ?? null,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "id" });
+  };
+
+  if (Object.prototype.hasOwnProperty.call(profile, "lastStudyDate")) {
+    payload.last_study_date = profile.lastStudyDate ?? null;
+  }
+
+  const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
 
   if (error) throw new Error(getSupabaseErrorMessage(error));
 }

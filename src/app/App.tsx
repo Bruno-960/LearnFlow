@@ -22,6 +22,7 @@ import {
   X,
   ExternalLink,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 import {
   DEFAULT_PROFILE,
@@ -177,6 +178,8 @@ export default function App() {
   const [isPwaInstalled, setIsPwaInstalled] = useState(() =>
     typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches,
   );
+  const [isPwaUpdateAvailable, setIsPwaUpdateAvailable] = useState(false);
+  const [isPwaUpdating, setIsPwaUpdating] = useState(false);
 
   const applyProfile = (profile: typeof DEFAULT_PROFILE) => {
       setProfileId(profile.id);
@@ -250,6 +253,18 @@ export default function App() {
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleUpdateReady = () => {
+      setIsPwaUpdateAvailable(true);
+    };
+
+    window.addEventListener("learnflow:pwa-update-ready", handleUpdateReady);
+
+    return () => {
+      window.removeEventListener("learnflow:pwa-update-ready", handleUpdateReady);
     };
   }, []);
 
@@ -389,6 +404,34 @@ export default function App() {
     }
 
     return "dismissed" as const;
+  };
+
+  const updatePwa = async () => {
+    if (!("serviceWorker" in navigator)) {
+      window.location.reload();
+      return;
+    }
+
+    setIsPwaUpdating(true);
+    const registration = await navigator.serviceWorker.getRegistration();
+    const waitingWorker = registration?.waiting || registration?.installing;
+
+    if (waitingWorker) {
+      let didReload = false;
+      const reloadOnce = () => {
+        if (didReload) return;
+        didReload = true;
+        window.location.reload();
+      };
+
+      navigator.serviceWorker.addEventListener("controllerchange", reloadOnce, { once: true });
+      waitingWorker.postMessage({ type: "SKIP_WAITING" });
+      window.setTimeout(reloadOnce, 1200);
+      return;
+    }
+
+    await registration?.update();
+    window.location.reload();
   };
 
   const reloadStudyProgress = async () => {
@@ -661,6 +704,14 @@ export default function App() {
       )}
 
       {/* Bottom Nav — mobile only */}
+      {isPwaUpdateAvailable && (
+        <PwaUpdateBanner
+          isUpdating={isPwaUpdating}
+          onDismiss={() => setIsPwaUpdateAvailable(false)}
+          onUpdate={updatePwa}
+        />
+      )}
+
       <nav translate="no" className="notranslate fixed bottom-0 inset-x-0 z-20 md:hidden bg-card border-t border-border flex">
         {BOTTOM_NAV.map(({ view, icon, label }) => (
           <button
@@ -825,6 +876,53 @@ function ExamReviewAlertPopup({
         >
           Agora não
         </button>
+      </div>
+    </div>
+  );
+}
+
+function PwaUpdateBanner({
+  isUpdating,
+  onDismiss,
+  onUpdate,
+}: {
+  isUpdating: boolean;
+  onDismiss: () => void;
+  onUpdate: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-3 bottom-20 z-40 md:bottom-6 md:left-auto md:right-6 md:w-[26rem]">
+      <div className="rounded-xl border border-primary/20 bg-card p-4 shadow-xl">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <RefreshCw className={`h-5 w-5 ${isUpdating ? "animate-spin" : ""}`} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold text-foreground">Nova versao disponivel</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Atualize para usar as correcoes mais recentes sem reinstalar o app.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <button
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-70"
+            disabled={isUpdating}
+            onClick={onUpdate}
+            type="button"
+          >
+            {isUpdating ? "Atualizando..." : "Atualizar agora"}
+          </button>
+          <button
+            className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-60"
+            disabled={isUpdating}
+            onClick={onDismiss}
+            type="button"
+          >
+            Depois
+          </button>
+        </div>
       </div>
     </div>
   );
