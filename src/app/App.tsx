@@ -12,6 +12,7 @@ import {
   Sun,
   Bell,
   AlertTriangle,
+  Download,
   ChevronDown,
   Flame,
   ChevronLeft,
@@ -108,6 +109,11 @@ type UpcomingExamAlert = {
   source: "reminder" | "rule";
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 const NAV_ITEMS: { view: View; icon: React.ReactNode; label: string }[] = [
   { view: "home", icon: <Home className="w-5 h-5" />, label: "Início" },
   { view: "calendar", icon: <Calendar className="w-5 h-5" />, label: "Calendário" },
@@ -167,6 +173,10 @@ export default function App() {
   const [examReviewAlerts, setExamReviewAlerts] = useState<UpcomingExamAlert[]>([]);
   const [isExamReviewAlertOpen, setIsExamReviewAlertOpen] = useState(false);
   const [deviceNotificationStatus, setDeviceNotificationStatus] = useState("");
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches,
+  );
 
   const applyProfile = (profile: typeof DEFAULT_PROFILE) => {
       setProfileId(profile.id);
@@ -221,6 +231,25 @@ export default function App() {
     return () => {
       isMounted = false;
       unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+    };
+    const handleAppInstalled = () => {
+      setIsPwaInstalled(true);
+      setInstallPromptEvent(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
@@ -345,6 +374,21 @@ export default function App() {
   const openMaterias = (target?: StudyTarget) => {
     setMateriasTarget(target ?? null);
     navigate("materias");
+  };
+
+  const installPwa = async () => {
+    if (!installPromptEvent) return "manual" as const;
+
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+    setInstallPromptEvent(null);
+
+    if (choice.outcome === "accepted") {
+      setIsPwaInstalled(true);
+      return "installed" as const;
+    }
+
+    return "dismissed" as const;
   };
 
   const reloadStudyProgress = async () => {
@@ -538,6 +582,9 @@ export default function App() {
               courseModules={courseModules}
               courseContentLoading={courseContentLoading}
               courseContentError={courseContentError}
+              canInstallPwa={Boolean(installPromptEvent)}
+              isPwaInstalled={isPwaInstalled}
+              onInstallPwa={installPwa}
               onRetryCourseContent={reloadCourseContent}
               onOpenMaterias={openMaterias}
             />
@@ -592,6 +639,9 @@ export default function App() {
                 setUserName(name);
               }}
               onAuthChanged={reloadProfile}
+              canInstallPwa={Boolean(installPromptEvent)}
+              isPwaInstalled={isPwaInstalled}
+              onInstallPwa={installPwa}
               streakDays={streakDays}
             />
           )}
@@ -3795,6 +3845,9 @@ function ConfiguracoesView({
   authReady,
   onUserNameSave,
   onAuthChanged,
+  canInstallPwa,
+  isPwaInstalled,
+  onInstallPwa,
   streakDays,
 }: {
   userName: string;
@@ -3802,6 +3855,9 @@ function ConfiguracoesView({
   authReady: boolean;
   onUserNameSave: (name: string) => Promise<void>;
   onAuthChanged: () => Promise<void>;
+  canInstallPwa: boolean;
+  isPwaInstalled: boolean;
+  onInstallPwa: () => Promise<"installed" | "dismissed" | "manual">;
   streakDays: number;
 }) {
   const [draftName, setDraftName] = useState(userName);
@@ -3824,6 +3880,12 @@ function ConfiguracoesView({
     <div className="p-4 md:p-8 xl:p-12">
       <div className="w-full max-w-[980px] space-y-5 md:space-y-8">
         <AuthPanel authUser={authUser} authReady={authReady} onAuthChanged={onAuthChanged} />
+
+        <PwaInstallCard
+          canInstall={canInstallPwa}
+          isInstalled={isPwaInstalled}
+          onInstall={onInstallPwa}
+        />
 
         <form onSubmit={handleSaveProfile} className="bg-card rounded-xl p-5 md:p-6 border border-border space-y-4">
           <div>
@@ -3855,6 +3917,72 @@ function ConfiguracoesView({
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PwaInstallCard({
+  canInstall,
+  isInstalled,
+  compact = false,
+  onInstall,
+}: {
+  canInstall: boolean;
+  isInstalled: boolean;
+  compact?: boolean;
+  onInstall: () => Promise<"installed" | "dismissed" | "manual">;
+}) {
+  const [status, setStatus] = useState("");
+
+  const handleInstall = async () => {
+    setStatus("");
+    const result = await onInstall();
+
+    if (result === "installed") {
+      setStatus("App instalado. Se o ícone antigo continuar aparecendo, remova o app antigo e instale novamente.");
+      return;
+    }
+
+    if (result === "dismissed") {
+      setStatus("Instalação cancelada.");
+      return;
+    }
+
+    setStatus("No Chrome Android, abra o menu de três pontos e toque em Instalar app ou Adicionar à tela inicial.");
+  };
+
+  return (
+    <div className={`rounded-xl border border-primary/20 bg-primary/5 ${compact ? "p-4 md:p-5" : "p-5 md:p-6"}`}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Download className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              {isInstalled ? "LearnFlow instalado" : "Instalar LearnFlow"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isInstalled
+                ? "Para atualizar ícone e permissões, remova o app antigo e instale novamente pelo navegador."
+                : "Instale como app para abrir em tela cheia e melhorar o suporte a notificações no celular."}
+            </p>
+          </div>
+        </div>
+        <button
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+          onClick={handleInstall}
+          type="button"
+        >
+          <Download className="h-4 w-4" />
+          {canInstall ? "Instalar app" : "Como instalar"}
+        </button>
+      </div>
+      {status && (
+        <p className="mt-3 rounded-lg bg-background/70 px-3 py-2 text-sm text-muted-foreground">
+          {status}
+        </p>
+      )}
     </div>
   );
 }
@@ -4092,6 +4220,9 @@ function HomeView({
   courseModules,
   courseContentLoading,
   courseContentError,
+  canInstallPwa,
+  isPwaInstalled,
+  onInstallPwa,
   onRetryCourseContent,
   onOpenMaterias,
 }: {
@@ -4101,6 +4232,9 @@ function HomeView({
   courseModules: SubjectModuleMap;
   courseContentLoading: boolean;
   courseContentError: string;
+  canInstallPwa: boolean;
+  isPwaInstalled: boolean;
+  onInstallPwa: () => Promise<"installed" | "dismissed" | "manual">;
   onRetryCourseContent: () => void;
   onOpenMaterias: (target?: StudyTarget) => void;
 }) {
@@ -4126,10 +4260,20 @@ function HomeView({
       },
     )
     : 0;
+  const shouldShowInstallCard = canInstallPwa || isPwaInstalled;
 
   return (
     <div className="p-4 md:p-8 xl:p-12 space-y-5 md:space-y-8">
       <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
+        {shouldShowInstallCard && (
+          <PwaInstallCard
+            compact
+            canInstall={canInstallPwa}
+            isInstalled={isPwaInstalled}
+            onInstall={onInstallPwa}
+          />
+        )}
+
         {(courseContentLoading || courseContentError) && (
           <div className="rounded-xl border border-border bg-card p-4 md:p-5">
             {courseContentLoading ? (
