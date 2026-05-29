@@ -11,6 +11,17 @@ select
 from public.profiles
 order by updated_at desc;
 
+-- Depois que o schema novo estiver aplicado, confira tambem os dias registrados no historico.
+select
+  activity_date,
+  activity_type,
+  subject_name,
+  module_title,
+  count(*) as activity_count
+from public.user_activity_log
+group by activity_date, activity_type, subject_name, module_title
+order by activity_date desc, activity_type;
+
 -- Troque <PROFILE_ID> pelo id do seu perfil e <DIAS_CORRETOS> pela sequencia anterior.
 -- Exemplo de data: se voce estudou hoje, deixe current_date. Se nao, use '2026-05-27'::date.
 /*

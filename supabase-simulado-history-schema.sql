@@ -85,3 +85,39 @@ with check (auth.uid()::text = profile_id);
 create policy "simulado_attempt_questions_delete_own"
 on public.simulado_attempt_questions for delete
 using (auth.uid()::text = profile_id);
+
+insert into public.user_activity_log (
+  profile_id,
+  activity_type,
+  activity_date,
+  reference_id,
+  metadata,
+  created_at
+)
+select
+  simulado_attempts.profile_id,
+  'simulado',
+  (simulado_attempts.finished_at at time zone 'America/Bahia')::date,
+  simulado_attempts.id::text,
+  jsonb_build_object(
+    'source', 'simulado_attempts_backfill',
+    'exam_id', simulado_attempts.exam_id,
+    'exam_title', simulado_attempts.exam_title,
+    'percent', simulado_attempts.percent,
+    'recommendation_area', simulado_attempts.recommendation_area
+  ),
+  simulado_attempts.finished_at
+from public.simulado_attempts
+where exists (
+  select 1
+  from information_schema.tables
+  where table_schema = 'public'
+    and table_name = 'user_activity_log'
+)
+and not exists (
+  select 1
+  from public.user_activity_log existing_log
+  where existing_log.profile_id = simulado_attempts.profile_id
+    and existing_log.activity_type = 'simulado'
+    and existing_log.reference_id = simulado_attempts.id::text
+);

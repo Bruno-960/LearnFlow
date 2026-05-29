@@ -18,6 +18,14 @@ type ProfileUpsertPayload = {
 
 export type UserActivityType = "materia" | "calendario" | "flashcard" | "simulado";
 
+export type UserActivityDetails = {
+  subjectName?: string;
+  moduleTitle?: string;
+  activityKey?: string;
+  referenceId?: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type UserActivityRecord = {
   streakDays: number;
   lastStudyDate: string;
@@ -155,7 +163,7 @@ export async function recordStudyDay(): Promise<LearnFlowProfile | null> {
   const yesterday = getPreviousDateString(today);
   const nextStreakDays = profile.lastStudyDate === yesterday
     ? profile.streakDays + 1
-    : 0;
+    : 1;
   const nextProfile = {
     ...profile,
     streakDays: nextStreakDays,
@@ -166,12 +174,20 @@ export async function recordStudyDay(): Promise<LearnFlowProfile | null> {
   return nextProfile;
 }
 
-export async function recordUserActivity(activityType: UserActivityType): Promise<UserActivityRecord | null> {
+export async function recordUserActivity(
+  activityType: UserActivityType,
+  details: UserActivityDetails = {},
+): Promise<UserActivityRecord | null> {
   const authUser = await getCurrentAuthUser();
   if (!supabase || !authUser) return null;
 
   const { data, error } = await supabase.rpc("record_user_activity", {
     p_activity_type: activityType,
+    p_subject_name: details.subjectName ?? null,
+    p_module_title: details.moduleTitle ?? null,
+    p_activity_key: details.activityKey ?? null,
+    p_reference_id: details.referenceId ?? null,
+    p_metadata: details.metadata ?? {},
   });
 
   if (!error) {

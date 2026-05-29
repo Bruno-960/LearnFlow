@@ -10,6 +10,13 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists last_study_date date;
 alter table public.profiles add column if not exists last_activity_at timestamptz;
 
+create table if not exists public.study_goals (
+  profile_id text primary key references public.profiles(id) on delete cascade,
+  weekly_active_days integer not null default 5 check (weekly_active_days between 1 and 7),
+  daily_activity_target integer not null default 3 check (daily_activity_target between 1 and 50),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.flashcard_decks (
   id uuid primary key,
   profile_id text not null references public.profiles(id) on delete cascade,
@@ -33,6 +40,13 @@ create table if not exists public.flashcards (
   updated_at timestamptz not null default now()
 );
 
+alter table public.flashcards add column if not exists last_reviewed_at timestamptz;
+alter table public.flashcards add column if not exists next_review_at timestamptz not null default now();
+alter table public.flashcards add column if not exists review_interval_days integer not null default 1 check (review_interval_days >= 1);
+
+create index if not exists flashcards_profile_next_review_idx
+on public.flashcards (profile_id, next_review_at);
+
 create table if not exists public.study_progress (
   id uuid primary key default gen_random_uuid(),
   profile_id text not null references public.profiles(id) on delete cascade,
@@ -43,10 +57,31 @@ create table if not exists public.study_progress (
   unique (profile_id, subject_name, module_title, activity_key)
 );
 
+create table if not exists public.user_activity_log (
+  id uuid primary key default gen_random_uuid(),
+  profile_id text not null references public.profiles(id) on delete cascade,
+  activity_type text not null check (activity_type in ('materia', 'calendario', 'flashcard', 'simulado')),
+  activity_date date not null,
+  subject_name text,
+  module_title text,
+  activity_key text,
+  reference_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists user_activity_log_profile_date_idx
+on public.user_activity_log (profile_id, activity_date desc, created_at desc);
+
+create index if not exists user_activity_log_profile_type_date_idx
+on public.user_activity_log (profile_id, activity_type, activity_date desc);
+
 alter table public.profiles enable row level security;
+alter table public.study_goals enable row level security;
 alter table public.flashcard_decks enable row level security;
 alter table public.flashcards enable row level security;
 alter table public.study_progress enable row level security;
+alter table public.user_activity_log enable row level security;
 
 drop policy if exists "profiles_select_public" on public.profiles;
 drop policy if exists "profiles_insert_public" on public.profiles;
@@ -54,6 +89,9 @@ drop policy if exists "profiles_update_public" on public.profiles;
 drop policy if exists "profiles_select_own" on public.profiles;
 drop policy if exists "profiles_insert_own" on public.profiles;
 drop policy if exists "profiles_update_own" on public.profiles;
+drop policy if exists "study_goals_select_own" on public.study_goals;
+drop policy if exists "study_goals_insert_own" on public.study_goals;
+drop policy if exists "study_goals_update_own" on public.study_goals;
 drop policy if exists "flashcard_decks_select_public" on public.flashcard_decks;
 drop policy if exists "flashcard_decks_insert_public" on public.flashcard_decks;
 drop policy if exists "flashcard_decks_update_public" on public.flashcard_decks;
@@ -70,6 +108,9 @@ drop policy if exists "study_progress_select_own" on public.study_progress;
 drop policy if exists "study_progress_insert_own" on public.study_progress;
 drop policy if exists "study_progress_update_own" on public.study_progress;
 drop policy if exists "study_progress_delete_own" on public.study_progress;
+drop policy if exists "user_activity_log_select_own" on public.user_activity_log;
+drop policy if exists "user_activity_log_insert_own" on public.user_activity_log;
+drop policy if exists "user_activity_log_delete_own" on public.user_activity_log;
 
 create policy "profiles_select_own"
 on public.profiles for select
@@ -83,6 +124,19 @@ create policy "profiles_update_own"
 on public.profiles for update
 using (auth.uid()::text = id)
 with check (auth.uid()::text = id);
+
+create policy "study_goals_select_own"
+on public.study_goals for select
+using (auth.uid()::text = profile_id);
+
+create policy "study_goals_insert_own"
+on public.study_goals for insert
+with check (auth.uid()::text = profile_id);
+
+create policy "study_goals_update_own"
+on public.study_goals for update
+using (auth.uid()::text = profile_id)
+with check (auth.uid()::text = profile_id);
 
 create policy "flashcard_decks_select_own"
 on public.flashcard_decks for select
@@ -135,6 +189,72 @@ create policy "study_progress_delete_own"
 on public.study_progress for delete
 using (auth.uid()::text = profile_id);
 
+create policy "user_activity_log_select_own"
+on public.user_activity_log for select
+using (auth.uid()::text = profile_id);
+
+create policy "user_activity_log_insert_own"
+on public.user_activity_log for insert
+with check (auth.uid()::text = profile_id);
+
+create policy "user_activity_log_delete_own"
+on public.user_activity_log for delete
+using (auth.uid()::text = profile_id);
+
+insert into public.user_activity_log (
+  profile_id,
+  activity_type,
+  activity_date,
+  subject_name,
+  module_title,
+  activity_key,
+  reference_id,
+  metadata,
+  created_at
+)
+select
+  study_progress.profile_id,
+  'materia',
+  (study_progress.answered_at at time zone 'America/Bahia')::date,
+  study_progress.subject_name,
+  study_progress.module_title,
+  study_progress.activity_key,
+  study_progress.id::text,
+  jsonb_build_object('source', 'study_progress_backfill'),
+  study_progress.answered_at
+from public.study_progress
+where not exists (
+  select 1
+  from public.user_activity_log existing_log
+  where existing_log.profile_id = study_progress.profile_id
+    and existing_log.activity_type = 'materia'
+    and existing_log.reference_id = study_progress.id::text
+);
+
+insert into public.user_activity_log (
+  profile_id,
+  activity_type,
+  activity_date,
+  reference_id,
+  metadata,
+  created_at
+)
+select
+  flashcards.profile_id,
+  'flashcard',
+  (flashcards.created_at at time zone 'America/Bahia')::date,
+  flashcards.id::text,
+  jsonb_build_object('source', 'flashcards_backfill', 'deck_id', flashcards.deck_id),
+  flashcards.created_at
+from public.flashcards
+where not exists (
+  select 1
+  from public.user_activity_log existing_log
+  where existing_log.profile_id = flashcards.profile_id
+    and existing_log.activity_type = 'flashcard'
+    and existing_log.reference_id = flashcards.id::text
+);
+
 create or replace function public.record_study_activity(
   p_subject_name text,
   p_module_title text,
@@ -182,6 +302,27 @@ begin
   on conflict (profile_id, subject_name, module_title, activity_key)
   do update set answered_at = excluded.answered_at;
 
+  insert into public.user_activity_log (
+    profile_id,
+    activity_type,
+    activity_date,
+    subject_name,
+    module_title,
+    activity_key,
+    metadata,
+    created_at
+  )
+  values (
+    current_profile_id,
+    'materia',
+    today,
+    p_subject_name,
+    p_module_title,
+    p_activity_key,
+    jsonb_build_object('source', 'record_study_activity'),
+    current_activity_at
+  );
+
   select profiles.last_study_date, profiles.last_activity_at, profiles.streak_days
   into previous_study_date, previous_activity_at, next_streak
   from public.profiles
@@ -189,19 +330,17 @@ begin
   for update;
 
   if previous_activity_at is null then
-    next_streak := greatest(coalesce(next_streak, 0), 0);
+    next_streak := greatest(coalesce(next_streak, 0), 1);
     previous_activity_at := current_activity_at;
     previous_study_date := coalesce(previous_study_date, today);
   elsif previous_study_date = today then
-    next_streak := next_streak;
-  elsif current_activity_at < previous_activity_at + interval '24 hours' then
-    next_streak := next_streak;
+    next_streak := greatest(coalesce(next_streak, 0), 1);
   elsif previous_study_date = yesterday then
-    next_streak := next_streak + 1;
+    next_streak := greatest(coalesce(next_streak, 0), 1) + 1;
     previous_activity_at := current_activity_at;
     previous_study_date := today;
   else
-    next_streak := 0;
+    next_streak := 1;
     previous_activity_at := current_activity_at;
     previous_study_date := today;
   end if;
@@ -220,8 +359,15 @@ $$;
 
 grant execute on function public.record_study_activity(text, text, text) to authenticated;
 
+drop function if exists public.record_user_activity(text);
+
 create or replace function public.record_user_activity(
-  p_activity_type text
+  p_activity_type text,
+  p_subject_name text default null,
+  p_module_title text default null,
+  p_activity_key text default null,
+  p_reference_id text default null,
+  p_metadata jsonb default '{}'::jsonb
 )
 returns table (
   streak_days integer,
@@ -252,6 +398,29 @@ begin
   values (current_profile_id, 'Estudante', 0, null, null, now())
   on conflict (id) do nothing;
 
+  insert into public.user_activity_log (
+    profile_id,
+    activity_type,
+    activity_date,
+    subject_name,
+    module_title,
+    activity_key,
+    reference_id,
+    metadata,
+    created_at
+  )
+  values (
+    current_profile_id,
+    p_activity_type,
+    today,
+    p_subject_name,
+    p_module_title,
+    p_activity_key,
+    p_reference_id,
+    coalesce(p_metadata, '{}'::jsonb) || jsonb_build_object('source', 'record_user_activity'),
+    current_activity_at
+  );
+
   select profiles.last_study_date, profiles.last_activity_at, profiles.streak_days
   into previous_study_date, previous_activity_at, next_streak
   from public.profiles
@@ -259,19 +428,17 @@ begin
   for update;
 
   if previous_activity_at is null then
-    next_streak := greatest(coalesce(next_streak, 0), 0);
+    next_streak := greatest(coalesce(next_streak, 0), 1);
     previous_activity_at := current_activity_at;
     previous_study_date := coalesce(previous_study_date, today);
   elsif previous_study_date = today then
-    next_streak := next_streak;
-  elsif current_activity_at < previous_activity_at + interval '24 hours' then
-    next_streak := next_streak;
+    next_streak := greatest(coalesce(next_streak, 0), 1);
   elsif previous_study_date = yesterday then
-    next_streak := next_streak + 1;
+    next_streak := greatest(coalesce(next_streak, 0), 1) + 1;
     previous_activity_at := current_activity_at;
     previous_study_date := today;
   else
-    next_streak := 0;
+    next_streak := 1;
     previous_activity_at := current_activity_at;
     previous_study_date := today;
   end if;
@@ -288,4 +455,12 @@ begin
 end;
 $$;
 
-grant execute on function public.record_user_activity(text) to authenticated;
+grant execute on function public.record_user_activity(text, text, text, text, text, jsonb) to authenticated;
+
+-- Repara perfis afetados pela regra antiga, que registrava atividade hoje mas mantinha a sequencia em 0.
+update public.profiles
+set
+  streak_days = 1,
+  updated_at = now()
+where last_study_date = (now() at time zone 'America/Bahia')::date
+  and streak_days < 1;

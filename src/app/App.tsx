@@ -13,6 +13,12 @@ import {
   Bell,
   AlertTriangle,
   Download,
+  Target,
+  TrendingUp,
+  CheckCircle2,
+  History,
+  ArrowRight,
+  Activity,
   ChevronDown,
   Flame,
   ChevronLeft,
@@ -29,6 +35,7 @@ import {
   loadProfile,
   recordUserActivity,
   saveProfile,
+  type UserActivityDetails,
   type UserActivityType,
 } from "../services/profileData";
 import {
@@ -46,6 +53,7 @@ import {
 } from "../services/flashcardDeckData";
 import {
   createFlashcardForDeck,
+  loadDueFlashcards,
   loadFlashcards,
   reviewFlashcard,
   type FlashcardData,
@@ -81,10 +89,27 @@ import {
   type SimuladoAttemptData,
   type SimuladoAttemptQuestionData,
 } from "../services/simuladoAttemptData";
+import {
+  EMPTY_LEARNING_ACTIVITY_SUMMARY,
+  loadLearningActivitySummary,
+  type LearningActivityRecord,
+  type LearningActivitySummary,
+} from "../services/activityLogData";
+import {
+  DEFAULT_STUDY_GOALS,
+  loadStudyGoals,
+  saveStudyGoals,
+  type StudyGoals,
+} from "../services/studyGoalData";
 import { enableDevicePushNotifications } from "../services/pushNotificationData";
 import type { SubjectModuleContent } from "../data/subjectContent";
 import enem2025Q1SpanishDiversity from "../imports/enem2025/enem-2025-branco-esp-q1-diversidade-linguistica.jpg";
 import enem2025Q2SleepCups from "../imports/enem2025/enem-2025-branco-ing-q2-sleep-cups.png";
+import enem2025Q15Portraits from "../imports/enem2025/enem-2025-branco-por-q15-retratos.png";
+import enem2025Q21Bienal from "../imports/enem2025/enem-2025-branco-por-q21-bienal.png";
+import enem2025Q22Unicef from "../imports/enem2025/enem-2025-branco-por-q22-unicef.png";
+import enem2025Q24IlhaFerro from "../imports/enem2025/enem-2025-branco-por-q24-ilha-ferro.png";
+import enem2025Q25Varejao from "../imports/enem2025/enem-2025-branco-por-q25-varejao.png";
 
 type View =
   | "home"
@@ -166,6 +191,9 @@ export default function App() {
   const [profileError, setProfileError] = useState("");
   const [studyProgress, setStudyProgress] = useState<StudyProgress>({});
   const [lastStudy, setLastStudy] = useState<LastStudyData>(null);
+  const [activitySummary, setActivitySummary] = useState<LearningActivitySummary>(EMPTY_LEARNING_ACTIVITY_SUMMARY);
+  const [dueFlashcardCount, setDueFlashcardCount] = useState(0);
+  const [studyGoals, setStudyGoals] = useState<StudyGoals>(DEFAULT_STUDY_GOALS);
   const [courseModules, setCourseModules] = useState<SubjectModuleMap>({});
   const [courseContentLoading, setCourseContentLoading] = useState(true);
   const [courseContentError, setCourseContentError] = useState("");
@@ -219,6 +247,9 @@ export default function App() {
         setAuthUser(user);
         await reloadProfile();
         await reloadStudyProgress();
+        await reloadActivitySummary();
+        await reloadDueFlashcards();
+        await reloadStudyGoals();
       })
       .finally(() => {
         if (isMounted) setAuthReady(true);
@@ -229,6 +260,9 @@ export default function App() {
       setAuthUser(user);
       reloadProfile();
       reloadStudyProgress();
+      reloadActivitySummary();
+      reloadDueFlashcards();
+      reloadStudyGoals();
     });
 
     return () => {
@@ -440,6 +474,19 @@ export default function App() {
     setLastStudy(snapshot.lastStudy);
   };
 
+  const reloadActivitySummary = async () => {
+    setActivitySummary(await loadLearningActivitySummary());
+  };
+
+  const reloadDueFlashcards = async () => {
+    const dueCards = await loadDueFlashcards(50);
+    setDueFlashcardCount(dueCards.length);
+  };
+
+  const reloadStudyGoals = async () => {
+    setStudyGoals(await loadStudyGoals());
+  };
+
   const markStudyActivityAnswered = (subjectName: string, moduleTitle: string, activityKey: string) => {
     if (!authUser) {
       return;
@@ -462,16 +509,18 @@ export default function App() {
     saveStudyActivityProgress(subjectName, moduleTitle, activityKey)
       .then((result) => {
         if (result) setStreakDays(result.streakDays);
+        reloadActivitySummary();
       })
       .catch((error) => {
         console.warn("Nao foi possivel salvar progresso de estudos:", error);
       });
   };
 
-  const markUserActivity = (activityType: UserActivityType) => {
-    recordUserActivity(activityType)
+  const markUserActivity = (activityType: UserActivityType, details?: UserActivityDetails) => {
+    recordUserActivity(activityType, details)
       .then((result) => {
         if (result) setStreakDays(result.streakDays);
+        reloadActivitySummary();
       })
       .catch((error) => {
         console.warn("Nao foi possivel registrar atividade do usuario:", error);
@@ -618,9 +667,12 @@ export default function App() {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto bg-background pb-16 md:pb-0 text-[15px] lg:text-base">
           {currentView === "home" && (
-            <HomeView
+            <DashboardHomeView
               streakDays={streakDays}
               studyProgress={studyProgress}
+              activitySummary={activitySummary}
+              dueFlashcardCount={dueFlashcardCount}
+              studyGoals={studyGoals}
               lastStudy={lastStudy}
               courseModules={courseModules}
               courseContentLoading={courseContentLoading}
@@ -630,6 +682,7 @@ export default function App() {
               onInstallPwa={installPwa}
               onRetryCourseContent={reloadCourseContent}
               onOpenMaterias={openMaterias}
+              onOpenFlashcards={() => navigate("flashcards")}
             />
           )}
           {currentView === "calendar" && (
@@ -686,6 +739,11 @@ export default function App() {
               isPwaInstalled={isPwaInstalled}
               onInstallPwa={installPwa}
               streakDays={streakDays}
+              studyGoals={studyGoals}
+              onStudyGoalsSave={async (goals) => {
+                const savedGoals = await saveStudyGoals(goals);
+                setStudyGoals(savedGoals);
+              }}
             />
           )}
           {placeholderViews.includes(currentView) && <PlaceholderView />}
@@ -958,6 +1016,35 @@ function NavItem({
   );
 }
 
+type PageContainerSize = "default" | "wide" | "fluid" | "narrow";
+
+const PAGE_CONTAINER_WIDTH: Record<PageContainerSize, string> = {
+  narrow: "max-w-[980px]",
+  default: "max-w-[1500px]",
+  wide: "max-w-[1800px]",
+  fluid: "max-w-[1920px]",
+};
+
+function PageContainer({
+  children,
+  size = "default",
+  className = "",
+  contentClassName = "space-y-5 md:space-y-8",
+}: {
+  children: React.ReactNode;
+  size?: PageContainerSize;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <div className={`p-4 md:p-8 xl:p-10 2xl:p-12 ${className}`}>
+      <div className={`mx-auto w-full ${PAGE_CONTAINER_WIDTH[size]} ${contentClassName}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const SUBJECTS = [
   {
     name: "Português",
@@ -1109,6 +1196,216 @@ function getFirstInProgressModule(
   }) ?? modules.find((module) => getModuleProgressPercent(progress, subjectName, module) > 0) ?? null;
 }
 
+type StudyTrackKey = "basico" | "enem" | "aprofundamento";
+
+type StudyTrack = {
+  key: StudyTrackKey;
+  title: string;
+  description: string;
+  modules: SubjectModuleContent[];
+  progressPercent: number;
+  completedModules: number;
+};
+
+const STUDY_TRACK_META: Record<StudyTrackKey, { title: string; description: string }> = {
+  basico: {
+    title: "Base essencial",
+    description: "Fundamentos para criar segurança antes dos exercícios mais longos.",
+  },
+  enem: {
+    title: "ENEM e vestibulares",
+    description: "Interpretação, aplicação e resolução no estilo prova.",
+  },
+  aprofundamento: {
+    title: "Aprofundamento",
+    description: "Revisões, desafios e tópicos para consolidar domínio.",
+  },
+};
+
+function normalizeStudyTrackText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function getModuleTrackKey(module: SubjectModuleContent, index: number, total: number): StudyTrackKey {
+  const text = normalizeStudyTrackText(`${module.title} ${module.objective} ${module.learningPath?.join(" ") ?? ""}`);
+
+  if (/(enem|vestibular|prova|questao|interpretacao|redacao|competencia|habilidade)/.test(text)) {
+    return "enem";
+  }
+
+  if (/(avancado|aprofund|desafio|revisao|sintese|complex|aplicac)/.test(text)) {
+    return "aprofundamento";
+  }
+
+  if (total > 0 && index >= Math.ceil(total * 0.7)) {
+    return "aprofundamento";
+  }
+
+  return "basico";
+}
+
+function buildStudyTracks(
+  progress: StudyProgress,
+  subjectName: string,
+  modules: SubjectModuleContent[],
+): StudyTrack[] {
+  const grouped: Record<StudyTrackKey, SubjectModuleContent[]> = {
+    basico: [],
+    enem: [],
+    aprofundamento: [],
+  };
+
+  modules.forEach((module, index) => {
+    grouped[getModuleTrackKey(module, index, modules.length)].push(module);
+  });
+
+  if (modules.length > 0 && grouped.enem.length === 0) {
+    grouped.enem = grouped.aprofundamento.slice(0, 1);
+  }
+
+  if (modules.length > 0 && grouped.aprofundamento.length === 0) {
+    grouped.aprofundamento = modules.slice(-1);
+  }
+
+  return (Object.keys(STUDY_TRACK_META) as StudyTrackKey[])
+    .map((key) => {
+      const trackModules = grouped[key].filter((module, index, array) =>
+        array.findIndex((item) => item.title === module.title) === index
+      );
+      const moduleProgress = trackModules.map((module) => getModuleProgressPercent(progress, subjectName, module));
+      const completedModules = moduleProgress.filter((percent) => percent >= 100).length;
+      const progressPercent = trackModules.length > 0
+        ? Math.round(moduleProgress.reduce((total, percent) => total + percent, 0) / trackModules.length)
+        : 0;
+
+      return {
+        key,
+        title: STUDY_TRACK_META[key].title,
+        description: STUDY_TRACK_META[key].description,
+        modules: trackModules,
+        progressPercent,
+        completedModules,
+      };
+    })
+    .filter((track) => track.modules.length > 0);
+}
+
+type DashboardReviewItem = {
+  title: string;
+  description: string;
+  target?: StudyTarget;
+  action?: "materias" | "flashcards";
+  tone: "primary" | "warning" | "neutral";
+};
+
+function getActivityTypeLabel(activityType: UserActivityType) {
+  const labels: Record<UserActivityType, string> = {
+    materia: "Materias",
+    calendario: "Calendario",
+    flashcard: "Flashcards",
+    simulado: "Simulados",
+  };
+
+  return labels[activityType];
+}
+
+function getRecentActivityTitle(activity: LearningActivityRecord) {
+  if (activity.activityType === "materia") {
+    return activity.moduleTitle || activity.subjectName || "Estudo concluido";
+  }
+
+  if (activity.activityType === "flashcard") {
+    const action = activity.metadata.flashcardAction;
+    if (action === "review_card") return "Flashcard revisado";
+    if (action === "create_card") return "Flashcard criado";
+    return "Deck atualizado";
+  }
+
+  if (activity.activityType === "simulado") {
+    return typeof activity.metadata.examTitle === "string" ? activity.metadata.examTitle : "Simulado finalizado";
+  }
+
+  if (activity.activityType === "calendario") {
+    return typeof activity.metadata.title === "string" ? activity.metadata.title : "Calendario atualizado";
+  }
+
+  return "Atividade registrada";
+}
+
+function buildDashboardReviewItems(
+  progress: StudyProgress,
+  courseModules: SubjectModuleMap,
+  lastStudy: LastStudyData,
+  activitySummary: LearningActivitySummary,
+  dueFlashcardCount: number,
+): DashboardReviewItem[] {
+  const items: DashboardReviewItem[] = [];
+
+  if (dueFlashcardCount > 0) {
+    items.push({
+      title: `Revisar ${dueFlashcardCount} flashcard${dueFlashcardCount === 1 ? "" : "s"}`,
+      description: "Cards vencidos pela repeticao espacada estao prontos para revisar.",
+      action: "flashcards",
+      tone: "primary",
+    });
+  }
+
+  if (lastStudy) {
+    items.push({
+      title: `Continuar ${lastStudy.moduleTitle}`,
+      description: `${lastStudy.subjectName} ja esta em andamento. Retome pelo ponto mais recente.`,
+      target: lastStudy,
+      action: "materias",
+      tone: "primary",
+    });
+  }
+
+  const activeModuleEntry = SUBJECTS
+    .map((subject) => {
+      const module = getFirstInProgressModule(progress, courseModules, subject.name);
+      return module ? { subjectName: subject.name, module } : null;
+    })
+    .find((entry) => entry && (!lastStudy || entry.module.title !== lastStudy.moduleTitle));
+
+  if (activeModuleEntry) {
+    items.push({
+      title: `Finalizar ${activeModuleEntry.module.title}`,
+      description: `${activeModuleEntry.subjectName} tem um modulo parcialmente concluido.`,
+      target: { subjectName: activeModuleEntry.subjectName, moduleTitle: activeModuleEntry.module.title },
+      action: "materias",
+      tone: "warning",
+    });
+  }
+
+  const quietSubject = SUBJECTS
+    .map((subject) => ({
+      subject,
+      modules: courseModules[subject.name] ?? [],
+      activityCount: activitySummary.bySubject[subject.name] ?? 0,
+      progress: getSubjectProgressSummary(progress, courseModules, subject.name).progressPercent,
+    }))
+    .filter((entry) => entry.modules.length > 0)
+    .sort((first, second) => first.activityCount - second.activityCount || first.progress - second.progress)[0];
+
+  if (quietSubject) {
+    const firstModule = quietSubject.modules[0];
+    items.push({
+      title: `Revisar ${quietSubject.subject.name}`,
+      description: quietSubject.activityCount === 0
+        ? "Esta materia ainda nao apareceu no seu ritmo recente."
+        : "Esta materia teve menos atividade nos ultimos dias.",
+      target: { subjectName: quietSubject.subject.name, moduleTitle: firstModule?.title },
+      action: "materias",
+      tone: "neutral",
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
 function CourseContentState({
   isLoading,
   error,
@@ -1119,8 +1416,7 @@ function CourseContentState({
   onRetry: () => void;
 }) {
   return (
-    <div className="p-4 md:p-8 xl:p-12">
-      <div className="w-full max-w-[1500px] rounded-2xl border border-border bg-card p-6 md:p-8">
+    <PageContainer contentClassName="rounded-2xl border border-border bg-card p-6 md:p-8">
         {isLoading ? (
           <div className="space-y-4">
             <div>
@@ -1150,8 +1446,7 @@ function CourseContentState({
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -1178,6 +1473,7 @@ function MateriasView({
 }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [selectedModuleTitle, setSelectedModuleTitle] = useState<string | null>(null);
+  const [selectedTrackKey, setSelectedTrackKey] = useState<StudyTrackKey>("basico");
 
   useEffect(() => {
     onFocusModeChange?.(selected !== null);
@@ -1195,21 +1491,29 @@ function MateriasView({
       modules.find((module) => module.title === initialTarget.moduleTitle) ??
       modules[0] ??
       null;
+    const targetTrack = targetModule
+      ? buildStudyTracks(studyProgress, initialTarget.subjectName, modules).find((track) =>
+        track.modules.some((module) => module.title === targetModule.title)
+      )
+      : null;
 
     setSelected(subjectIndex);
     setSelectedModuleTitle(targetModule?.title ?? null);
-  }, [courseContentError, courseContentLoading, courseModules, initialTarget]);
+    setSelectedTrackKey(targetTrack?.key ?? "basico");
+  }, [courseContentError, courseContentLoading, courseModules, initialTarget, studyProgress]);
 
   const selectSubject = (index: number) => {
     if (courseContentLoading || courseContentError) return;
     if (selected === index) {
       setSelected(null);
       setSelectedModuleTitle(null);
+      setSelectedTrackKey("basico");
       return;
     }
 
     setSelected(index);
     setSelectedModuleTitle(null);
+    setSelectedTrackKey("basico");
   };
 
   if (courseContentLoading || courseContentError) {
@@ -1229,14 +1533,18 @@ function MateriasView({
     const progressSummary = getSubjectProgressSummary(studyProgress, courseModules, s.name);
     const subjectProgress = progressSummary.progressPercent;
     const identity = getSubjectIdentity(s.name);
+    const studyTracks = buildStudyTracks(studyProgress, s.name, subjectModules);
+    const activeTrack = studyTracks.find((track) => track.key === selectedTrackKey) ?? studyTracks[0] ?? null;
+    const visibleModules = activeTrack?.modules ?? subjectModules;
     const activeModule =
+      visibleModules.find((module) => module.title === selectedModuleTitle) ??
+      visibleModules[0] ??
       subjectModules.find((module) => module.title === selectedModuleTitle) ??
       subjectModules[0] ??
       null;
 
     return (
-      <div className="p-4 md:p-8 xl:p-12">
-        <div className="w-full max-w-[1800px] space-y-5">
+      <PageContainer size="wide" contentClassName="space-y-5">
           <button
             type="button"
             onClick={() => {
@@ -1272,14 +1580,71 @@ function MateriasView({
           </div>
 
           <div className="space-y-5">
+            {studyTracks.length > 0 && (
+              <section className="rounded-2xl border border-border bg-card p-4 md:p-5">
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground">Trilhas de estudo</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Escolha uma rota para estudar {s.name} com mais ordem.
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {studyTracks.length} trilha{studyTracks.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  {studyTracks.map((track) => (
+                    <button
+                      key={track.key}
+                      type="button"
+                      className={`rounded-xl border p-4 text-left transition-colors ${
+                        activeTrack?.key === track.key
+                          ? `${identity.border} ${identity.soft}`
+                          : "border-border bg-background hover:bg-muted/50"
+                      }`}
+                      onClick={() => {
+                        setSelectedTrackKey(track.key);
+                        setSelectedModuleTitle(track.modules[0]?.title ?? null);
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-foreground">{track.title}</h4>
+                          <p className="mt-1 text-sm text-muted-foreground">{track.description}</p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            activeTrack?.key === track.key ? identity.accent : "text-muted-foreground"
+                          }`}
+                        >
+                          {track.progressPercent}%
+                        </span>
+                      </div>
+
+                      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${track.progressPercent}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {track.completedModules}/{track.modules.length} modulo{track.modules.length === 1 ? "" : "s"} completos
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
             <aside className="rounded-2xl border border-border bg-card p-3">
               <div className="sr-only">
                 <h3 className="font-semibold text-foreground">Módulos de {s.name}</h3>
                 <p className="text-sm text-muted-foreground">Escolha uma trilha para estudar.</p>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {(subjectModules.length ? subjectModules.map((module) => module.title) : s.topics).map((topic) => {
-                  const module = subjectModules.find((item) => item.title === topic);
+                {(visibleModules.length ? visibleModules.map((module) => module.title) : s.topics).map((topic) => {
+                  const module = visibleModules.find((item) => item.title === topic);
                   const isActive = activeModule?.title === topic;
                   const moduleProgress = module ? getModuleProgressPercent(studyProgress, s.name, module) : 0;
 
@@ -1336,14 +1701,12 @@ function MateriasView({
               )}
             </div>
           </div>
-        </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 xl:p-12">
-      <div className="w-full max-w-[1500px] space-y-4 md:space-y-8">
+    <PageContainer contentClassName="space-y-4 md:space-y-8">
         {/* Summary bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {SUBJECTS.map((s, i) => (
@@ -1459,9 +1822,7 @@ function MateriasView({
             </div>
           );
         })()}
-
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -3925,7 +4286,7 @@ function ModuleActivity({
 
 function PlaceholderView() {
   return (
-    <div className="p-4 md:p-8 xl:p-12">
+    <PageContainer>
       <div className="bg-card rounded-xl p-6 text-center border border-border md:p-12">
         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
           <Settings className="w-8 h-8 text-muted-foreground" />
@@ -3933,7 +4294,7 @@ function PlaceholderView() {
         <h3 className="text-xl font-semibold mb-2 text-foreground">Em desenvolvimento</h3>
         <p className="text-muted-foreground">Esta seção estará disponível em breve.</p>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -3942,24 +4303,36 @@ function ConfiguracoesView({
   authUser,
   authReady,
   onUserNameSave,
+  onStudyGoalsSave,
   onAuthChanged,
   canInstallPwa,
   isPwaInstalled,
   onInstallPwa,
   streakDays,
+  studyGoals,
 }: {
   userName: string;
   authUser: AuthUser | null;
   authReady: boolean;
   onUserNameSave: (name: string) => Promise<void>;
+  onStudyGoalsSave: (goals: StudyGoals) => Promise<void>;
   onAuthChanged: () => Promise<void>;
   canInstallPwa: boolean;
   isPwaInstalled: boolean;
   onInstallPwa: () => Promise<"installed" | "dismissed" | "manual">;
   streakDays: number;
+  studyGoals: StudyGoals;
 }) {
   const [draftName, setDraftName] = useState(userName);
+  const [draftWeeklyActiveDays, setDraftWeeklyActiveDays] = useState(studyGoals.weeklyActiveDays);
+  const [draftDailyActivityTarget, setDraftDailyActivityTarget] = useState(studyGoals.dailyActivityTarget);
   const [status, setStatus] = useState("");
+  const [goalsStatus, setGoalsStatus] = useState("");
+
+  useEffect(() => {
+    setDraftWeeklyActiveDays(studyGoals.weeklyActiveDays);
+    setDraftDailyActivityTarget(studyGoals.dailyActivityTarget);
+  }, [studyGoals.dailyActivityTarget, studyGoals.weeklyActiveDays]);
 
   const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -3974,9 +4347,22 @@ function ConfiguracoesView({
     }
   };
 
+  const handleSaveStudyGoals = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setGoalsStatus("");
+    try {
+      await onStudyGoalsSave({
+        weeklyActiveDays: draftWeeklyActiveDays,
+        dailyActivityTarget: draftDailyActivityTarget,
+      });
+      setGoalsStatus("Metas salvas na sua conta.");
+    } catch (error) {
+      setGoalsStatus(error instanceof Error ? error.message : "Nao foi possivel salvar as metas.");
+    }
+  };
+
   return (
-    <div className="p-4 md:p-8 xl:p-12">
-      <div className="w-full max-w-[980px] space-y-5 md:space-y-8">
+    <PageContainer size="narrow">
         <AuthPanel authUser={authUser} authReady={authReady} onAuthChanged={onAuthChanged} />
 
         <PwaInstallCard
@@ -4008,14 +4394,60 @@ function ConfiguracoesView({
           {status && <p className="text-sm text-muted-foreground">{status}</p>}
         </form>
 
+        <form onSubmit={handleSaveStudyGoals} className="bg-card rounded-xl p-5 md:p-6 border border-border space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Metas de estudo</h2>
+            <p className="text-sm text-muted-foreground">
+              Ajuste o ritmo usado no dashboard e nas recomendacoes diarias.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground">Dias ativos por semana</span>
+              <input
+                value={draftWeeklyActiveDays}
+                onChange={(event) => setDraftWeeklyActiveDays(Number(event.target.value))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                min={1}
+                max={7}
+                type="number"
+              />
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground">Atividades por dia</span>
+              <input
+                value={draftDailyActivityTarget}
+                onChange={(event) => setDraftDailyActivityTarget(Number(event.target.value))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                min={1}
+                max={50}
+                type="number"
+              />
+            </label>
+          </div>
+
+          <button
+            className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto md:px-5 md:py-2.5 md:text-base"
+            disabled={!authUser}
+          >
+            Salvar metas
+          </button>
+
+          {!authUser && (
+            <p className="text-sm text-muted-foreground">Entre na conta para salvar metas entre dispositivos.</p>
+          )}
+          {goalsStatus && <p className="text-sm text-muted-foreground">{goalsStatus}</p>}
+        </form>
+
         <div className="bg-card rounded-xl p-5 md:p-6 xl:p-8 border border-border">
           <h2 className="text-lg font-semibold text-foreground mb-2">Sequência atual</h2>
           <p className="text-sm text-muted-foreground">
             {streakDays} dias seguidos. A sequência aumenta no primeiro estudo concluído de cada dia.
           </p>
         </div>
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -4099,8 +4531,7 @@ function AccountRequiredView({
   onAuthChanged: () => Promise<void>;
 }) {
   return (
-    <div className="p-4 md:p-8 xl:p-12">
-      <div className="w-full max-w-[980px] space-y-5">
+    <PageContainer size="narrow" contentClassName="space-y-5">
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 md:p-6">
           <p className="text-sm font-medium text-primary">Conta necessaria</p>
           <h2 className="mt-2 text-2xl font-semibold text-foreground">{title}</h2>
@@ -4118,8 +4549,7 @@ function AccountRequiredView({
           onAuthChanged={onAuthChanged}
           context="gate"
         />
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -4311,6 +4741,330 @@ function AuthPanel({
   );
 }
 
+function DashboardHomeView({
+  streakDays,
+  studyProgress,
+  activitySummary,
+  dueFlashcardCount,
+  studyGoals,
+  lastStudy,
+  courseModules,
+  courseContentLoading,
+  courseContentError,
+  canInstallPwa,
+  isPwaInstalled,
+  onInstallPwa,
+  onRetryCourseContent,
+  onOpenMaterias,
+  onOpenFlashcards,
+}: {
+  streakDays: number;
+  studyProgress: StudyProgress;
+  activitySummary: LearningActivitySummary;
+  dueFlashcardCount: number;
+  studyGoals: StudyGoals;
+  lastStudy: LastStudyData;
+  courseModules: SubjectModuleMap;
+  courseContentLoading: boolean;
+  courseContentError: string;
+  canInstallPwa: boolean;
+  isPwaInstalled: boolean;
+  onInstallPwa: () => Promise<"installed" | "dismissed" | "manual">;
+  onRetryCourseContent: () => void;
+  onOpenMaterias: (target?: StudyTarget) => void;
+  onOpenFlashcards: () => void;
+}) {
+  const { totalModules, completedModules, overallProgress } = getTotalProgressSummary(studyProgress, courseModules);
+  const reviewItems = buildDashboardReviewItems(studyProgress, courseModules, lastStudy, activitySummary, dueFlashcardCount);
+  const topSubjectEntry = Object.entries(activitySummary.bySubject).sort(([, first], [, second]) => second - first)[0] ?? null;
+  const weeklyGoal = studyGoals.weeklyActiveDays;
+  const weeklyGoalProgress = Math.min(100, Math.round((activitySummary.activeDaysThisWeek / weeklyGoal) * 100));
+  const dailyGoalProgress = Math.min(100, Math.round((activitySummary.todayCount / studyGoals.dailyActivityTarget) * 100));
+  const activityTypeStats: UserActivityType[] = ["materia", "flashcard", "simulado", "calendario"];
+  const shouldShowInstallCard = canInstallPwa || isPwaInstalled;
+  const inProgressSubjects = SUBJECTS
+    .map((subject) => ({
+      ...subject,
+      computedProgress: getSubjectProgressSummary(studyProgress, courseModules, subject.name).progressPercent,
+    }))
+    .filter((subject) => subject.computedProgress > 0)
+    .slice(0, 4);
+  const lastStudySubject = lastStudy ? SUBJECTS.find((subject) => subject.name === lastStudy.subjectName) : null;
+  const lastStudyProgress = lastStudy
+    ? getModuleProgressPercent(
+      studyProgress,
+      lastStudy.subjectName,
+      courseModules[lastStudy.subjectName]?.find((module) => module.title === lastStudy.moduleTitle) ?? {
+        title: lastStudy.moduleTitle,
+        objective: "",
+        explanation: [],
+        examples: [],
+        activities: [],
+      },
+    )
+    : 0;
+
+  const openReviewItem = (item?: DashboardReviewItem) => {
+    if (item?.action === "flashcards") {
+      onOpenFlashcards();
+      return;
+    }
+
+    onOpenMaterias(item?.target);
+  };
+
+  return (
+    <PageContainer>
+        {shouldShowInstallCard && (
+          <PwaInstallCard
+            compact
+            canInstall={canInstallPwa}
+            isInstalled={isPwaInstalled}
+            onInstall={onInstallPwa}
+          />
+        )}
+
+        {(courseContentLoading || courseContentError) && (
+          <div className="rounded-xl border border-border bg-card p-4 md:p-5">
+            {courseContentLoading ? (
+              <div>
+                <h2 className="font-semibold text-foreground">Carregando conteudo...</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Carregando materias e modulos.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-semibold text-foreground">Conteudo indisponivel</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{courseContentError}</p>
+                </div>
+                <button
+                  type="button"
+                  className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:w-fit"
+                  onClick={onRetryCourseContent}
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+          <section className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary">Plano de hoje</p>
+                <h2 className="mt-1 text-2xl font-semibold text-foreground md:text-3xl">Revisao inteligente</h2>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
+                  Sugestoes geradas com seu progresso, historico recente e modulos em andamento.
+                </p>
+              </div>
+              <button
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 md:w-auto"
+                onClick={() => openReviewItem(reviewItems[0])}
+                type="button"
+              >
+                Estudar agora
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {reviewItems.length > 0 ? (
+                reviewItems.map((item) => (
+                  <button
+                    key={`${item.title}-${item.description}`}
+                    className="group flex w-full items-start gap-3 rounded-lg border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    onClick={() => openReviewItem(item)}
+                    type="button"
+                  >
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                      item.tone === "primary"
+                        ? "bg-primary/10 text-primary"
+                        : item.tone === "warning"
+                          ? "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+                          : "bg-muted text-muted-foreground"
+                    }`}>
+                      {item.tone === "primary" ? <Target className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground">{item.title}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                    </div>
+                    <ArrowRight className="mt-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-lg border border-border bg-background p-4">
+                  <p className="text-sm text-muted-foreground">Conclua uma atividade para gerar seu plano de revisao.</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border bg-card p-5 md:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Meta semanal</p>
+                <h2 className="mt-1 text-2xl font-semibold text-foreground">
+                  {activitySummary.activeDaysThisWeek}/{weeklyGoal} dias
+                </h2>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <TrendingUp className="h-6 w-6" />
+              </div>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${weeklyGoalProgress}%` }} />
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {activitySummary.weekCount} atividade{activitySummary.weekCount === 1 ? "" : "s"} registrada{activitySummary.weekCount === 1 ? "" : "s"} nos ultimos 7 dias.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              {activityTypeStats.map((activityType) => (
+                <div key={activityType} className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">{getActivityTypeLabel(activityType)}</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{activitySummary.byType[activityType]}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <DashboardMetricCard icon={<BarChart3 className="h-5 w-5" />} label="Progresso geral" value={`${overallProgress}%`} helper={`${completedModules}/${totalModules} modulos`} />
+          <DashboardMetricCard
+            icon={<Activity className="h-5 w-5" />}
+            label="Hoje"
+            value={`${activitySummary.todayCount}/${studyGoals.dailyActivityTarget}`}
+            helper={`${dailyGoalProgress}% da meta diaria`}
+          />
+          <DashboardMetricCard
+            icon={<BookOpen className="h-5 w-5" />}
+            label="Mais ativa"
+            value={topSubjectEntry?.[0] ?? "Sem dados"}
+            helper={topSubjectEntry ? `${topSubjectEntry[1]} atividades` : "esta semana"}
+          />
+        </div>
+
+        <section>
+          <h2 className="text-base md:text-xl xl:text-2xl font-semibold mb-3 md:mb-5 text-foreground">Continue estudando</h2>
+          {inProgressSubjects.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-4">
+              {inProgressSubjects.map((subject) => (
+                <SubjectCard
+                  key={subject.name}
+                  name={subject.name}
+                  subtitle={`${getSubjectProgressSummary(studyProgress, courseModules, subject.name).activeModules} modulo(s) em andamento`}
+                  progress={subject.computedProgress}
+                  color={subject.color}
+                  icon={subject.icon}
+                  onClick={() => {
+                    const module = getFirstInProgressModule(studyProgress, courseModules, subject.name);
+                    onOpenMaterias({ subjectName: subject.name, moduleTitle: module?.title });
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
+              <p className="text-sm text-muted-foreground">Nenhuma materia em andamento.</p>
+            </div>
+          )}
+        </section>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+          <section>
+            <div className="mb-3 flex items-center justify-between md:mb-4">
+              <h2 className="text-base font-semibold text-foreground md:text-xl xl:text-2xl">Proxima estudada</h2>
+              <button className="text-sm text-primary hover:underline" onClick={() => onOpenMaterias()} type="button">Ver todas</button>
+            </div>
+            {lastStudy && lastStudySubject ? (
+              <button
+                className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 md:p-6"
+                onClick={() => onOpenMaterias(lastStudy)}
+                type="button"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${lastStudySubject.color}`}>
+                    {lastStudySubject.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-foreground">{lastStudy.moduleTitle}</p>
+                    <p className="text-sm text-muted-foreground">{lastStudy.subjectName} - {lastStudyProgress}% concluido</p>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${lastStudyProgress}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-xl border border-border bg-card p-4 md:p-6">
+                <p className="text-sm text-muted-foreground">Nenhum estudo iniciado ainda.</p>
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-border bg-card p-5 md:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-foreground md:text-lg">Historico recente</h2>
+                <p className="text-sm text-muted-foreground">Ultimas atividades salvas.</p>
+              </div>
+              <History className="h-5 w-5 text-primary" />
+            </div>
+            {activitySummary.recent.length > 0 ? (
+              <div className="space-y-3">
+                {activitySummary.recent.slice(0, 5).map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
+                    <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{getRecentActivityTitle(activity)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getActivityTypeLabel(activity.activityType)} - {activity.activityDate}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
+                O historico aparece depois das proximas atividades.
+              </p>
+            )}
+          </section>
+        </div>
+    </PageContainer>
+  );
+}
+
+function DashboardMetricCard({
+  icon,
+  label,
+  value,
+  helper,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  helper?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 md:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-1 truncate text-2xl font-semibold text-foreground">{value}</p>
+          {helper && <p className="mt-1 text-xs text-muted-foreground">{helper}</p>}
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomeView({
   streakDays,
   studyProgress,
@@ -4361,8 +5115,7 @@ function HomeView({
   const shouldShowInstallCard = canInstallPwa || isPwaInstalled;
 
   return (
-    <div className="p-4 md:p-8 xl:p-12 space-y-5 md:space-y-8">
-      <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
+    <PageContainer>
         {shouldShowInstallCard && (
           <PwaInstallCard
             compact
@@ -4496,8 +5249,7 @@ function HomeView({
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -4739,7 +5491,7 @@ function getMondayStartOffset(year: number, month: number) {
   return (new Date(year, month, 1).getDay() + 6) % 7;
 }
 
-function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserActivityType) => void }) {
+function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserActivityType, details?: UserActivityDetails) => void }) {
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
@@ -4861,7 +5613,10 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
         setCalendarStatus("Lembrete salvo. O aviso aparece no site; ative notificações do navegador para receber fora da página.");
       }
       window.dispatchEvent(new Event("learnflow:calendar-updated"));
-      onUserActivity("calendario");
+      onUserActivity("calendario", {
+        referenceId: reminder.id,
+        metadata: { calendarItemType: "reminder", title: reminder.title, date: reminder.date },
+      });
     } catch (error) {
       setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Não foi possível salvar o lembrete.");
@@ -4898,7 +5653,10 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
         setCalendarStatus("Simulado marcado.");
       }
       window.dispatchEvent(new Event("learnflow:calendar-updated"));
-      onUserActivity("calendario");
+      onUserActivity("calendario", {
+        referenceId: reminder.id,
+        metadata: { calendarItemType: "simulado_reminder", title: reminder.title, date: reminder.date },
+      });
     } catch (error) {
       setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Não foi possível marcar o simulado.");
@@ -4947,7 +5705,10 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
         setCalendarStatus("Recorrência criada. O aviso aparece no site; ative notificações do navegador para receber fora da página.");
       }
       window.dispatchEvent(new Event("learnflow:calendar-updated"));
-      onUserActivity("calendario");
+      onUserActivity("calendario", {
+        referenceId: rule.id,
+        metadata: { calendarItemType: "rule", title: rule.title, type: rule.type, frequency: rule.frequency },
+      });
     } catch (error) {
       setCalendarStatusTone("error");
       setCalendarStatus(error instanceof Error ? error.message : "Não foi possível salvar a recorrência.");
@@ -4969,9 +5730,9 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
   };
 
   return (
-    <div className="p-4 md:p-8 xl:p-12">
-      <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <PageContainer size="fluid">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(680px,1fr)_minmax(340px,400px)] 2xl:grid-cols-[minmax(760px,1fr)_minmax(380px,460px)]">
+          <div className="space-y-5 md:space-y-8">
           <div className="rounded-xl border border-border bg-card p-4 md:p-6 xl:p-8">
             <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -5070,6 +5831,15 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
                 );
               })}
             </div>
+          </div>
+            <CalendarAnnualOverview
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+              holidays={holidays}
+              reminders={reminders}
+              ruleOccurrences={ruleOccurrences}
+              onSelectMonth={selectMonth}
+            />
           </div>
 
           <aside className="space-y-4">
@@ -5358,20 +6128,8 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
           </aside>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
-          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-lg md:text-xl font-semibold text-foreground">Todos os meses de {selectedYear}</h2>
-              <p className="text-sm text-muted-foreground">Visao anual com feriados, lembretes e recorrencias da sua conta.</p>
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400"><span className="h-2 w-2 rounded-full bg-green-500" /> Feriado</span>
-              <span className="inline-flex items-center gap-1 text-orange-700 dark:text-orange-400"><span className="h-2 w-2 rounded-full bg-orange-500" /> Lembrete</span>
-              <span className="inline-flex items-center gap-1 text-primary"><span className="h-2 w-2 rounded-full bg-primary" /> Recorrencia</span>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="hidden">
+          <div>
             {MONTH_NAMES.map((monthName, monthIndex) => {
               const monthHolidays = holidays.filter((holiday) => Number(holiday.date.slice(5, 7)) === monthIndex + 1);
               const monthReminderCount = reminders.filter((reminder) => Number(reminder.date.slice(5, 7)) === monthIndex + 1).length;
@@ -5421,6 +6179,87 @@ function CalendarView({ onUserActivity }: { onUserActivity: (activityType: UserA
             })}
           </div>
         </div>
+    </PageContainer>
+  );
+}
+
+function CalendarAnnualOverview({
+  selectedYear,
+  selectedMonth,
+  holidays,
+  reminders,
+  ruleOccurrences,
+  onSelectMonth,
+}: {
+  selectedYear: number;
+  selectedMonth: number;
+  holidays: CalendarHoliday[];
+  reminders: CalendarReminderData[];
+  ruleOccurrences: CalendarRuleOccurrenceData[];
+  onSelectMonth: (month: number) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
+      <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold text-foreground">Todos os meses de {selectedYear}</h2>
+          <p className="text-sm text-muted-foreground">Visao anual com feriados, lembretes e recorrencias da sua conta.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400"><span className="h-2 w-2 rounded-full bg-green-500" /> Feriado</span>
+          <span className="inline-flex items-center gap-1 text-orange-700 dark:text-orange-400"><span className="h-2 w-2 rounded-full bg-orange-500" /> Lembrete</span>
+          <span className="inline-flex items-center gap-1 text-primary"><span className="h-2 w-2 rounded-full bg-primary" /> Recorrencia</span>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        {MONTH_NAMES.map((monthName, monthIndex) => {
+          const monthHolidays = holidays.filter((holiday) => Number(holiday.date.slice(5, 7)) === monthIndex + 1);
+          const monthReminderCount = reminders.filter((reminder) => Number(reminder.date.slice(5, 7)) === monthIndex + 1).length;
+          const monthRuleOccurrences = ruleOccurrences.filter((occurrence) => Number(occurrence.date.slice(5, 7)) === monthIndex + 1);
+          const monthEventCount = monthReminderCount + monthRuleOccurrences.length;
+
+          return (
+            <button
+              key={monthName}
+              className={`rounded-xl border p-4 text-left transition-colors ${
+                selectedMonth === monthIndex ? "border-primary bg-primary/10" : "border-border hover:bg-accent"
+              }`}
+              onClick={() => onSelectMonth(monthIndex)}
+              type="button"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-semibold text-foreground">{monthName}</h3>
+                {monthEventCount > 0 && (
+                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                    {monthEventCount}
+                  </span>
+                )}
+              </div>
+              {monthHolidays.length > 0 || monthRuleOccurrences.length > 0 ? (
+                <div className="mt-3 space-y-1">
+                  {monthHolidays.map((holiday) => (
+                    <p key={`${holiday.date}-${holiday.name}`} className="text-xs text-muted-foreground">
+                      <span className="font-medium text-green-700 dark:text-green-400">{Number(holiday.date.slice(8, 10))}</span> Â· {holiday.name}
+                    </p>
+                  ))}
+                  {monthRuleOccurrences.slice(0, 4).map((occurrence) => (
+                    <p key={`${occurrence.ruleId}-${occurrence.date}`} className="text-xs text-muted-foreground">
+                      <span className="font-medium text-primary">{Number(occurrence.date.slice(8, 10))}</span> Â· {occurrence.title}
+                    </p>
+                  ))}
+                  {monthRuleOccurrences.length > 4 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{monthRuleOccurrences.length - 4} recorrencia{monthRuleOccurrences.length - 4 > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">Sem feriados cadastrados.</p>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -5431,7 +6270,7 @@ function FlashcardsView({
   onUserActivity,
 }: {
   profileId: string;
-  onUserActivity: (activityType: UserActivityType) => void;
+  onUserActivity: (activityType: UserActivityType, details?: UserActivityDetails) => void;
 }) {
   const [decks, setDecks] = useState<FlashcardDeckData[]>([]);
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
@@ -5449,6 +6288,7 @@ function FlashcardsView({
   const [isCardAnswerVisible, setIsCardAnswerVisible] = useState(false);
   const reviewCount = decks.reduce((total, deck) => total + deck.cards, 0);
   const selectedDeck = decks.find((deck) => deck.id === selectedDeckId) ?? null;
+  const dueCards = cards.filter((card) => !card.nextReviewAt || new Date(card.nextReviewAt) <= new Date());
   const currentReviewCard = cards[reviewIndex] ?? null;
 
   const reloadDecks = async () => {
@@ -5515,7 +6355,10 @@ function FlashcardsView({
       setSelectedDeckId(savedDeck.id);
       setDeckName("");
       setIsCreatingDeck(false);
-      onUserActivity("flashcard");
+      onUserActivity("flashcard", {
+        referenceId: savedDeck.id,
+        metadata: { flashcardAction: "create_deck", deckName: savedDeck.name },
+      });
     } catch (error) {
       setDeckStatus(error instanceof Error ? error.message : "Nao foi possivel criar o deck.");
     }
@@ -5537,28 +6380,40 @@ function FlashcardsView({
       setDecks((currentDecks) => currentDecks.map((deck) => deck.id === nextDeck.id ? nextDeck : deck));
       setCardFront("");
       setCardBack("");
-      onUserActivity("flashcard");
+      onUserActivity("flashcard", {
+        referenceId: card.id,
+        metadata: { flashcardAction: "create_card", deckId: nextDeck.id, deckName: nextDeck.name },
+      });
     } catch (error) {
       setDeckStatus(error instanceof Error ? error.message : "Nao foi possivel criar o flashcard.");
     }
   };
 
-  const markCardReviewed = async () => {
+  const markCardReviewed = async (quality: "again" | "good") => {
     if (!currentReviewCard) return;
     try {
-      const reviewedCard = await reviewFlashcard(currentReviewCard);
+      const reviewedCard = await reviewFlashcard(currentReviewCard, quality);
       setCards((currentCards) => currentCards.map((card) => card.id === reviewedCard.id ? reviewedCard : card));
       setReviewIndex((current) => (cards.length > 0 ? (current + 1) % cards.length : 0));
       setIsCardAnswerVisible(false);
-      onUserActivity("flashcard");
+      onUserActivity("flashcard", {
+        referenceId: reviewedCard.id,
+        metadata: {
+          flashcardAction: "review_card",
+          quality,
+          deckId: reviewedCard.deckId,
+          reviewCount: reviewedCard.reviewCount,
+          nextReviewAt: reviewedCard.nextReviewAt,
+          reviewIntervalDays: reviewedCard.reviewIntervalDays,
+        },
+      });
     } catch (error) {
       setDeckStatus(error instanceof Error ? error.message : "Nao foi possivel atualizar a revisao.");
     }
   };
 
   return (
-    <div className="p-4 md:p-8 xl:p-12">
-      <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
+    <PageContainer>
         <div className="flex gap-4 overflow-x-auto border-b border-border">
           <button className="pb-3 px-1 text-sm font-medium text-primary border-b-2 border-primary">
             Meus decks
@@ -5700,8 +6555,10 @@ function FlashcardsView({
             <div className="rounded-xl border border-border bg-card p-4 md:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-foreground">Revisão</h3>
-                  <p className="text-sm text-muted-foreground">{cards.length} cards neste deck</p>
+                  <h3 className="font-semibold text-foreground">Revisao inteligente</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {dueCards.length} de {cards.length} card{cards.length === 1 ? "" : "s"} para revisar hoje
+                  </p>
                 </div>
                 <CreditCard className="h-5 w-5 text-primary" />
               </div>
@@ -5730,7 +6587,12 @@ function FlashcardsView({
               ) : currentReviewCard ? (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-border bg-background p-5 min-h-44">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Frente</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Frente</p>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                        intervalo: {currentReviewCard.reviewIntervalDays} dia{currentReviewCard.reviewIntervalDays === 1 ? "" : "s"}
+                      </span>
+                    </div>
                     <p className="mt-2 text-base font-medium text-foreground">{currentReviewCard.front}</p>
                     {isCardAnswerVisible && (
                       <div className="mt-4 rounded-lg bg-primary/5 p-3">
@@ -5741,20 +6603,30 @@ function FlashcardsView({
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <button
-                      className="flex-1 rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
+                      className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent sm:flex-1"
                       onClick={() => setIsCardAnswerVisible((visible) => !visible)}
                       type="button"
                     >
                       {isCardAnswerVisible ? "Ocultar resposta" : "Mostrar resposta"}
                     </button>
                     <button
-                      className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-                      onClick={markCardReviewed}
+                      className="rounded-lg border border-orange-200 px-4 py-2 text-sm text-orange-700 hover:bg-orange-50 dark:border-orange-900 dark:text-orange-300 dark:hover:bg-orange-950 sm:flex-1"
+                      onClick={() => markCardReviewed("again")}
                       type="button"
                     >
-                      Revisei
+                      Errei
+                    </button>
+                    <button
+                      className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 sm:flex-1"
+                      onClick={() => markCardReviewed("good")}
+                      type="button"
+                    >
+                      Acertei
                     </button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Acertei aumenta o intervalo de revisao. Errei agenda o card para amanha.
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center">
@@ -5766,8 +6638,7 @@ function FlashcardsView({
         )}
 
         {deckStatus && <p className="text-sm text-destructive">{deckStatus}</p>}
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -5810,18 +6681,29 @@ type EnemExamResult = {
   byArea: Record<string, { correct: number; total: number }>;
 };
 
+const ENEM_2025_BRANCO_PORTUGUESE_SHARED_TEXT = [
+  "De próprio punho",
+  "A escrita e suas tecnologias sofrem interessantes metamorfoses, numa ciranda que vai do simples bilhete aos originais de um livro.",
+  "[l. 1-8] Estranhei muito na primeira vez que escutei a expressão “de próprio punho”. Parecia que eu ia bater em alguém. Não era bem o caso. Foi numa situação bancária, dessas bem burocráticas, e eu devia escrever algo bem breve, mas com minhas mãos. Na verdade, o que importava era a autenticidade da minha caligrafia, que à época ainda era mais fluente e firme. Depois dos teclados de computador, ela rateia bastante. Minha letra, hoje, tem uma espécie de alternância: dia sim, dia não, trêmula e firme, forte e fraca, mais rotunda e mais cheia de arestas.",
+  "[l. 9-20] É claro que já escrevi muito mais de próprio punho ou, numa palavra mais bonita, manuscrevi (prefiro a mão ao punho, embora ele também seja usado na tarefa). Mas isso não é um feito individual. Em larga medida, é social. Muita gente sente o mesmo que eu, isto é, escreve bem menos usando as mãos, ou melhor, empregando algum tipo de tecnologia (lápis, caneta etc.) para escrever com grafite ou tinta ou giz ou carvão ou sangue e o que mais. É importante lembrar que ainda há gente que não sabe escrever neste país, neste planeta, mas muita gente sabe e tem um combo de tecnologias mais ou menos à disposição para isso. Sou dessas pessoas privilegiadas que têm várias possibilidades, e uma delas nunca deixou de ser o uso das minhas mãos. Ainda hoje, são elas que batucam meu teclado de computador ou que tocam suavemente duas ou três telas sensíveis. Mas não expressam mais a minha letra. No lugar, aparecem Times New Roman, Arial, Calibri e mais uma centena de “letras” à minha escolha. Eu e Deus e o mundo.",
+  "[l. 21-29] A despeito desse rol de chances e ferramentas para escrever, o manuscrito nunca deixou de pintar aqui e ali, muitas vezes como obrigação. Na escola, por exemplo, até hoje ele é soberano. No Enem também. Curioso, não? Fico pensando em que espaços e ocasiões ainda uso minha letra. Olhando ao redor, na minha casa, minha letra está em espaços muito delimitados e específicos: bilhetes. Eles estão principalmente na cozinha, em especial na porta da geladeira, a fim de manter a comunicação com meus coabitantes, sempre muito esquecidos ou relapsos. Mas também há bilhetes em post its na minha mesa do escritório, textinhos em garranchos por meio dos quais me comunico comigo mesma, a evitar um comportamento esquecido e relapso.",
+  "[l. 30-36] No escritório, costumo ser mais suave comigo mesma, mas também muito mais lacônica, a ponto de nem eu me entender, se passar o tempo. Em todos os casos vai minha letra, menos e mais redonda, a lápis e a tinta azul, em post its rosa-choque, colados precariamente, e todos com destino à lixeira, em breve. Justo porque eles funcionam como lembretes de tarefas e coisas que devem ser vencidas e, claro, substituídas por outras, num fluxo infinito, às vezes ansiogênico, com que a maioria dos adultos (e mais ainda as adultas) precisa conviver.",
+  "[l. 37-45] As formas de escrever mudam, as necessidades também, e o resultado é um elenco complexo, em que nada dispensa nada, a depender da tarefa ou da importância das coisas ou de suas funções, claro. A escrita e suas tecnologias incríveis vão se reposicionando, mudando de status, numa ciranda interessante e importante que pode ser vista à luz de certa diversidade que encontra suas oportunidades e seus efeitos, aqui e ali. Não adianta muito pensar sempre como se tudo fosse excludente. Estão aí minha farta comunicação por bilhetes, minha gaveta alegre de post its de toda cor, esperando para serem usados, e o cheque do cartório, em que quase tudo já é digital. “Do punho ao pixel” não é uma frase filosoficamente correta. O negócio é mais “o punho e o pixel”.",
+  "RIBEIRO, A. E. Disponível em: https://rascunho.com.br. Acesso em: 16 jan. 2024 (adaptado).",
+].join("\n\n");
+
 const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
   {
     id: "enem-2025-white-english",
     title: "ENEM 2025 - Caderno Branco",
     year: 2025,
     day: 1,
-    questionCount: 5,
-    areas: ["Linguagens", "Caderno Branco"],
-    description: "Questões oficiais de língua estrangeira do ENEM 2025 em formato nativo, com alternativas clicáveis e correção ao finalizar.",
-    pdfUrl: "",
-    officialUrl: "",
-    answerKeyUrl: "",
+    questionCount: 25,
+    areas: ["Linguagens", "Português", "Caderno Branco"],
+    description: "Questões oficiais de Linguagens do ENEM 2025 em formato nativo, com língua estrangeira, Português, alternativas clicáveis e correção ao finalizar.",
+    pdfUrl: "https://download.inep.gov.br/enem/provas_e_gabaritos/2025_PV_impresso_D1_CD3.pdf",
+    officialUrl: "https://www.gov.br/inep/pt-br/assuntos/noticias/enem/inep-disponibiliza-provas-e-gabaritos-do-enem-2025",
+    answerKeyUrl: "https://download.inep.gov.br/enem/provas_e_gabaritos/2025_GB_impresso_D1_CD3.pdf",
     englishAnswerKey: {
       1: "E",
       2: "A",
@@ -5836,7 +6718,28 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
       4: "A",
       5: "D",
     },
-    answerKey: {},
+    answerKey: {
+      6: "C",
+      7: "E",
+      8: "E",
+      9: "D",
+      10: "C",
+      11: "A",
+      12: "E",
+      13: "B",
+      14: "C",
+      15: "A",
+      16: "E",
+      17: "C",
+      18: "B",
+      19: "C",
+      20: "E",
+      21: "C",
+      22: "B",
+      23: "E",
+      24: "B",
+      25: "C",
+    },
     questions: [
       {
         id: "enem-2025-branco-ing-q1",
@@ -5980,6 +6883,357 @@ const ENEM_OFFICIAL_EXAMS: EnemExam[] = [
         prompt: "O recurso que caracteriza essa letra de canção como um relato das memórias do eu poético é o uso de",
         source: "ENEM 2025, Caderno Branco, Questão 05.",
         options: ["palavras no grau diminutivo.","adjetivos na descrição da paisagem.","vocábulos relacionados à fauna cubana.","verbos no pretérito imperfeito do indicativo.","marcas linguísticas de uma variedade caribenha."],
+      },
+      {
+        id: "enem-2025-branco-por-q6",
+        number: 6,
+        type: "objective",
+        area: "Português",
+        support: ENEM_2025_BRANCO_PORTUGUESE_SHARED_TEXT,
+        prompt: "O elemento que caracteriza esse texto como uma crônica é a",
+        source: "ENEM 2025, Caderno Branco, Questão 06.",
+        options: [
+          "defesa das opiniões da autora sobre um tema de interesse coletivo.",
+          "exposição sobre o uso de tecnologias nas práticas de escrita atuais.",
+          "abordagem de fatos do contexto pessoal em uma perspectiva reflexiva.",
+          "utilização de recursos linguísticos para a interlocução direta com o leitor.",
+          "apresentação de acontecimentos segundo a ordem de sucessão no tempo.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q7",
+        number: 7,
+        type: "objective",
+        area: "Português",
+        support: ENEM_2025_BRANCO_PORTUGUESE_SHARED_TEXT,
+        prompt: "No que diz respeito ao gênero bilhete, a autora dessa crônica",
+        source: "ENEM 2025, Caderno Branco, Questão 07.",
+        options: [
+          "ressalta a formalidade na comunicação com as pessoas de sua convivência.",
+          "critica a ansiedade causada pela velocidade da comunicação.",
+          "expressa a obrigatoriedade de concisão nas anotações.",
+          "questiona a prática da escrita de próprio punho.",
+          "apresenta a diversidade de usos no cotidiano.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q8",
+        number: 8,
+        type: "objective",
+        area: "Português",
+        support: ENEM_2025_BRANCO_PORTUGUESE_SHARED_TEXT,
+        prompt: "O recurso linguístico usado para marcar a síntese da opinião da autora sobre a temática desenvolvida foi o(a)",
+        source: "ENEM 2025, Caderno Branco, Questão 08.",
+        options: [
+          "emprego da primeira pessoa em “Estranhei muito na primeira vez que escutei a expressão ‘de próprio punho’”. (l. 1)",
+          "utilização de locução adverbial em “Na verdade, o que importava era a autenticidade da minha caligrafia”. (l. 3-4)",
+          "uso de pronome possessivo em “Minha letra, hoje, tem uma espécie de alternância”. (l. 5-6)",
+          "adoção de termo autorreflexivo em “No escritório, costumo ser mais suave comigo mesma”. (l. 30)",
+          "substituição da expressão “Do punho ao pixel” (l. 44) pela expressão “o punho e o pixel”. (l. 45)",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q9",
+        number: 9,
+        type: "objective",
+        area: "Português",
+        support: ENEM_2025_BRANCO_PORTUGUESE_SHARED_TEXT,
+        prompt: "Nesse texto, o que caracteriza a escrita “de próprio punho” é a letra manuscrita, enquanto a escrita digital é ilustrada pelo(a)",
+        source: "ENEM 2025, Caderno Branco, Questão 09.",
+        options: [
+          "utilização de tecnologias diversificadas.",
+          "desenvolvimento de novos recursos de escrita.",
+          "possibilidade de interações mediadas por telas.",
+          "diversidade de fontes tipográficas que estão disponíveis.",
+          "delimitação dos espaços onde a produção textual ocorre.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q10",
+        number: 10,
+        type: "objective",
+        area: "Português",
+        support: ENEM_2025_BRANCO_PORTUGUESE_SHARED_TEXT,
+        prompt: "A autora conclui que as novas tecnologias de escrita",
+        source: "ENEM 2025, Caderno Branco, Questão 10.",
+        options: [
+          "evoluem para facilitar a vida cotidiana.",
+          "alcançam diferentes realidades sociais.",
+          "coexistem com outras já estabelecidas.",
+          "promovem maior agilidade na comunicação.",
+          "surgem nos contextos em que são necessárias.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q11",
+        number: 11,
+        type: "objective",
+        area: "Português",
+        support: "Com 20 anos de experiência no futebol de alto rendimento, Marina, ex-jogadora da seleção brasileira de futebol, salienta que, por trás do espetáculo apresentado nas mídias, com mensagens de motivação e superação, o esporte não é tão inclusivo assim. Para a profissional, é preciso analisar com cautela a ideia romântica que a mídia passa para os telespectadores. A realidade é muito mais dura do que as imagens espetaculosas que principalmente a televisão busca transmitir. Atualmente, as crianças e os jovens vislumbram o sucesso profissional e a boa-vida financeira de poucos atletas que se destacam e estampam os meios de comunicação. Tudo parece ser muito mais fácil do que realmente é quando apenas as conquistas são mostradas.",
+        prompt: "Nesse texto, a visão crítica de uma ex-atleta de futebol revela que",
+        source: "ENEM 2025, Caderno Branco, Questão 11.",
+        options: [
+          "os meios de comunicação invisibilizam as dificuldades presentes no esporte.",
+          "o treinamento atlético de alto nível é desestimulante para os indivíduos.",
+          "o trabalho contínuo é desvalorizado no contexto esportivo profissional.",
+          "as ações de incentivo financeiro a jovens atletas são precárias.",
+          "as publicações da mídia esportiva rotulam atletas iniciantes.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q12",
+        number: 12,
+        type: "objective",
+        area: "Português",
+        support: "No predomínio das mulheres pretas brasileiras nos Jogos Olímpicos de 2024, uma coisa chamou a atenção no pódio: elas valorizam a parte psicológica. As medalhistas Beatriz Souza e Rebeca Andrade ressaltam, em entrevistas, a importância da saúde mental. Rebeca afirma que a disputa também é consigo mesma e que precisa controlar cabeça e corpo para se apresentar. Na mesma linha, Rayssa Leal exalta a necessidade da terapia, e a Seleção Brasileira de Futebol de Mulheres tem suporte psicológico no treinamento.",
+        prompt: "Nesse texto, as atletas brasileiras defendem o(a)",
+        source: "ENEM 2025, Caderno Branco, Questão 12.",
+        options: [
+          "investimento na modernização de equipamentos.",
+          "subordinação do treinamento físico ao mental.",
+          "estímulo à competição entre adversárias.",
+          "aprimoramento da expressão corporal.",
+          "importância da saúde emocional.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q13",
+        number: 13,
+        type: "objective",
+        area: "Português",
+        support: "A característica fundamental no aprendizado das práticas rituais nos candomblés é o processo iniciático e participante. Durante o período de reclusão, o iniciado passa por ritos e começa a adquirir símbolos materiais, gestos e um repertório linguístico específico das cerimônias. Esse repertório, chamado de “língua de santo” na Bahia, compreende uma terminologia religiosa operacional, de caráter mágico-semântico e de aparente forma portuguesa, mas apoiada em sistemas lexicais de diferentes línguas africanas provavelmente faladas no Brasil escravocrata.",
+        prompt: "A “língua de santo” tem sua importância para o patrimônio linguístico brasileiro por",
+        source: "ENEM 2025, Caderno Branco, Questão 13.",
+        options: [
+          "apresentar uma carga semântica mítica.",
+          "conservar elementos dos falares dos escravizados.",
+          "resgatar expressões portuguesas do período colonial.",
+          "decodificar o ritual religioso dos nossos antepassados.",
+          "favorecer a compreensão do léxico africano contemporâneo.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q14",
+        number: 14,
+        type: "objective",
+        area: "Português",
+        support: "O meu medo é entrar na faculdade e tirar zero eu que nunca fui bom de matemática fraco no inglês eu que nunca gostei de química geografia e português o que é que eu faço agora hein mãe não sei. [...] O meu medo é a vida piorar e eu não conseguir arranjar emprego nem de faxineiro nem de porteiro nem de ajudante de pedreiro [...]. O meu medo é que mesmo com diploma debaixo do braço andando por aí desiludido e desempregado o policial me olhe de cara feia e eu acabe fazendo uma burrice sei lá uma besteira será que eu vou ter direito a uma cela especial hein mãe não sei.",
+        prompt: "Nesse texto, a reiteração dos medos e das angústias do narrador exprime",
+        source: "ENEM 2025, Caderno Branco, Questão 14.",
+        options: [
+          "inseguranças sobre o futuro familiar.",
+          "dilemas resultantes de seu fracasso escolar.",
+          "incertezas centradas em sua condição social.",
+          "hesitações em relação à sua formação profissional.",
+          "preocupações com as políticas públicas assistenciais.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q15",
+        number: 15,
+        type: "objective",
+        area: "Português",
+        support: "O retrato como gênero da pintura ocidental ficou vinculado às elites, tornando invisíveis as populações que não faziam parte do círculo dominante. Num país de tradição escravocrata e colonizado por europeus como o Brasil, pouquíssimas pessoas negras e indígenas foram retratadas em pintura, e menos ainda identificadas com seus nomes nos retratos. Daí a importância, para a história da arte e para a história brasileira, dos retratos de Dalton Paula.",
+        image: enem2025Q15Portraits,
+        imageAlt: "Retratos de Zeferina e João de Deus Nascimento, obras de Dalton Paula expostas no Masp.",
+        prompt: "Ao dar protagonismo a Zeferina e a João de Deus Nascimento, o artista Dalton Paula evidencia que a(s)",
+        source: "ENEM 2025, Caderno Branco, Questão 15.",
+        options: [
+          "arte pode promover formas de afirmação de identidade social.",
+          "comunidades periféricas passam a adquirir o gênero retrato.",
+          "personagens retratadas simbolizam a sociedade brasileira.",
+          "pintura funciona como instrumento de ascensão social.",
+          "imagens tradicionais preservam memórias afetivas.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q16",
+        number: 16,
+        type: "objective",
+        area: "Português",
+        support: [
+          "Símbolos",
+          "Eu e tu, ante a noite e o amplo desdobramento",
+          "do mar, fero, a estourar de encontro à rocha nua...",
+          "Um símbolo descubro aqui, neste momento",
+          "esta rocha, este mar... a minha vida e a tua.",
+          "",
+          "O mar vem, o mar vai, nele há o gesto violento",
+          "de quem maltrata e, após, se arrepende e recua.",
+          "Como compreendo bem da rocha o sentimento!",
+          "São muito iguais, por certo, a minha mágoa e a sua.",
+          "",
+          "Contemplo neste quadro a nossa triste vida;",
+          "tu és dúbio mar que, na sua inconsciência,",
+          "tem carinhos de amor e fúrias de demência!",
+          "",
+          "Eu sou a dor estanque, a dor empedernida,",
+          "sou rocha a emergir de um côncavo de areia,",
+          "imóvel, muda, isenta e alheia ao mar, alheia.",
+          "",
+          "MACHADO, G. Poesia completa. Rio de Janeiro: Cátedra/MEC, 1978.",
+        ].join("\n"),
+        prompt: "Nesse soneto, os traços da estética simbolista são resgatados pelo eu lírico ao",
+        source: "ENEM 2025, Caderno Branco, Questão 16.",
+        options: [
+          "rejeitar as emoções de “amor” e “mágoa”.",
+          "expressar a dubiedade do olhar sobre o outro.",
+          "representar o “eu” e o “tu” como sujeitos volúveis.",
+          "associar a sua inconsciência a elementos da natureza.",
+          "metaforizar o conflito amoroso nas imagens de “mar” e “rocha”.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q17",
+        number: 17,
+        type: "objective",
+        area: "Português",
+        support: "Antes do inverno chegar.\nEla tinha olhinhos brilhantes. Os mesmos de antes. Antes da fome. Antes das 17 mudanças de cidade. Dos sete filhos e dos muitos anos de trabalho dentro e fora de casa.\nEla fazia ambrosia, bolo de fubá e pedacinhos de queijo. Antes do inverno, ela plantava flores novas e diferentes para nos esperar nas próximas férias de verão.\nEla tinha o jeito de menina. Menina sapeca, correndo na grama seca do cerrado. O mesmo jeito de antes. Antes do marido (e mesmo com o marido). Antes do cansaço dos anos. Antes da dureza do trato com a terra.\nEla tinha histórias. Compridas, curtas, divertidas e verdadeiras. Mas isso foi antes. Antes das lembranças se bagunçarem feito bolas coloridas de Natal esperando para serem montadas na árvore.\nEu era sua neta. Antes do Alzheimer chegar, eu era sua neta. Mas ela é e sempre será minha avó.\nPERSON, C. R. Borboletas no estômago. São Paulo: Ed. das Autoras, 2021.",
+        prompt: "A narradora, ao resgatar memórias da história de vida da avó, faz uso recorrente da locução “antes de”. Esse termo colabora para a progressão temática na medida em que",
+        source: "ENEM 2025, Caderno Branco, Questão 17.",
+        options: [
+          "relaciona eventos ocorridos simultaneamente.",
+          "estabelece uma comparação entre as lembranças.",
+          "ressalta fatos que ressignificam o momento presente.",
+          "sinaliza uma sequência que denota ações consecutivas.",
+          "apresenta uma explicação para as memórias resgatadas.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q18",
+        number: 18,
+        type: "objective",
+        area: "Português",
+        support: "— Vejo, disse ele com algum acanhamento, que o doutor não é nenhum pé-rapado, mas nunca é bom facilitar... Minha filha Nocência fez 18 anos pelo Natal, e é rapariga que pela feição parece moça de cidade, muito ariscazinha de modos, mas bonita e boa deveras... Coitada, foi criada sem mãe, e aqui nestes fundões. [...]\n— Ora muito que bem, continuou Pereira caindo aos poucos na habitual garrulice, quando vi a menina tomar corpo, tratei logo de casá-la.\n— Ah! é casada? perguntou Cirino.\n— Isto é, é e não é. A coisa está apalavrada. Por aqui costuma labutar no costeio do gado para São Paulo um homem de mão-cheia, que talvez o sr. conheça... o Manecão Doca...\n— Não, respondeu Cirino abanando a cabeça.\n— Pois isso é um homem às direitas, desempenado e trabucador como ele só... fura estes sertões todos e vem tangendo pontes de gado que metem pasmo. Também dizem que tem bichado muito e ajuntado cobre grosso [...].\nTAUNAY, A. d’E. Inocência. Disponível em: www.dominiopublico.gov.br. Acesso em: 29 fev. 2024.",
+        prompt: "Nesse trecho, ao se referir à sua filha, o pai de Inocência reproduz os ideais românticos, presentes na",
+        source: "ENEM 2025, Caderno Branco, Questão 18.",
+        options: [
+          "valorização do ambiente rural na formação moral da mulher.",
+          "figura decorativa da mulher ante o protagonismo masculino.",
+          "equivalência de origem social para a harmonia do casal.",
+          "importância do dote como condição para o casamento.",
+          "aura de mistério sobre a identidade da jovem.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q19",
+        number: 19,
+        type: "objective",
+        area: "Português",
+        support: "O Ministério do Esporte no Brasil lançou o programa Maré Inclusiva, em 2024, ano dos Jogos Paralímpicos de Paris. Esse programa visa ampliar as oportunidades para pessoas com deficiência que desejam praticar o surf. O parasurf é a prática do surf adaptada para permitir que pessoas com deficiência pratiquem o esporte em todas as suas categorias, modalidades e manifestações. Para a Secretaria Nacional do Paradesporto, a iniciativa é mais do que um programa de esporte, é uma iniciativa que busca transformar vidas e promover a inclusão por meio do parasurf, criando um legado de igualdade e respeito.",
+        prompt: "De acordo com esse texto, o programa voltado ao estímulo da prática do parasurf evidencia a",
+        source: "ENEM 2025, Caderno Branco, Questão 19.",
+        options: [
+          "adesão de diferentes países a programas inclusivos.",
+          "preocupação política em atender a demandas paralímpicas.",
+          "importância de uma política pública esportiva para a inclusão.",
+          "eficiência das iniciativas de inclusão em megaeventos esportivos.",
+          "escassez de investimento em práticas corporais de aventura na natureza.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q20",
+        number: 20,
+        type: "objective",
+        area: "Português",
+        support: "Art. 26-A. Nos estabelecimentos de ensino fundamental e médio, oficiais e particulares, torna-se obrigatório o ensino sobre História e Cultura Afro-Brasileira.\n§ 1º O conteúdo programático a que se refere o caput deste artigo incluirá o estudo da História da África e dos Africanos, a luta dos negros no Brasil, a cultura negra brasileira e o negro na formação da sociedade nacional, resgatando a contribuição do povo negro nas áreas social, econômica e política pertinentes à História do Brasil.\n§ 2º Os conteúdos referentes à História e Cultura Afro-Brasileira serão ministrados no âmbito de todo o currículo escolar, em especial nas áreas de Educação Artística e de Literatura e História Brasileiras.\nBRASIL. Lei n. 10 639/2003. Disponível em: www.gov.br/planalto. Acesso em: 5 maio 2024.",
+        prompt: "O emprego da norma-padrão é justificado nesse texto",
+        source: "ENEM 2025, Caderno Branco, Questão 20.",
+        options: [
+          "pela especialização de seu público-alvo.",
+          "pela relevância cultural de seu conteúdo.",
+          "pelos contextos pedagógicos em que circula.",
+          "pela importância para os grupos étnico-raciais.",
+          "pelas características do gênero a que pertence.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q21",
+        number: 21,
+        type: "objective",
+        area: "Português",
+        image: enem2025Q21Bienal,
+        imageAlt: "Cartaz da Bienal Internacional do Livro de São Paulo com a frase: Você entra Fernando. E sai Pessoa.",
+        support: "Disponível em: www.publishnews.com.br. Acesso em: 19 set. 2024.",
+        prompt: "Nesse cartaz publicitário, os recursos verbais e não verbais constroem um argumento que objetiva",
+        source: "ENEM 2025, Caderno Branco, Questão 21.",
+        options: [
+          "divulgar a obra de Fernando Pessoa no Brasil.",
+          "valorizar a realização de eventos literários no país.",
+          "ressaltar o impacto da leitura na vida das pessoas.",
+          "fomentar o turismo cultural na cidade de São Paulo.",
+          "evidenciar a influência de Pessoa na literatura brasileira.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q22",
+        number: 22,
+        type: "objective",
+        area: "Português",
+        image: enem2025Q22Unicef,
+        imageAlt: "Cartaz do Unicef com crianças negra e indígena e a frase: Em um mundo de diferenças, enxergue a igualdade.",
+        support: "Disponível em: www.unicef.org.br. Acesso em: 15 jan. 2024 (adaptado).",
+        prompt: "Nesse cartaz, a utilização de frases que projetam a vida profissional de duas crianças tem como objetivo",
+        source: "ENEM 2025, Caderno Branco, Questão 22.",
+        options: [
+          "sugerir a arrecadação de fundos para o sustento de povos originários no país.",
+          "sensibilizar a sociedade sobre os benefícios decorrentes do combate ao racismo.",
+          "indicar a importância da orientação vocacional na educação de crianças no Brasil.",
+          "chamar a atenção sobre a necessidade de ações voltadas para a educação infantil.",
+          "valorizar o trabalho de agências internacionais na luta contra a discriminação racial.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q23",
+        number: 23,
+        type: "objective",
+        area: "Português",
+        support: "Passando por aqui para lembrar algumas palavras, frases e expressões que nos infernizaram em 2023. Inclusive passando por aqui. Se você for proativo, vai achar que é o novo normal. Estarão na sua zona de conforto. Mas, se for reativo como eu, vai achar que é uma narrativa que precisa ser ressignificada.\nÉ uma questão de empatia. É sobre entregar um discurso mais robusto e empoderado. Sei bem que não tenho lugar de fala para harmonizar certos pontos fora da curva e que preciso aplicar toda a minha resiliência para fazer um realinhamento. O nível de fitness está hoje num sarrafo muito alto.\nO fato é que acho cringe essas falas fora da caixinha. Aliás, falar cringe já é meio cringe. Preciso usar a superação para me reinventar e entender que resenha não tem mais a ver com futebol, é qualquer papo, desde que latente.\nPensando bem, não é tão difícil. Frases feitas são aquelas que entram por um ouvido e saem pelo outro sem um estágio intermediário no cérebro. A boca fala por conta própria, dispensando-nos de pensar. E não tem problema nisso. Ou as ditas frases se incorporam à língua ou morrem e nascem outras. A língua é assim. Simples assim.\nCASTRO, R. Disponível em: www1.folha.uol.com.br. Acesso em: 3 fev. 2024 (adaptado).",
+        prompt: "Nesse texto, a estratégia empregada para criticar a constante exposição a palavras, frases e expressões automatizadas é o(a)",
+        source: "ENEM 2025, Caderno Branco, Questão 23.",
+        options: [
+          "menção feita à efemeridade de alguns usos linguísticos aleatórios.",
+          "subjetividade marcada pela reflexão que se desenvolve em primeira pessoa.",
+          "efeito estilístico da repetição intencional da palavra “assim” no último parágrafo.",
+          "sedução sugerida pelo envolvimento direto do leitor marcado nos usos de “você” e “sua”.",
+          "humor gerado pelo uso das estruturas linguísticas que são objeto da reflexão desenvolvida.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q24",
+        number: 24,
+        type: "objective",
+        area: "Português",
+        support: "TEXTO I\nA Ilha do Ferro, situada a 18 km do município de Pão de Açúcar, não é uma ilha, como o nome indica. A história do povoado é semelhante à de inúmeros outros que encontramos às margens do Rio São Francisco, entre Alagoas e Sergipe. O que torna diferente o lugar é sua gente. Hoje, dezenas de artistas populares povoam a Ilha do Ferro, trabalhando principalmente com o entalhe em madeira. Onde pessoas comuns enxergariam apenas troncos e galhos retorcidos, eles vislumbram bancos, bonecos, pássaros, cobras e bailarinas. “Às vezes, você passa por um pedaço de madeira uma vez e não vê nada, passa cinco vezes por ele e não vê nada”, conta um dos artistas, “mas, na décima vez, você consegue enxergar alguma forma nesse pedaço de madeira e transformá-lo em arte”.",
+        image: enem2025Q24IlhaFerro,
+        imageAlt: "Bailarino entalhado em gravetos de madeira, artesanato da Ilha do Ferro.",
+        prompt: "A originalidade do trabalho dos artistas da Ilha do Ferro se dá pela",
+        source: "ENEM 2025, Caderno Branco, Questão 24.",
+        options: [
+          "reutilização de materiais para redução do impacto ambiental.",
+          "ressignificação da matéria-prima atribuindo-lhe nova função.",
+          "reprodução em madeira de modelos artísticos canônicos.",
+          "representação de práticas corporais da comunidade.",
+          "replicação seriada para distribuição em larga escala.",
+        ],
+      },
+      {
+        id: "enem-2025-branco-por-q25",
+        number: 25,
+        type: "objective",
+        area: "Português",
+        support: "TEXTO I\nOs trabalhos da exposição Adriana Varejão: suturas, fissuras, ruínas colocam em pauta o exame da história visual, das tradições iconográficas europeias e do fazer artístico ocidental. O corte, a rachadura, o talho e a fissura são elementos de narrativas recorrentes nos trabalhos da artista desde 1992. As produções recentes incluem pinturas tridimensionais de grande escala das séries Ruínas de charque e Línguas.",
+        image: enem2025Q25Varejao,
+        imageAlt: "Obra Azulejaria em carne viva, de Adriana Varejão.",
+        prompt: "A utilização de recursos visuais como suturas, cortes e ruínas por Adriana Varejão, na obra Azulejaria em carne viva, remete à(s)",
+        source: "ENEM 2025, Caderno Branco, Questão 25.",
+        options: [
+          "sobreposição da cultura brasileira à arte portuguesa.",
+          "manutenção da representação realista na arte brasileira.",
+          "violências desencadeadas pelo processo colonial brasileiro.",
+          "desigualdades nos incentivos à produção artística brasileira.",
+          "negligência na conservação do patrimônio arquitetônico luso-brasileiro.",
+        ],
       }
     ],
   },
@@ -6027,6 +7281,13 @@ function getSimuladoRecommendation(area: string, language: "english" | "spanish"
     };
   }
 
+  if (area === "Português") {
+    return {
+      title: "Reforce Português",
+      body: "Revise interpretação, função dos parágrafos, sentido literal e figurado, relações entre ideias e efeitos de sentido no texto.",
+    };
+  }
+
   if (area === "Ciências Humanas") {
     return {
       title: "Reforce Ciências Humanas",
@@ -6040,7 +7301,95 @@ function getSimuladoRecommendation(area: string, language: "english" | "spanish"
   };
 }
 
-function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: UserActivityType) => void }) {
+type SimuladoBankStatusFilter = "all" | "ready" | "pending";
+
+type SimuladoPerformanceSummary = {
+  attemptsCount: number;
+  bestPercent: number;
+  averagePercent: number;
+  totalAnswered: number;
+  latestAttempt: SimuladoAttemptData | null;
+  weakestArea: string | null;
+};
+
+function hasExamCorrection(exam: EnemExam) {
+  return Object.keys(exam.answerKey).length > 0
+    || Object.keys(exam.englishAnswerKey ?? {}).length > 0
+    || Object.keys(exam.spanishAnswerKey ?? {}).length > 0;
+}
+
+function getExamImportedQuestionCount(exam: EnemExam) {
+  return exam.questions.length;
+}
+
+function getSimuladoPerformanceSummary(attempts: SimuladoAttemptData[]): SimuladoPerformanceSummary {
+  if (attempts.length === 0) {
+    return {
+      attemptsCount: 0,
+      bestPercent: 0,
+      averagePercent: 0,
+      totalAnswered: 0,
+      latestAttempt: null,
+      weakestArea: null,
+    };
+  }
+
+  const totalPercent = attempts.reduce((total, attempt) => total + attempt.percent, 0);
+  const areaScores: Record<string, { correct: number; total: number }> = {};
+
+  attempts.forEach((attempt) => {
+    Object.entries(attempt.byArea).forEach(([area, score]) => {
+      areaScores[area] ??= { correct: 0, total: 0 };
+      areaScores[area].correct += score.correct;
+      areaScores[area].total += score.total;
+    });
+  });
+
+  const weakestArea = Object.entries(areaScores)
+    .filter(([, score]) => score.total > 0)
+    .sort(([, first], [, second]) => first.correct / first.total - second.correct / second.total)[0]?.[0] ?? null;
+
+  return {
+    attemptsCount: attempts.length,
+    bestPercent: Math.max(...attempts.map((attempt) => attempt.percent)),
+    averagePercent: Math.round(totalPercent / attempts.length),
+    totalAnswered: attempts.reduce((total, attempt) => total + attempt.answeredCount, 0),
+    latestAttempt: attempts[0] ?? null,
+    weakestArea,
+  };
+}
+
+function findQuestionInBank(questionId: string) {
+  for (const exam of ENEM_OFFICIAL_EXAMS) {
+    const question = exam.questions.find((candidate) => candidate.id === questionId);
+    if (question) return { exam, question };
+  }
+
+  return null;
+}
+
+function buildReviewExamFromAttempt(attempt: SimuladoAttemptData): EnemExam | null {
+  const questionsToReview = attempt.questions
+    .filter((question) => question.status !== "correct")
+    .map((question) => findQuestionInBank(question.questionId)?.question)
+    .filter((question): question is EnemQuestion => Boolean(question));
+
+  if (questionsToReview.length === 0) return null;
+
+  const baseExam = ENEM_OFFICIAL_EXAMS.find((exam) => exam.id === attempt.examId) ?? ENEM_OFFICIAL_EXAMS[0];
+
+  return {
+    ...baseExam,
+    id: `review-${attempt.id}`,
+    title: `Revisao de erros: ${attempt.examTitle}`,
+    description: "Lista curta com as questoes erradas ou em branco da tentativa anterior.",
+    questionCount: questionsToReview.length,
+    areas: Array.from(new Set(questionsToReview.map((question) => question.area))),
+    questions: questionsToReview,
+  };
+}
+
+function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: UserActivityType, details?: UserActivityDetails) => void }) {
   const [activeTab, setActiveTab] = useState<"official" | "custom" | "history">("official");
   const [selectedExam, setSelectedExam] = useState<EnemExam | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -6049,6 +7398,9 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
   const [attempts, setAttempts] = useState<SimuladoAttemptData[]>([]);
   const [attemptsLoading, setAttemptsLoading] = useState(false);
   const [resultStatus, setResultStatus] = useState("");
+  const [examAreaFilter, setExamAreaFilter] = useState("Todas");
+  const [examYearFilter, setExamYearFilter] = useState("Todos");
+  const [examStatusFilter, setExamStatusFilter] = useState<SimuladoBankStatusFilter>("all");
 
   const refreshAttempts = async () => {
     setAttemptsLoading(true);
@@ -6063,12 +7415,28 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     refreshAttempts();
   }, []);
 
+  const performanceSummary = getSimuladoPerformanceSummary(attempts);
+  const availableExamAreas = Array.from(new Set(ENEM_OFFICIAL_EXAMS.flatMap((exam) => exam.areas))).sort();
+  const availableExamYears = Array.from(new Set(ENEM_OFFICIAL_EXAMS.map((exam) => exam.year))).sort((first, second) => second - first);
+  const filteredOfficialExams = ENEM_OFFICIAL_EXAMS.filter((exam) => {
+    const matchesArea = examAreaFilter === "Todas" || exam.areas.includes(examAreaFilter);
+    const matchesYear = examYearFilter === "Todos" || String(exam.year) === examYearFilter;
+    const matchesStatus = examStatusFilter === "all"
+      || (examStatusFilter === "ready" && getExamImportedQuestionCount(exam) > 0 && hasExamCorrection(exam))
+      || (examStatusFilter === "pending" && (getExamImportedQuestionCount(exam) === 0 || !hasExamCorrection(exam)));
+
+    return matchesArea && matchesYear && matchesStatus;
+  });
+
   const openExam = (exam: EnemExam) => {
+    const preferredLanguage = exam.questions.find((question) => question.language)?.language;
+    if (preferredLanguage) {
+      setLanguageChoice(preferredLanguage);
+    }
     setSelectedExam(exam);
     setAnswers({});
     setResult(null);
     setResultStatus("");
-    onUserActivity("simulado");
   };
 
   const saveAnswer = (questionId: string, value: string) => {
@@ -6085,6 +7453,16 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
       ...currentAnswers,
       __currentQuestion: String(questionNumber),
     }));
+  };
+
+  const scrollToQuestion = (questionNumber: number) => {
+    goToQuestion(questionNumber);
+    window.setTimeout(() => {
+      document.getElementById(`enem-question-${questionNumber}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
   };
 
   const persistResult = async (
@@ -6140,6 +7518,16 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     if (savedAttempt) {
       setAttempts((currentAttempts) => [savedAttempt, ...currentAttempts].slice(0, 10));
       setResultStatus("Resultado salvo no seu histórico.");
+      onUserActivity("simulado", {
+        referenceId: savedAttempt.id,
+        metadata: {
+          examId: savedAttempt.examId,
+          examTitle: savedAttempt.examTitle,
+          percent: savedAttempt.percent,
+          answeredCount: savedAttempt.answeredCount,
+          recommendationArea: savedAttempt.recommendationArea,
+        },
+      });
       return;
     }
 
@@ -6183,7 +7571,6 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     )[0];
 
     setResult(nextResult);
-    onUserActivity("simulado");
     await persistResult(
       exam,
       nextResult,
@@ -6200,6 +7587,10 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     const [firstQuestion] = importedQuestions;
     const currentNumber = Number((answers.__currentQuestion as string | undefined) ?? firstQuestion?.number ?? 1);
     const visibleQuestion = importedQuestions.find((question) => question.number === currentNumber) ?? firstQuestion ?? null;
+    const isSeparatedSupport = (question: EnemQuestion) => Boolean(question.support && question.support.length > 1200);
+    const shouldRenderSeparatedSupport = (question: EnemQuestion, questionIndex: number) =>
+      isSeparatedSupport(question)
+      && importedQuestions.findIndex((candidate) => candidate.support === question.support) === questionIndex;
     const answeredCount = importedQuestions.filter((question) => answers[String(question.number)]).length;
     const totalImported = importedQuestions.length;
     const hasOfficialAnswerKey = importedQuestions.every((question) =>
@@ -6245,7 +7636,6 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
       )[0];
 
       setResult(nextResult);
-      onUserActivity("simulado");
       await persistResult(
         selectedExam,
         nextResult,
@@ -6280,8 +7670,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
     const needsReview = questionReview.filter((item) => !item.isCorrect);
 
     return (
-      <div className="p-4 md:p-8 xl:p-12">
-        <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
+      <PageContainer size="wide">
           <button
             className="text-sm md:text-base text-primary hover:underline"
             onClick={() => setSelectedExam(null)}
@@ -6340,69 +7729,103 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
           {visibleQuestion ? (
             <>
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-              <div className="rounded-xl border border-border bg-card p-5 md:p-7 xl:p-10">
-                <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-primary">Questão {visibleQuestion.number}</p>
-                    <p className="text-sm text-muted-foreground">{visibleQuestion.area}</p>
-                  </div>
-                  {visibleQuestion.source && (
-                    <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                      {visibleQuestion.source}
-                    </span>
-                  )}
-                </div>
+              <div className="space-y-5">
+                {importedQuestions.map((question, questionIndex) => {
+                  const questionKey = String(question.number);
+                  const selectedAnswer = answers[questionKey];
+                  const separatedSupport = isSeparatedSupport(question);
+                  const sharedSupportNumbers = importedQuestions
+                    .filter((candidate) => candidate.support === question.support)
+                    .map((candidate) => candidate.number);
+                  const firstSharedQuestion = sharedSupportNumbers[0] ?? question.number;
+                  const lastSharedQuestion = sharedSupportNumbers[sharedSupportNumbers.length - 1] ?? question.number;
 
-                {visibleQuestion.support && (
-                  <div className="mb-6 rounded-xl bg-muted/60 p-4 md:p-5 text-sm md:text-base leading-relaxed text-foreground">
-                    {visibleQuestion.support}
-                  </div>
-                )}
+                  return (
+                    <div key={question.id} className="contents">
+                      {shouldRenderSeparatedSupport(question, questionIndex) && (
+                        <section
+                          className="scroll-mt-24 rounded-xl border border-border bg-card p-5 md:p-7 xl:p-10"
+                          id={`enem-support-${question.number}`}
+                        >
+                          <p className="mb-4 text-sm font-semibold text-primary">
+                            Texto para as questões de {String(firstSharedQuestion).padStart(2, "0")} a {String(lastSharedQuestion).padStart(2, "0")}
+                          </p>
+                          <div className="rounded-xl bg-muted/60 p-4 text-sm leading-relaxed text-foreground whitespace-pre-line md:p-6 md:text-base xl:p-8">
+                            {question.support}
+                          </div>
+                        </section>
+                      )}
 
-                {visibleQuestion.image && (
-                  <figure className="mb-6 overflow-hidden rounded-xl border border-border bg-muted/40">
-                    <img
-                      src={visibleQuestion.image}
-                      alt={visibleQuestion.imageAlt ?? ""}
-                      className="w-full object-contain"
-                    />
-                    {visibleQuestion.imageAlt && (
-                      <figcaption className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-                        {visibleQuestion.imageAlt}
-                      </figcaption>
-                    )}
-                  </figure>
-                )}
-
-                {!visibleQuestion.image && visibleQuestion.imageAlt && (
-                  <div className="mb-6 rounded-xl border border-dashed border-border bg-muted/40 p-4 text-sm md:text-base text-muted-foreground">
-                    Imagem da questão pendente de importação: {visibleQuestion.imageAlt}
-                  </div>
-                )}
-
-                <h3 className="mb-5 text-lg md:text-xl font-semibold leading-relaxed text-foreground">
-                  {visibleQuestion.prompt}
-                </h3>
-
-                <div className="space-y-3">
-                  {visibleQuestion.options?.map((option, index) => {
-                    const value = OBJECTIVE_OPTIONS[index];
-                    const selected = answers[String(visibleQuestion.number)] === value;
-                    return (
-                      <button
-                        key={value}
-                        className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${selected ? "border-primary bg-primary/10 text-foreground" : "border-border hover:bg-accent text-foreground"}`}
-                        onClick={() => saveAnswer(String(visibleQuestion.number), value)}
-                        type="button"
+                      <section
+                        className="scroll-mt-24 rounded-xl border border-border bg-card p-5 md:p-7 xl:p-10"
+                        id={`enem-question-${question.number}`}
                       >
-                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}>
-                          {value}
-                        </span>
-                        <span className="pt-1 text-sm md:text-base leading-relaxed">{option}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-primary">Questão {question.number}</p>
+                            <p className="text-sm text-muted-foreground">{question.area}</p>
+                          </div>
+                          {question.source && (
+                            <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                              {question.source}
+                            </span>
+                          )}
+                        </div>
+
+                        {!separatedSupport && question.support && (
+                          <div className="mb-6 rounded-xl bg-muted/60 p-4 text-sm leading-relaxed text-foreground whitespace-pre-line md:p-5 md:text-base">
+                            {question.support}
+                          </div>
+                        )}
+
+                        {question.image && (
+                          <figure className="mb-6 overflow-hidden rounded-xl border border-border bg-muted/40">
+                            <img
+                              src={question.image}
+                              alt={question.imageAlt ?? ""}
+                              className="w-full object-contain"
+                            />
+                            {question.imageAlt && (
+                              <figcaption className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+                                {question.imageAlt}
+                              </figcaption>
+                            )}
+                          </figure>
+                        )}
+
+                        {!question.image && question.imageAlt && (
+                          <div className="mb-6 rounded-xl border border-dashed border-border bg-muted/40 p-4 text-sm md:text-base text-muted-foreground">
+                            Imagem da questão pendente de importação: {question.imageAlt}
+                          </div>
+                        )}
+
+                        <h3 className="mb-5 text-lg md:text-xl font-semibold leading-relaxed text-foreground">
+                          {question.prompt}
+                        </h3>
+
+                        <div className="space-y-3">
+                          {question.options?.map((option, index) => {
+                            const value = OBJECTIVE_OPTIONS[index];
+                            const selected = selectedAnswer === value;
+                            return (
+                              <button
+                                key={value}
+                                className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${selected ? "border-primary bg-primary/10 text-foreground" : "border-border hover:bg-accent text-foreground"}`}
+                                onClick={() => saveAnswer(questionKey, value)}
+                                type="button"
+                              >
+                                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}>
+                                  {value}
+                                </span>
+                                <span className="pt-1 text-sm md:text-base leading-relaxed">{option}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="space-y-4">
@@ -6457,7 +7880,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
                         <button
                           key={question.id}
                           className={`rounded-lg border px-2 py-2 text-sm ${visibleQuestion.number === question.number ? "border-primary bg-primary text-primary-foreground" : answers[questionKey] ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-accent"}`}
-                          onClick={() => goToQuestion(question.number)}
+                          onClick={() => scrollToQuestion(question.number)}
                           type="button"
                         >
                           {question.number}
@@ -6521,7 +7944,7 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
                       <button
                         key={question.id}
                         className={`rounded-xl border p-4 text-left transition-colors hover:bg-accent ${isCorrect ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/30" : "border-rose-300 bg-rose-50/60 dark:border-rose-900 dark:bg-rose-950/30"}`}
-                        onClick={() => goToQuestion(question.number)}
+                        onClick={() => scrollToQuestion(question.number)}
                         type="button"
                       >
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -6562,15 +7985,24 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
               </p>
             </div>
           )}
-        </div>
-      </div>
+      </PageContainer>
     );
   }
 
 
   return (
-    <div className="p-4 md:p-8 xl:p-12">
-      <div className="w-full max-w-[1500px] space-y-5 md:space-y-8">
+    <PageContainer>
+        <SimuladoPracticeDashboard
+          summary={performanceSummary}
+          availableExamCount={ENEM_OFFICIAL_EXAMS.length}
+          importedQuestionCount={ENEM_OFFICIAL_EXAMS.reduce((total, exam) => total + getExamImportedQuestionCount(exam), 0)}
+          onOpenCustom={() => setActiveTab("custom")}
+          onOpenHistory={() => {
+            setActiveTab("history");
+            refreshAttempts();
+          }}
+        />
+
         <div className="flex gap-4 border-b border-border overflow-x-auto">
           <button
             className={`pb-3 px-1 text-sm md:text-base font-medium whitespace-nowrap ${activeTab === "official" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
@@ -6601,14 +8033,71 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
         {activeTab === "official" ? (
           <>
         <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-lg md:text-xl font-semibold text-foreground">Filtros do banco</h2>
+              <p className="mt-2 max-w-3xl text-sm md:text-base text-muted-foreground">
+                Encontre provas por ano, area e status de importacao.
+              </p>
+            </div>
+            <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+              {filteredOfficialExams.length}/{ENEM_OFFICIAL_EXAMS.length} prova{ENEM_OFFICIAL_EXAMS.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <label className="block space-y-2 text-sm">
+              <span className="font-medium text-foreground">Area</span>
+              <select
+                value={examAreaFilter}
+                onChange={(event) => setExamAreaFilter(event.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              >
+                <option value="Todas">Todas</option>
+                {availableExamAreas.map((area) => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-2 text-sm">
+              <span className="font-medium text-foreground">Ano</span>
+              <select
+                value={examYearFilter}
+                onChange={(event) => setExamYearFilter(event.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              >
+                <option value="Todos">Todos</option>
+                {availableExamYears.map((year) => (
+                  <option key={year} value={String(year)}>{year}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-2 text-sm">
+              <span className="font-medium text-foreground">Status</span>
+              <select
+                value={examStatusFilter}
+                onChange={(event) => setExamStatusFilter(event.target.value as SimuladoBankStatusFilter)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              >
+                <option value="all">Todos</option>
+                <option value="ready">Prontos para responder</option>
+                <option value="pending">Em preparacao</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
           <h2 className="text-lg md:text-xl font-semibold text-foreground">Banco ENEM</h2>
           <p className="mt-2 max-w-3xl text-sm md:text-base text-muted-foreground">
-            Catálogo em formato nativo. A primeira prova importada é o Caderno Branco do ENEM 2025, com questões de língua estrangeira.
+            Catálogo em formato nativo. A primeira prova importada é o Caderno Branco do ENEM 2025, com língua estrangeira e Português.
           </p>
         </div>
 
         <div className="space-y-3 md:space-y-4">
-          {ENEM_OFFICIAL_EXAMS.map((exam) => (
+          {filteredOfficialExams.map((exam) => (
             <EnemExamCard key={exam.id} exam={exam} onOpen={openExam} />
           ))}
         </div>
@@ -6616,10 +8105,101 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
         ) : activeTab === "custom" ? (
           <PersonalizedSimuladoBuilder attempts={attempts} onOpen={openExam} />
         ) : (
-          <SimuladoAttemptsHistory attempts={attempts} isLoading={attemptsLoading} onRetry={refreshAttempts} />
+          <SimuladoAttemptsHistory attempts={attempts} isLoading={attemptsLoading} onRetry={refreshAttempts} onOpenReview={openExam} />
         )}
+    </PageContainer>
+  );
+}
+
+function SimuladoPracticeDashboard({
+  summary,
+  availableExamCount,
+  importedQuestionCount,
+  onOpenCustom,
+  onOpenHistory,
+}: {
+  summary: SimuladoPerformanceSummary;
+  availableExamCount: number;
+  importedQuestionCount: number;
+  onOpenCustom: () => void;
+  onOpenHistory: () => void;
+}) {
+  const latestPercent = summary.latestAttempt?.percent ?? 0;
+
+  return (
+    <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+      <div className="rounded-xl border border-border bg-card p-5 md:p-6 xl:p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-primary">Plano de pratica</p>
+            <h2 className="mt-1 text-2xl font-semibold text-foreground md:text-3xl">Exercicios e simulados</h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
+              Use provas oficiais, simulados curtos e revisao dos erros para transformar estudo em treino medivel.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              onClick={onOpenCustom}
+              type="button"
+            >
+              <Target className="h-4 w-4" />
+              Gerar treino
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              onClick={onOpenHistory}
+              type="button"
+            >
+              <History className="h-4 w-4" />
+              Ver historico
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg bg-muted/50 p-4">
+            <p className="text-xs text-muted-foreground">Banco</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{availableExamCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{importedQuestionCount} questoes nativas</p>
+          </div>
+          <div className="rounded-lg bg-muted/50 p-4">
+            <p className="text-xs text-muted-foreground">Tentativas</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{summary.attemptsCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{summary.totalAnswered} respostas salvas</p>
+          </div>
+          <div className="rounded-lg bg-muted/50 p-4">
+            <p className="text-xs text-muted-foreground">Melhor nota</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{summary.bestPercent}%</p>
+            <p className="mt-1 text-xs text-muted-foreground">media {summary.averagePercent}%</p>
+          </div>
+          <div className="rounded-lg bg-muted/50 p-4">
+            <p className="text-xs text-muted-foreground">Ultima tentativa</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{latestPercent}%</p>
+            <p className="mt-1 text-xs text-muted-foreground">{summary.weakestArea ? `reforce ${summary.weakestArea}` : "sem historico"}</p>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <aside className="rounded-xl border border-border bg-card p-5 md:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Proximo melhor passo</p>
+            <h3 className="mt-1 text-xl font-semibold text-foreground">
+              {summary.weakestArea ? `Treinar ${summary.weakestArea}` : "Fazer primeiro simulado"}
+            </h3>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <TrendingUp className="h-6 w-6" />
+          </div>
+        </div>
+        <p className="mt-4 text-sm text-muted-foreground">
+          {summary.weakestArea
+            ? "O foco sugerido vem da area com menor aproveitamento nas suas tentativas salvas."
+            : "Depois do primeiro resultado, o app passa a sugerir treino pela area mais fraca."}
+        </p>
+      </aside>
+    </section>
   );
 }
 
@@ -6749,10 +8329,12 @@ function SimuladoAttemptsHistory({
   attempts,
   isLoading,
   onRetry,
+  onOpenReview,
 }: {
   attempts: SimuladoAttemptData[];
   isLoading: boolean;
   onRetry: () => void;
+  onOpenReview: (exam: EnemExam) => void;
 }) {
   if (isLoading) {
     return (
@@ -6792,7 +8374,11 @@ function SimuladoAttemptsHistory({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        {attempts.map((attempt) => (
+        {attempts.map((attempt) => {
+          const reviewExam = buildReviewExamFromAttempt(attempt);
+          const reviewCount = attempt.questions.filter((question) => question.status !== "correct").length;
+
+          return (
           <div key={attempt.id} className="rounded-xl border border-border bg-card p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -6829,8 +8415,25 @@ function SimuladoAttemptsHistory({
                 Reforce {attempt.recommendationArea} antes da próxima tentativa.
               </p>
             )}
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!reviewExam}
+                onClick={() => {
+                  if (reviewExam) onOpenReview(reviewExam);
+                }}
+                type="button"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refazer erros
+              </button>
+              <span className="rounded-lg border border-border px-4 py-2 text-center text-sm text-muted-foreground">
+                {reviewCount} questao{reviewCount === 1 ? "" : "es"} para revisar
+              </span>
+            </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
