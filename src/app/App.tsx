@@ -29,6 +29,8 @@ import {
   ExternalLink,
   FileText,
   RefreshCw,
+  Camera,
+  Lock,
 } from "lucide-react";
 import {
   DEFAULT_PROFILE,
@@ -37,6 +39,7 @@ import {
   saveProfile,
   type UserActivityDetails,
   type UserActivityType,
+  type ProfileFrameId,
 } from "../services/profileData";
 import {
   getCurrentAuthUser,
@@ -183,6 +186,675 @@ const getInitials = (name: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join("") || "LF";
 
+type ProfileFrameCategory = "basicas" | "conquistas" | "enem" | "elementais";
+
+type ProfileFrame = {
+  id: ProfileFrameId;
+  label: string;
+  description: string;
+  unlock: string;
+  category: ProfileFrameCategory;
+  frameClass: string;
+  assetSrc?: string;
+  avatarInsetClass?: string;
+};
+
+type ProfileUnlockStats = {
+  completedModules: number;
+  totalModules: number;
+  streakDays: number;
+  profileLevel: number;
+  studiedSubjectCount: number;
+  totalSubjects: number;
+  simuladoAttempts: number;
+  bestSimuladoPercent: number;
+  hasCompletedFullExam: boolean;
+};
+
+type ProfileFrameAccess = {
+  unlocked: boolean;
+  reason: string;
+};
+
+const PROFILE_FRAME_CATEGORIES: { id: ProfileFrameCategory; label: string }[] = [
+  { id: "basicas", label: "Basicas" },
+  { id: "conquistas", label: "Conquistas" },
+  { id: "enem", label: "ENEM" },
+  { id: "elementais", label: "Elementais" },
+];
+
+const FRAME_ASSET_VERSION = "v=20260530-elementais-2";
+
+const PROFILE_FRAMES: ProfileFrame[] = [
+  {
+    id: "none",
+    label: "Simples",
+    description: "Avatar sem moldura.",
+    unlock: "Disponivel para todos.",
+    category: "basicas",
+    frameClass: "bg-border",
+  },
+  {
+    id: "learnflow",
+    label: "LearnFlow",
+    description: "Gradiente principal do app.",
+    unlock: "Disponivel para todos.",
+    category: "basicas",
+    frameClass: "bg-gradient-to-br from-primary via-purple-500 to-blue-500",
+  },
+  {
+    id: "streak",
+    label: "Sequência",
+    description: "Visual de constância diária.",
+    unlock: "Disponivel para testes.",
+    category: "basicas",
+    frameClass: "bg-gradient-to-br from-orange-400 via-rose-500 to-primary",
+  },
+  {
+    id: "focus",
+    label: "Foco",
+    description: "Para sessões de estudo intenso.",
+    unlock: "Disponivel para testes.",
+    category: "basicas",
+    frameClass: "bg-gradient-to-br from-cyan-400 via-blue-500 to-primary",
+  },
+  {
+    id: "mastery",
+    label: "Domínio",
+    description: "Para destacar evolução.",
+    unlock: "Disponivel para testes.",
+    category: "basicas",
+    frameClass: "bg-gradient-to-br from-emerald-400 via-teal-500 to-primary",
+  },
+  {
+    id: "aprendiz",
+    label: "Aprendiz",
+    description: "Primeira conquista de progresso.",
+    unlock: "Completar o primeiro modulo.",
+    category: "conquistas",
+    frameClass: "bg-gradient-to-br from-amber-700 via-orange-500 to-yellow-300",
+    assetSrc: "/frames/aprendiz.png",
+    avatarInsetClass: "inset-[19%]",
+  },
+  {
+    id: "persistente",
+    label: "Persistente",
+    description: "Ritmo constante de conclusoes.",
+    unlock: "Completar 5 modulos.",
+    category: "conquistas",
+    frameClass: "bg-gradient-to-br from-lime-500 via-emerald-500 to-yellow-200",
+    assetSrc: "/frames/persistente.png",
+  },
+  {
+    id: "mestre",
+    label: "Mestre dos Estudos",
+    description: "Marco alto de dominio.",
+    unlock: "Completar 20 modulos.",
+    category: "conquistas",
+    frameClass: "bg-gradient-to-br from-fuchsia-500 via-violet-500 to-indigo-300",
+    assetSrc: "/frames/mestre.png",
+  },
+  {
+    id: "invicto",
+    label: "Invicto",
+    description: "Sequencia forte de estudos.",
+    unlock: "7 dias seguidos estudando.",
+    category: "conquistas",
+    frameClass: "bg-gradient-to-br from-yellow-300 via-orange-500 to-red-500",
+    assetSrc: "/frames/invicto.png",
+    avatarInsetClass: "inset-[19%]",
+  },
+  {
+    id: "lenda-learnflow",
+    label: "Lenda LearnFlow",
+    description: "Conquista maxima de conteudo.",
+    unlock: "Completar todos os modulos disponiveis.",
+    category: "conquistas",
+    frameClass: "bg-gradient-to-br from-zinc-200 via-zinc-500 to-zinc-900",
+  },
+  {
+    id: "explorador",
+    label: "Explorador",
+    description: "Passe por todas as areas.",
+    unlock: "Estudar todas as materias ao menos uma vez.",
+    category: "conquistas",
+    frameClass: "bg-gradient-to-br from-slate-300 via-stone-500 to-emerald-500",
+    assetSrc: "/frames/explorador.png",
+    avatarInsetClass: "inset-[19%]",
+  },
+  {
+    id: "enem-candidato",
+    label: "Candidato",
+    description: "Entrada na jornada ENEM.",
+    unlock: "Fazer o primeiro simulado ENEM.",
+    category: "enem",
+    frameClass: "bg-gradient-to-br from-sky-300 via-blue-500 to-cyan-600",
+    assetSrc: "/frames/enem-candidato.png",
+  },
+  {
+    id: "enem-maratonista",
+    label: "Maratonista",
+    description: "Prova completa concluida.",
+    unlock: "Concluir a prova completa do ENEM.",
+    category: "enem",
+    frameClass: "bg-gradient-to-br from-cyan-300 via-teal-500 to-blue-600",
+    assetSrc: "/frames/enem-maratonista.png",
+  },
+  {
+    id: "enem-700",
+    label: "Nota 700+",
+    description: "Primeiro patamar de destaque.",
+    unlock: "Media acima de 700.",
+    category: "enem",
+    frameClass: "bg-gradient-to-br from-purple-400 via-fuchsia-500 to-indigo-600",
+    assetSrc: "/frames/enem-700.png",
+  },
+  {
+    id: "enem-800",
+    label: "Nota 800+",
+    description: "Desempenho avancado.",
+    unlock: "Media acima de 800.",
+    category: "enem",
+    frameClass: "bg-gradient-to-br from-orange-300 via-amber-500 to-violet-700",
+    assetSrc: "/frames/enem-800.png",
+  },
+  {
+    id: "enem-900",
+    label: "Nota 900+",
+    description: "Nivel de excelencia.",
+    unlock: "Media acima de 900.",
+    category: "enem",
+    frameClass: "bg-gradient-to-br from-red-400 via-rose-600 to-yellow-400",
+    assetSrc: "/frames/enem-900.png",
+  },
+  {
+    id: "enem-ouro",
+    label: "Ouro ENEM",
+    description: "Alta precisao na prova.",
+    unlock: "Acertar mais de 85%.",
+    category: "enem",
+    frameClass: "bg-gradient-to-br from-yellow-200 via-amber-400 to-yellow-700",
+    assetSrc: "/frames/enem-ouro.png",
+  },
+  {
+    id: "fogo",
+    label: "Fogo I",
+    description: "Energia para iniciar a progressao.",
+    unlock: "Nivel 5.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-red-500 via-orange-500 to-yellow-300",
+    assetSrc: `/frames/fogo.png?${FRAME_ASSET_VERSION}`,
+  },
+  {
+    id: "agua",
+    label: "Agua I",
+    description: "Ritmo fluido de estudo.",
+    unlock: "Nivel 10.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-cyan-300 via-sky-500 to-blue-700",
+    assetSrc: `/frames/agua.png?${FRAME_ASSET_VERSION}`,
+  },
+  {
+    id: "ar",
+    label: "Ar I",
+    description: "Leveza e velocidade.",
+    unlock: "Nivel 15.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-slate-100 via-sky-200 to-blue-300",
+    assetSrc: `/frames/ar.png?${FRAME_ASSET_VERSION}`,
+  },
+  {
+    id: "terra",
+    label: "Terra I",
+    description: "Base solida de aprendizado.",
+    unlock: "Nivel 20.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-stone-600 via-lime-600 to-emerald-400",
+    assetSrc: `/frames/terra.png?${FRAME_ASSET_VERSION}`,
+  },
+  {
+    id: "raio",
+    label: "Raio I",
+    description: "Resposta rapida e foco.",
+    unlock: "Nivel 25.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-yellow-200 via-amber-400 to-orange-600",
+    assetSrc: `/frames/raio.png?${FRAME_ASSET_VERSION}`,
+    avatarInsetClass: "inset-[26%] translate-y-[7%]",
+  },
+  {
+    id: "sombra",
+    label: "Sombra I",
+    description: "Estudo intenso e silencioso.",
+    unlock: "Nivel 30.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-zinc-900 via-purple-900 to-fuchsia-500",
+    assetSrc: `/frames/sombra.png?${FRAME_ASSET_VERSION}`,
+  },
+  {
+    id: "luz",
+    label: "Luz I",
+    description: "Clareza nas revisoes.",
+    unlock: "Nivel 35.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-yellow-100 via-amber-200 to-orange-300",
+    assetSrc: `/frames/luz.png?${FRAME_ASSET_VERSION}`,
+  },
+  {
+    id: "cosmos",
+    label: "Cosmos I",
+    description: "Progressao rara e completa.",
+    unlock: "Nivel 40.",
+    category: "elementais",
+    frameClass: "bg-gradient-to-br from-violet-500 via-indigo-700 to-blue-500",
+    assetSrc: `/frames/cosmos.png?${FRAME_ASSET_VERSION}`,
+  },
+];
+
+function getProfileFrame(frameId?: ProfileFrameId) {
+  return PROFILE_FRAMES.find((frame) => frame.id === frameId) ?? PROFILE_FRAMES[1];
+}
+
+function getProfileLevel(completedModules: number, streakDays: number, totalActivities: number) {
+  return Math.max(1, Math.min(99, Math.floor((completedModules * 3 + streakDays + totalActivities) / 5) + 1));
+}
+
+function getProfileUnlockStats({
+  studyProgress,
+  courseModules,
+  streakDays,
+  activitySummary,
+  simuladoAttempts,
+}: {
+  studyProgress: StudyProgress;
+  courseModules: SubjectModuleMap;
+  streakDays: number;
+  activitySummary: LearningActivitySummary;
+  simuladoAttempts: SimuladoAttemptData[];
+}): ProfileUnlockStats {
+  const { totalModules, completedModules } = getTotalProgressSummary(studyProgress, courseModules);
+  const studiedSubjectCount = SUBJECTS.filter((subject) =>
+    getSubjectProgressSummary(studyProgress, courseModules, subject.name).activeModules > 0
+      || (activitySummary.bySubject[subject.name] ?? 0) > 0,
+  ).length;
+
+  return {
+    completedModules,
+    totalModules,
+    streakDays,
+    profileLevel: getProfileLevel(completedModules, streakDays, activitySummary.weekCount),
+    studiedSubjectCount,
+    totalSubjects: SUBJECTS.length,
+    simuladoAttempts: simuladoAttempts.length,
+    bestSimuladoPercent: simuladoAttempts.reduce((best, attempt) => Math.max(best, attempt.percent), 0),
+    hasCompletedFullExam: simuladoAttempts.some((attempt) =>
+      attempt.questionCount > 0 && attempt.answeredCount >= attempt.questionCount,
+    ),
+  };
+}
+
+function getProfileFrameAccess(frame: ProfileFrame, stats: ProfileUnlockStats): ProfileFrameAccess {
+  switch (frame.id) {
+    case "none":
+    case "learnflow":
+    case "streak":
+    case "focus":
+    case "mastery":
+      return { unlocked: true, reason: "Disponível para todos." };
+    case "aprendiz":
+      return { unlocked: stats.completedModules >= 1, reason: `Complete 1 módulo. Atual: ${stats.completedModules}.` };
+    case "persistente":
+      return { unlocked: stats.completedModules >= 5, reason: `Complete 5 módulos. Atual: ${stats.completedModules}.` };
+    case "mestre":
+      return { unlocked: stats.completedModules >= 20, reason: `Complete 20 módulos. Atual: ${stats.completedModules}.` };
+    case "invicto":
+      return { unlocked: stats.streakDays >= 7, reason: `Faça 7 dias de sequência. Atual: ${stats.streakDays}.` };
+    case "lenda-learnflow":
+      return {
+        unlocked: stats.totalModules > 0 && stats.completedModules >= stats.totalModules,
+        reason: `Complete todos os módulos. Atual: ${stats.completedModules}/${stats.totalModules}.`,
+      };
+    case "explorador":
+      return {
+        unlocked: stats.totalSubjects > 0 && stats.studiedSubjectCount >= stats.totalSubjects,
+        reason: `Estude todas as matérias. Atual: ${stats.studiedSubjectCount}/${stats.totalSubjects}.`,
+      };
+    case "enem-candidato":
+      return { unlocked: stats.simuladoAttempts >= 1, reason: `Faça 1 simulado ENEM. Atual: ${stats.simuladoAttempts}.` };
+    case "enem-maratonista":
+      return { unlocked: stats.hasCompletedFullExam, reason: "Conclua uma prova completa do ENEM." };
+    case "enem-700":
+      return { unlocked: stats.bestSimuladoPercent >= 70, reason: `Alcance 70% em um simulado. Melhor: ${stats.bestSimuladoPercent}%.` };
+    case "enem-800":
+      return { unlocked: stats.bestSimuladoPercent >= 80, reason: `Alcance 80% em um simulado. Melhor: ${stats.bestSimuladoPercent}%.` };
+    case "enem-900":
+      return { unlocked: stats.bestSimuladoPercent >= 90, reason: `Alcance 90% em um simulado. Melhor: ${stats.bestSimuladoPercent}%.` };
+    case "enem-ouro":
+      return { unlocked: stats.bestSimuladoPercent >= 85, reason: `Acerte mais de 85%. Melhor: ${stats.bestSimuladoPercent}%.` };
+    case "fogo":
+      return { unlocked: stats.profileLevel >= 5, reason: `Chegue ao nível 5. Atual: ${stats.profileLevel}.` };
+    case "agua":
+      return { unlocked: stats.profileLevel >= 10, reason: `Chegue ao nível 10. Atual: ${stats.profileLevel}.` };
+    case "ar":
+      return { unlocked: stats.profileLevel >= 15, reason: `Chegue ao nível 15. Atual: ${stats.profileLevel}.` };
+    case "terra":
+      return { unlocked: stats.profileLevel >= 20, reason: `Chegue ao nível 20. Atual: ${stats.profileLevel}.` };
+    case "raio":
+      return { unlocked: stats.profileLevel >= 25, reason: `Chegue ao nível 25. Atual: ${stats.profileLevel}.` };
+    case "sombra":
+      return { unlocked: stats.profileLevel >= 30, reason: `Chegue ao nível 30. Atual: ${stats.profileLevel}.` };
+    case "luz":
+      return { unlocked: stats.profileLevel >= 35, reason: `Chegue ao nível 35. Atual: ${stats.profileLevel}.` };
+    case "cosmos":
+      return { unlocked: stats.profileLevel >= 40, reason: `Chegue ao nível 40. Atual: ${stats.profileLevel}.` };
+    default:
+      return { unlocked: false, reason: frame.unlock };
+  }
+}
+
+function ProfileFramePreview({
+  frame,
+  className = "h-24 w-24",
+}: {
+  frame: ProfileFrame;
+  className?: string;
+}) {
+  if (frame.assetSrc) {
+    return (
+      <img
+        src={frame.assetSrc}
+        alt=""
+        aria-hidden="true"
+        className={`${className} object-contain drop-shadow-sm`}
+      />
+    );
+  }
+
+  return (
+    <div className={`${className} ${frame.frameClass} rounded-full p-2 shadow-sm`}>
+      <div className="h-full w-full rounded-full bg-card" />
+    </div>
+  );
+}
+
+function ProfileFrameSelector({
+  selectedFrameId,
+  onSelect,
+  name,
+  avatarUrl,
+  unlockStats,
+}: {
+  selectedFrameId: ProfileFrameId;
+  onSelect: (frameId: ProfileFrameId) => void;
+  name: string;
+  avatarUrl?: string | null;
+  unlockStats: ProfileUnlockStats;
+}) {
+  return (
+    <div className="space-y-4">
+      {PROFILE_FRAME_CATEGORIES.map((category) => {
+        const frames = PROFILE_FRAMES.filter((frame) => frame.category === category.id);
+        if (!frames.length) return null;
+
+        return (
+          <section key={category.id} className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-foreground">{category.label}</h3>
+              <span className="text-xs text-muted-foreground">{frames.length} molduras</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {frames.map((frame) => {
+                const access = getProfileFrameAccess(frame, unlockStats);
+
+                return (
+                  <button
+                    key={frame.id}
+                    className={`relative min-h-[148px] rounded-xl border p-3 text-center transition-colors ${
+                      selectedFrameId === frame.id
+                        ? "border-primary bg-primary/10"
+                        : access.unlocked
+                          ? "border-border hover:bg-accent"
+                          : "border-border bg-muted/30 opacity-70"
+                    }`}
+                    type="button"
+                    disabled={!access.unlocked}
+                    title={access.unlocked ? frame.description : access.reason}
+                    onClick={() => {
+                      if (access.unlocked) onSelect(frame.id);
+                    }}
+                  >
+                    <div className="flex min-h-[74px] items-center justify-center">
+                      {frame.assetSrc ? (
+                        <ProfileFramePreview frame={frame} className="h-20 w-20" />
+                      ) : (
+                        <ProfileAvatar name={name} avatarUrl={avatarUrl} frameId={frame.id} size="md" />
+                      )}
+                    </div>
+                    {selectedFrameId === frame.id && (
+                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </span>
+                    )}
+                    {!access.unlocked && (
+                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
+                        <Lock className="h-3.5 w-3.5" />
+                      </span>
+                    )}
+                    <p className="mt-2 text-sm font-semibold leading-tight text-foreground">{frame.label}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">
+                      {access.unlocked ? frame.unlock : access.reason}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProfileFrameGallery({
+  selectedFrameId,
+  onSelect,
+  unlockStats,
+}: {
+  selectedFrameId: ProfileFrameId;
+  onSelect: (frameId: ProfileFrameId) => void;
+  unlockStats: ProfileUnlockStats;
+}) {
+  const featuredCategories = PROFILE_FRAME_CATEGORIES.filter((category) => category.id !== "basicas");
+  const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats).unlocked).length;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <BookOpen className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Molduras</h2>
+            <p className="text-sm text-muted-foreground">Colete molduras exclusivas e mostre suas conquistas no LearnFlow.</p>
+          </div>
+        </div>
+        <div className="text-left sm:text-right">
+          <p className="text-2xl font-semibold text-primary">{unlockedFrameCount}/{PROFILE_FRAMES.length}</p>
+          <p className="text-xs text-muted-foreground">molduras liberadas</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2 border-b border-border pb-3">
+        {["Todas", "Conquistas", "ENEM", "Elementais", "Especiais"].map((tab, index) => (
+          <button
+            key={tab}
+            className={`rounded-lg px-4 py-2 text-sm transition-colors ${index === 0 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+            type="button"
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 space-y-6">
+        {featuredCategories.map((category) => {
+          const frames = PROFILE_FRAMES.filter((frame) => frame.category === category.id);
+          if (!frames.length) return null;
+
+          return (
+            <section key={category.id} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-foreground">
+                  {category.label}
+                </h3>
+                <button className="text-xs font-medium text-primary hover:underline" type="button">
+                  Ver todas
+                </button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {frames.map((frame) => {
+                  const isSelected = selectedFrameId === frame.id;
+                  const access = getProfileFrameAccess(frame, unlockStats);
+
+                  return (
+                    <button
+                      key={frame.id}
+                      className={`relative flex min-h-[230px] flex-col items-center justify-start rounded-xl border p-4 text-center transition-colors ${
+                        isSelected
+                          ? "border-primary bg-primary/10"
+                          : access.unlocked
+                            ? "border-border bg-background/40 hover:bg-accent"
+                            : "border-border bg-muted/30 opacity-70"
+                      }`}
+                      type="button"
+                      disabled={!access.unlocked}
+                      title={access.unlocked ? frame.description : access.reason}
+                      onClick={() => {
+                        if (access.unlocked) onSelect(frame.id);
+                      }}
+                    >
+                      <ProfileFramePreview frame={frame} className="h-28 w-28 md:h-32 md:w-32" />
+                      {isSelected && (
+                        <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white shadow-sm">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </span>
+                      )}
+                      {!access.unlocked && (
+                        <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
+                          <Lock className="h-4 w-4" />
+                        </span>
+                      )}
+                      <p className="mt-3 text-sm font-semibold leading-tight text-foreground">{frame.label}</p>
+                      <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                        {access.unlocked ? frame.unlock : access.reason}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      <p className="mt-5 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-muted-foreground">
+        As molduras serão desbloqueadas conforme você avança nos estudos e conquista novos objetivos.
+      </p>
+    </div>
+  );
+}
+
+function ProfileAvatar({
+  name,
+  avatarUrl,
+  frameId,
+  size = "md",
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  frameId?: ProfileFrameId;
+  size?: "sm" | "md" | "lg";
+}) {
+  const frame = getProfileFrame(frameId);
+  const hasFrameAsset = Boolean(frame.assetSrc);
+  const sizeClass = hasFrameAsset
+    ? size === "lg"
+      ? "h-28 w-28 text-2xl"
+      : size === "sm"
+        ? "h-11 w-11 text-xs"
+        : "h-14 w-14 text-sm"
+    : size === "lg"
+      ? "h-24 w-24 text-2xl"
+      : size === "sm"
+        ? "h-10 w-10 text-sm"
+        : "h-12 w-12 text-lg";
+  const innerInsetClass = hasFrameAsset
+    ? frame.avatarInsetClass ?? (size === "lg"
+      ? "inset-[22%]"
+      : size === "sm"
+        ? "inset-[24%]"
+        : "inset-[23%]")
+    : size === "lg"
+      ? "inset-1.5"
+      : "inset-1";
+
+  return (
+    <div className={`${sizeClass} ${hasFrameAsset ? "text-white" : `${frame.frameClass} rounded-full p-1 text-white shadow-sm`} relative shrink-0`}>
+      <div className={`absolute ${innerInsetClass} overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-500`}>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={`Foto de ${name}`} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center font-semibold text-white">
+            {getInitials(name)}
+          </div>
+        )}
+      </div>
+      {hasFrameAsset && (
+        <img
+          src={frame.assetSrc}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-contain drop-shadow-sm"
+        />
+      )}
+    </div>
+  );
+}
+
+async function readProfileAvatarFile(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Escolha um arquivo de imagem.");
+  }
+
+  const imageUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const nextImage = new Image();
+      nextImage.onload = () => resolve(nextImage);
+      nextImage.onerror = () => reject(new Error("Nao foi possivel carregar a imagem."));
+      nextImage.src = imageUrl;
+    });
+
+    const size = 320;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Nao foi possivel preparar a imagem.");
+
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+    const sourceX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
+    const sourceY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
+    context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+    return canvas.toDataURL("image/webp", 0.86);
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState<View>("home");
   const [isDark, setIsDark] = useState(false);
@@ -191,13 +863,18 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [profileId, setProfileId] = useState(DEFAULT_PROFILE.id);
   const [userName, setUserName] = useState(DEFAULT_PROFILE.name);
+  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_PROFILE.avatarUrl);
+  const [profileFrameId, setProfileFrameId] = useState<ProfileFrameId>(DEFAULT_PROFILE.frameId ?? "learnflow");
   const [streakDays, setStreakDays] = useState(DEFAULT_PROFILE.streakDays);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [profileDraftName, setProfileDraftName] = useState(userName);
+  const [profileDraftAvatarUrl, setProfileDraftAvatarUrl] = useState<string | null>(DEFAULT_PROFILE.avatarUrl ?? null);
+  const [profileDraftFrameId, setProfileDraftFrameId] = useState<ProfileFrameId>(DEFAULT_PROFILE.frameId ?? "learnflow");
   const [profileError, setProfileError] = useState("");
   const [studyProgress, setStudyProgress] = useState<StudyProgress>({});
   const [lastStudy, setLastStudy] = useState<LastStudyData>(null);
   const [activitySummary, setActivitySummary] = useState<LearningActivitySummary>(EMPTY_LEARNING_ACTIVITY_SUMMARY);
+  const [simuladoAttempts, setSimuladoAttempts] = useState<SimuladoAttemptData[]>([]);
   const [dueFlashcardCount, setDueFlashcardCount] = useState(0);
   const [studyGoals, setStudyGoals] = useState<StudyGoals>(DEFAULT_STUDY_GOALS);
   const [courseModules, setCourseModules] = useState<SubjectModuleMap>({});
@@ -218,8 +895,12 @@ export default function App() {
   const applyProfile = (profile: typeof DEFAULT_PROFILE) => {
       setProfileId(profile.id);
       setUserName(profile.name);
+      setAvatarUrl(profile.avatarUrl ?? null);
+      setProfileFrameId(profile.frameId ?? "learnflow");
       setStreakDays(profile.streakDays);
       setProfileDraftName(profile.name);
+      setProfileDraftAvatarUrl(profile.avatarUrl ?? null);
+      setProfileDraftFrameId(profile.frameId ?? "learnflow");
   };
 
   const reloadProfile = async () => {
@@ -254,6 +935,7 @@ export default function App() {
         await reloadProfile();
         await reloadStudyProgress();
         await reloadActivitySummary();
+        await reloadSimuladoAttempts();
         await reloadDueFlashcards();
         await reloadStudyGoals();
       })
@@ -267,6 +949,7 @@ export default function App() {
       reloadProfile();
       reloadStudyProgress();
       reloadActivitySummary();
+      reloadSimuladoAttempts();
       reloadDueFlashcards();
       reloadStudyGoals();
     });
@@ -371,6 +1054,9 @@ export default function App() {
 
   const changeUserName = () => {
     setProfileDraftName(userName);
+    setProfileDraftAvatarUrl(avatarUrl ?? null);
+    setProfileDraftFrameId(profileFrameId);
+    setProfileError("");
     setIsProfileEditorOpen(true);
   };
 
@@ -380,11 +1066,37 @@ export default function App() {
     if (!nextName) return;
     setProfileError("");
     try {
-      await saveProfile({ id: profileId, name: nextName, streakDays });
+      const selectedFrame = getProfileFrame(profileDraftFrameId);
+      const selectedFrameAccess = getProfileFrameAccess(selectedFrame, profileUnlockStats);
+      if (!selectedFrameAccess.unlocked) {
+        setProfileError(`Moldura bloqueada: ${selectedFrameAccess.reason}`);
+        return;
+      }
+
+      await saveProfile({
+        id: profileId,
+        name: nextName,
+        streakDays,
+        avatarUrl: profileDraftAvatarUrl,
+        frameId: profileDraftFrameId,
+      });
       setUserName(nextName);
+      setAvatarUrl(profileDraftAvatarUrl);
+      setProfileFrameId(profileDraftFrameId);
       setIsProfileEditorOpen(false);
     } catch (error) {
       setProfileError(error instanceof Error ? error.message : "Nao foi possivel salvar o perfil.");
+    }
+  };
+
+  const handleProfileAvatarUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setProfileError("");
+    try {
+      const nextAvatarUrl = await readProfileAvatarFile(file);
+      setProfileDraftAvatarUrl(nextAvatarUrl);
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Nao foi possivel carregar a foto.");
     }
   };
 
@@ -484,6 +1196,10 @@ export default function App() {
     setActivitySummary(await loadLearningActivitySummary());
   };
 
+  const reloadSimuladoAttempts = async () => {
+    setSimuladoAttempts(await loadSimuladoAttempts(50));
+  };
+
   const reloadDueFlashcards = async () => {
     const dueCards = await loadDueFlashcards(50);
     setDueFlashcardCount(dueCards.length);
@@ -527,6 +1243,7 @@ export default function App() {
       .then((result) => {
         if (result) setStreakDays(result.streakDays);
         reloadActivitySummary();
+        if (activityType === "simulado") reloadSimuladoAttempts();
       })
       .catch((error) => {
         console.warn("Nao foi possivel registrar atividade do usuario:", error);
@@ -539,6 +1256,13 @@ export default function App() {
 
   const placeholderViews: View[] = ["avaliacoes", "desempenho"];
   const compactSidebar = currentView === "materias" && studyFocusMode;
+  const profileUnlockStats = getProfileUnlockStats({
+    studyProgress,
+    courseModules,
+    streakDays,
+    activitySummary,
+    simuladoAttempts,
+  });
 
   return (
     <div className={`flex h-screen w-full overflow-hidden ${isDark ? "dark" : ""}`}>
@@ -614,8 +1338,8 @@ export default function App() {
             onClick={changeUserName}
             type="button"
           >
-            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium md:text-lg flex-shrink-0 transition-all duration-300 ease-out ${compactSidebar ? "md:h-10 md:w-10" : ""}`}>
-              {getInitials(userName)}
+            <div className={`transition-all duration-300 ease-out ${compactSidebar ? "md:scale-90" : ""}`}>
+              <ProfileAvatar name={userName} avatarUrl={avatarUrl} frameId={profileFrameId} size="md" />
             </div>
             <div className={`flex-1 text-left min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${compactSidebar ? "md:hidden" : "md:max-w-48 md:opacity-100 md:translate-x-0"}`}>
               <div className="text-sm md:text-base font-medium text-sidebar-foreground truncate">{userName}</div>
@@ -734,11 +1458,21 @@ export default function App() {
           {currentView === "configuracoes" && (
             <ConfiguracoesView
               userName={userName}
+              avatarUrl={avatarUrl}
+              frameId={profileFrameId}
               authUser={authUser}
               authReady={authReady}
-              onUserNameSave={async (name) => {
-                await saveProfile({ id: profileId, name, streakDays });
+              onProfileSave={async ({ name, avatarUrl: nextAvatarUrl, frameId: nextFrameId }) => {
+                await saveProfile({
+                  id: profileId,
+                  name,
+                  streakDays,
+                  avatarUrl: nextAvatarUrl,
+                  frameId: nextFrameId,
+                });
                 setUserName(name);
+                setAvatarUrl(nextAvatarUrl);
+                setProfileFrameId(nextFrameId);
               }}
               onAuthChanged={reloadProfile}
               canInstallPwa={Boolean(installPromptEvent)}
@@ -746,6 +1480,10 @@ export default function App() {
               onInstallPwa={installPwa}
               streakDays={streakDays}
               studyGoals={studyGoals}
+              studyProgress={studyProgress}
+              courseModules={courseModules}
+              activitySummary={activitySummary}
+              unlockStats={profileUnlockStats}
               onStudyGoalsSave={async (goals) => {
                 const savedGoals = await saveStudyGoals(goals);
                 setStudyGoals(savedGoals);
@@ -810,12 +1548,12 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form
             onSubmit={saveProfileName}
-            className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-lg"
+            className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-lg md:p-6"
           >
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Editar perfil</h2>
-                <p className="text-sm text-muted-foreground">Atualize o nome exibido no LearnFlow.</p>
+                <p className="text-sm text-muted-foreground">Atualize nome, foto e moldura exibidos no LearnFlow.</p>
               </div>
               <button
                 type="button"
@@ -825,6 +1563,45 @@ export default function App() {
               >
                 <X className="h-4 w-4" />
               </button>
+            </div>
+
+            <div className="mb-5 flex flex-col gap-4 rounded-xl border border-border bg-muted/40 p-4 sm:flex-row sm:items-center">
+              <div className="flex h-32 w-32 shrink-0 items-center justify-center">
+                <ProfileAvatar
+                  name={profileDraftName || userName}
+                  avatarUrl={profileDraftAvatarUrl}
+                  frameId={profileDraftFrameId}
+                  size="lg"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">{profileDraftName || userName}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{getProfileFrame(profileDraftFrameId).label}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+                    <Camera className="h-4 w-4" />
+                    Escolher foto
+                    <input
+                      className="sr-only"
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => {
+                        handleProfileAvatarUpload(event.target.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  {profileDraftAvatarUrl && (
+                    <button
+                      className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-accent"
+                      type="button"
+                      onClick={() => setProfileDraftAvatarUrl(null)}
+                    >
+                      Remover foto
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             <label className="block space-y-2">
@@ -837,6 +1614,20 @@ export default function App() {
                 placeholder="Digite seu nome"
               />
             </label>
+
+            <div className="mt-4 space-y-2">
+              <span className="text-sm font-medium text-foreground">Moldura</span>
+              <ProfileFrameSelector
+                selectedFrameId={profileDraftFrameId}
+                onSelect={setProfileDraftFrameId}
+                name={profileDraftName || userName}
+                avatarUrl={profileDraftAvatarUrl}
+                unlockStats={profileUnlockStats}
+              />
+              <p className="text-xs text-muted-foreground">
+                Molduras bloqueadas aparecem com cadeado e liberam conforme seu progresso.
+              </p>
+            </div>
 
             {profileError && (
               <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -2297,18 +3088,6 @@ function ModuleContent({
   const learningPath = module.learningPath ?? DEFAULT_LEARNING_PATH;
   const identity = getSubjectIdentity(subjectName);
   const courseBlocks = buildCourseBlocks(subjectName, module);
-  const canCompleteModule = canSaveProgress && getModuleActivityTotal(module) > 0 && moduleProgress < 100;
-  const completeModule = () => {
-    if (!canSaveProgress) return;
-
-    module.activities.forEach((activity) => {
-      onActivityAnswered(subjectName, module.title, activity.question);
-    });
-
-    if (module.miniChallenge) {
-      onActivityAnswered(subjectName, module.title, `desafio:${module.miniChallenge.question ?? module.title}`);
-    }
-  };
 
   return (
     <div className="space-y-6 rounded-xl border border-border bg-background/60 p-4 md:p-6">
@@ -2331,16 +3110,8 @@ function ModuleContent({
             </div>
           </div>
         </div>
-        <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mt-2">
           <p className="max-w-4xl text-sm md:text-base leading-relaxed text-muted-foreground">{module.objective}</p>
-          <button
-            type="button"
-            className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
-            onClick={completeModule}
-            disabled={!canCompleteModule}
-          >
-            {!canSaveProgress ? "Entre para salvar progresso" : moduleProgress >= 100 ? "Aula concluida" : "Marcar aula como concluida"}
-          </button>
         </div>
         {!canSaveProgress && (
           <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
@@ -4306,9 +5077,11 @@ function PlaceholderView() {
 
 function ConfiguracoesView({
   userName,
+  avatarUrl,
+  frameId,
   authUser,
   authReady,
-  onUserNameSave,
+  onProfileSave,
   onStudyGoalsSave,
   onAuthChanged,
   canInstallPwa,
@@ -4316,11 +5089,17 @@ function ConfiguracoesView({
   onInstallPwa,
   streakDays,
   studyGoals,
+  studyProgress,
+  courseModules,
+  activitySummary,
+  unlockStats,
 }: {
   userName: string;
+  avatarUrl?: string | null;
+  frameId: ProfileFrameId;
   authUser: AuthUser | null;
   authReady: boolean;
-  onUserNameSave: (name: string) => Promise<void>;
+  onProfileSave: (profile: { name: string; avatarUrl: string | null; frameId: ProfileFrameId }) => Promise<void>;
   onStudyGoalsSave: (goals: StudyGoals) => Promise<void>;
   onAuthChanged: () => Promise<void>;
   canInstallPwa: boolean;
@@ -4328,12 +5107,24 @@ function ConfiguracoesView({
   onInstallPwa: () => Promise<"installed" | "dismissed" | "manual">;
   streakDays: number;
   studyGoals: StudyGoals;
+  studyProgress: StudyProgress;
+  courseModules: SubjectModuleMap;
+  activitySummary: LearningActivitySummary;
+  unlockStats: ProfileUnlockStats;
 }) {
   const [draftName, setDraftName] = useState(userName);
+  const [draftAvatarUrl, setDraftAvatarUrl] = useState<string | null>(avatarUrl ?? null);
+  const [draftFrameId, setDraftFrameId] = useState<ProfileFrameId>(frameId);
   const [draftWeeklyActiveDays, setDraftWeeklyActiveDays] = useState(studyGoals.weeklyActiveDays);
   const [draftDailyActivityTarget, setDraftDailyActivityTarget] = useState(studyGoals.dailyActivityTarget);
   const [status, setStatus] = useState("");
   const [goalsStatus, setGoalsStatus] = useState("");
+
+  useEffect(() => {
+    setDraftName(userName);
+    setDraftAvatarUrl(avatarUrl ?? null);
+    setDraftFrameId(frameId);
+  }, [avatarUrl, frameId, userName]);
 
   useEffect(() => {
     setDraftWeeklyActiveDays(studyGoals.weeklyActiveDays);
@@ -4346,10 +5137,28 @@ function ConfiguracoesView({
     if (!nextName) return;
     setStatus("");
     try {
-      await onUserNameSave(nextName);
-      setStatus("Nome salvo na sua conta.");
+      const selectedFrame = getProfileFrame(draftFrameId);
+      const selectedFrameAccess = getProfileFrameAccess(selectedFrame, unlockStats);
+      if (!selectedFrameAccess.unlocked) {
+        setStatus(`Moldura bloqueada: ${selectedFrameAccess.reason}`);
+        return;
+      }
+
+      await onProfileSave({ name: nextName, avatarUrl: draftAvatarUrl, frameId: draftFrameId });
+      setStatus("Perfil salvo na sua conta.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Nao foi possivel salvar o perfil.");
+    }
+  };
+
+  const handleAvatarUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setStatus("");
+    try {
+      const nextAvatarUrl = await readProfileAvatarFile(file);
+      setDraftAvatarUrl(nextAvatarUrl);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Nao foi possivel carregar a foto.");
     }
   };
 
@@ -4367,92 +5176,195 @@ function ConfiguracoesView({
     }
   };
 
+  const { totalModules, completedModules, overallProgress } = getTotalProgressSummary(studyProgress, courseModules);
+  const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats).unlocked).length;
+  const nextReward = PROFILE_FRAMES.find((frame) => !getProfileFrameAccess(frame, unlockStats).unlocked) ?? getProfileFrame("fogo");
+  const nextRewardProgress = Math.min(100, Math.round((completedModules / Math.max(1, totalModules || 20)) * 100));
+  const totalActivities = activitySummary.weekCount;
+  const profileLevel = unlockStats.profileLevel;
+  const xpCurrent = Math.min(3000, (completedModules * 120) + (streakDays * 90) + (totalActivities * 35));
+
   return (
-    <PageContainer size="narrow">
-        <AuthPanel authUser={authUser} authReady={authReady} onAuthChanged={onAuthChanged} />
-
-        <PwaInstallCard
-          canInstall={canInstallPwa}
-          isInstalled={isPwaInstalled}
-          onInstall={onInstallPwa}
-        />
-
-        <form onSubmit={handleSaveProfile} className="bg-card rounded-xl p-5 md:p-6 border border-border space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Perfil</h2>
-            <p className="text-sm text-muted-foreground">Atualize as informações básicas do estudante.</p>
-          </div>
-
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-foreground">Nome do usuário</span>
-            <input
-              value={draftName}
-              onChange={(event) => setDraftName(event.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-              placeholder="Digite seu nome"
-            />
-          </label>
-
-          <button className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto md:px-5 md:py-2.5 md:text-base">
-            Salvar nome
-          </button>
-
-          {status && <p className="text-sm text-muted-foreground">{status}</p>}
-        </form>
-
-        <form onSubmit={handleSaveStudyGoals} className="bg-card rounded-xl p-5 md:p-6 border border-border space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Metas de estudo</h2>
-            <p className="text-sm text-muted-foreground">
-              Ajuste o ritmo usado no dashboard e nas recomendacoes diarias.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-foreground">Dias ativos por semana</span>
-              <input
-                value={draftWeeklyActiveDays}
-                onChange={(event) => setDraftWeeklyActiveDays(Number(event.target.value))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                min={1}
-                max={7}
-                type="number"
-              />
-            </label>
-
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-foreground">Atividades por dia</span>
-              <input
-                value={draftDailyActivityTarget}
-                onChange={(event) => setDraftDailyActivityTarget(Number(event.target.value))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                min={1}
-                max={50}
-                type="number"
-              />
-            </label>
-          </div>
-
+    <PageContainer contentClassName="space-y-5">
+      <div className="flex gap-2 overflow-x-auto border-b border-border pb-3">
+        {["Perfil", "Molduras", "Metas", "Notificações", "Conta", "Aparência"].map((tab, index) => (
           <button
-            className="w-full rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto md:px-5 md:py-2.5 md:text-base"
-            disabled={!authUser}
+            key={tab}
+            className={`shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${index === 0 ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            type="button"
           >
-            Salvar metas
+            {tab}
           </button>
+        ))}
+      </div>
 
-          {!authUser && (
-            <p className="text-sm text-muted-foreground">Entre na conta para salvar metas entre dispositivos.</p>
-          )}
-          {goalsStatus && <p className="text-sm text-muted-foreground">{goalsStatus}</p>}
-        </form>
+      <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="space-y-5">
+          <form onSubmit={handleSaveProfile} className="rounded-2xl border border-border bg-card p-5 text-center shadow-sm md:p-6">
+            <div className="relative mx-auto flex h-36 w-36 items-center justify-center">
+              <ProfileAvatar name={draftName || userName} avatarUrl={draftAvatarUrl} frameId={draftFrameId} size="lg" />
+              <label className="absolute right-2 top-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
+                <Camera className="h-4 w-4" />
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    handleAvatarUpload(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
 
-        <div className="bg-card rounded-xl p-5 md:p-6 xl:p-8 border border-border">
-          <h2 className="text-lg font-semibold text-foreground mb-2">Sequência atual</h2>
-          <p className="text-sm text-muted-foreground">
-            {streakDays} dias seguidos. A sequência aumenta no primeiro estudo concluído de cada dia.
-          </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <input
+                value={draftName}
+                onChange={(event) => setDraftName(event.target.value)}
+                className="min-w-0 max-w-[180px] bg-transparent text-center text-2xl font-semibold text-foreground outline-none focus:text-primary"
+                placeholder="Nome"
+              />
+              <span className="rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
+                Nível {profileLevel}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">Foco • Disciplina • Evolução</p>
+            <p className="mt-1 text-sm text-muted-foreground">Sempre aprendendo.</p>
+
+            <div className="mt-5 text-left">
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground">{xpCurrent.toLocaleString("pt-BR")} / 3.000 XP</span>
+                <span className="text-muted-foreground">{overallProgress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, overallProgress)}%` }} />
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-border bg-background/60 p-3">
+                <Flame className="mx-auto h-5 w-5 text-orange-500" />
+                <p className="mt-1 text-lg font-semibold text-foreground">{streakDays}</p>
+                <p className="text-xs text-muted-foreground">Dias</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background/60 p-3">
+                <BookOpen className="mx-auto h-5 w-5 text-primary" />
+                <p className="mt-1 text-lg font-semibold text-foreground">{completedModules}</p>
+                <p className="text-xs text-muted-foreground">Módulos</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background/60 p-3">
+                <Trophy className="mx-auto h-5 w-5 text-amber-500" />
+                <p className="mt-1 text-lg font-semibold text-foreground">{unlockedFrameCount}</p>
+                <p className="text-xs text-muted-foreground">Molduras</p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <button className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+                Salvar perfil
+              </button>
+              {draftAvatarUrl && (
+                <button
+                  className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
+                  type="button"
+                  onClick={() => setDraftAvatarUrl(null)}
+                >
+                  Remover foto
+                </button>
+              )}
+            </div>
+            {status && <p className="mt-3 text-sm text-muted-foreground">{status}</p>}
+          </form>
+
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-foreground">Próxima recompensa</h2>
+            <div className="mt-4 flex items-center gap-4">
+              <ProfileFramePreview frame={nextReward} className="h-16 w-16" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-foreground">{nextReward.label}</p>
+                <p className="text-sm text-muted-foreground">{nextReward.unlock}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${nextRewardProgress}%` }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground">{nextRewardProgress}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-foreground">Estatísticas rápidas</h2>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
+                <span className="text-muted-foreground">Atividades na semana</span>
+                <strong className="text-foreground">{activitySummary.weekCount}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
+                <span className="text-muted-foreground">Simulados registrados</span>
+                <strong className="text-foreground">{activitySummary.byType.simulado}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
+                <span className="text-muted-foreground">Módulos concluídos</span>
+                <strong className="text-foreground">{completedModules}/{totalModules}</strong>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Flashcards</span>
+                <strong className="text-foreground">{activitySummary.byType.flashcard}</strong>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <div className="space-y-5">
+          <ProfileFrameGallery selectedFrameId={draftFrameId} onSelect={setDraftFrameId} unlockStats={unlockStats} />
+
+          <form onSubmit={handleSaveStudyGoals} className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Metas de estudo</h2>
+              <p className="text-sm text-muted-foreground">Ajuste o ritmo usado no dashboard e nas recomendações diárias.</p>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-foreground">Dias ativos por semana</span>
+                <input
+                  value={draftWeeklyActiveDays}
+                  onChange={(event) => setDraftWeeklyActiveDays(Number(event.target.value))}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                  min={1}
+                  max={7}
+                  type="number"
+                />
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-foreground">Atividades por dia</span>
+                <input
+                  value={draftDailyActivityTarget}
+                  onChange={(event) => setDraftDailyActivityTarget(Number(event.target.value))}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                  min={1}
+                  max={50}
+                  type="number"
+                />
+              </label>
+            </div>
+
+            <button
+              className="mt-4 rounded-lg bg-primary px-5 py-2.5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!authUser}
+            >
+              Salvar metas
+            </button>
+            {!authUser && <p className="mt-3 text-sm text-muted-foreground">Entre na conta para salvar metas entre dispositivos.</p>}
+            {goalsStatus && <p className="mt-3 text-sm text-muted-foreground">{goalsStatus}</p>}
+          </form>
+
+          <PwaInstallCard canInstall={canInstallPwa} isInstalled={isPwaInstalled} onInstall={onInstallPwa} compact />
+          <AuthPanel authUser={authUser} authReady={authReady} onAuthChanged={onAuthChanged} />
+        </div>
+      </div>
     </PageContainer>
   );
 }
@@ -6246,12 +7158,12 @@ function CalendarAnnualOverview({
                 <div className="mt-3 space-y-1">
                   {monthHolidays.map((holiday) => (
                     <p key={`${holiday.date}-${holiday.name}`} className="text-xs text-muted-foreground">
-                      <span className="font-medium text-green-700 dark:text-green-400">{Number(holiday.date.slice(8, 10))}</span> Â· {holiday.name}
+                      <span className="font-medium text-green-700 dark:text-green-400">{Number(holiday.date.slice(8, 10))}</span> · {holiday.name}
                     </p>
                   ))}
                   {monthRuleOccurrences.slice(0, 4).map((occurrence) => (
                     <p key={`${occurrence.ruleId}-${occurrence.date}`} className="text-xs text-muted-foreground">
-                      <span className="font-medium text-primary">{Number(occurrence.date.slice(8, 10))}</span> Â· {occurrence.title}
+                      <span className="font-medium text-primary">{Number(occurrence.date.slice(8, 10))}</span> · {occurrence.title}
                     </p>
                   ))}
                   {monthRuleOccurrences.length > 4 && (
@@ -8046,6 +8958,31 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
         })
       : [];
     const needsReview = questionReview.filter((item) => !item.isCorrect);
+    const languageSelector = (
+      <div className="rounded-xl border border-border bg-card p-4 md:p-5">
+        <h3 className="font-semibold text-foreground">Idioma selecionado</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Caderno Branco.</p>
+        {availableLanguages.length > 1 && (
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-md">
+            {availableLanguages.map((language) => (
+              <button
+                key={language}
+                className={"rounded-lg border px-3 py-2 text-sm transition-colors " + (languageChoice === language ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:bg-accent")}
+                onClick={() => {
+                  setLanguageChoice(language);
+                  setAnswers({ __currentQuestion: "1" });
+                  setResult(null);
+                  setResultStatus("");
+                }}
+                type="button"
+              >
+                {languageLabels[language]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
 
     return (
       <PageContainer size="wide">
@@ -8103,6 +9040,8 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
               </div>
             </div>
           </div>
+
+          {languageSelector}
 
           {visibleQuestion ? (
             <>
@@ -8207,30 +9146,6 @@ function SimuladosView({ onUserActivity }: { onUserActivity: (activityType: User
               </div>
 
               <div className="space-y-4">
-                <div className="rounded-xl border border-border bg-card p-4 md:p-5">
-                  <h3 className="font-semibold text-foreground">Idioma selecionado</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Caderno Branco.</p>
-                  {availableLanguages.length > 1 && (
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {availableLanguages.map((language) => (
-                        <button
-                          key={language}
-                          className={"rounded-lg border px-3 py-2 text-sm transition-colors " + (languageChoice === language ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:bg-accent")}
-                          onClick={() => {
-                            setLanguageChoice(language);
-                            setAnswers({ __currentQuestion: "1" });
-                            setResult(null);
-                            setResultStatus("");
-                          }}
-                          type="button"
-                        >
-                          {languageLabels[language]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 <div className="rounded-xl border border-border bg-card p-4 md:p-5">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>

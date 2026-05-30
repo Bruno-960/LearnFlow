@@ -6,6 +6,8 @@ export type LearnFlowProfile = {
   name: string;
   streakDays: number;
   lastStudyDate?: string | null;
+  avatarUrl?: string | null;
+  frameId?: ProfileFrameId;
 };
 
 type ProfileUpsertPayload = {
@@ -14,7 +16,36 @@ type ProfileUpsertPayload = {
   streak_days: number;
   updated_at: string;
   last_study_date?: string | null;
+  avatar_url?: string | null;
+  frame_id?: ProfileFrameId;
 };
+
+export type ProfileFrameId =
+  | "none"
+  | "learnflow"
+  | "streak"
+  | "focus"
+  | "mastery"
+  | "aprendiz"
+  | "persistente"
+  | "mestre"
+  | "invicto"
+  | "lenda-learnflow"
+  | "explorador"
+  | "enem-candidato"
+  | "enem-maratonista"
+  | "enem-700"
+  | "enem-800"
+  | "enem-900"
+  | "enem-ouro"
+  | "fogo"
+  | "agua"
+  | "ar"
+  | "terra"
+  | "raio"
+  | "sombra"
+  | "luz"
+  | "cosmos";
 
 export type UserActivityType = "materia" | "calendario" | "flashcard" | "simulado";
 
@@ -38,6 +69,8 @@ export const DEFAULT_PROFILE: LearnFlowProfile = {
   name: "Estudante",
   streakDays: 0,
   lastStudyDate: null,
+  avatarUrl: null,
+  frameId: "learnflow",
 };
 
 function createGuestProfileId(): string {
@@ -78,17 +111,37 @@ function getSupabaseErrorMessage(error: { message?: string } | null): string {
   return message;
 }
 
+function isMissingProfileCustomizationColumn(error: { message?: string } | null): boolean {
+  const message = (error?.message || "").toLowerCase();
+  return (
+    message.includes("avatar_url")
+    || message.includes("frame_id")
+    || message.includes("schema cache")
+    || message.includes("column")
+  );
+}
+
 export async function loadProfile(): Promise<LearnFlowProfile> {
   const profileId = await getProfileId();
   const fallbackProfile: LearnFlowProfile = { ...DEFAULT_PROFILE, id: profileId };
 
   if (!supabase) return fallbackProfile;
 
-  const { data, error } = await supabase
+  let { data, error }: { data: Record<string, any> | null; error: { message?: string } | null } = await supabase
     .from("profiles")
-    .select("id,name,streak_days,last_study_date")
+    .select("id,name,streak_days,last_study_date,avatar_url,frame_id")
     .eq("id", profileId)
     .maybeSingle();
+
+  if (error && isMissingProfileCustomizationColumn(error)) {
+    const legacyResult = await supabase
+      .from("profiles")
+      .select("id,name,streak_days,last_study_date")
+      .eq("id", profileId)
+      .maybeSingle();
+    data = legacyResult.data;
+    error = legacyResult.error;
+  }
 
   if (error) {
     console.warn("Nao foi possivel carregar o perfil no Supabase:", error.message);
@@ -112,6 +165,8 @@ export async function loadProfile(): Promise<LearnFlowProfile> {
     name: data.name || DEFAULT_PROFILE.name,
     streakDays: Number(data.streak_days || 0),
     lastStudyDate: data.last_study_date || null,
+    avatarUrl: "avatar_url" in data ? data.avatar_url || null : null,
+    frameId: "frame_id" in data ? data.frame_id || DEFAULT_PROFILE.frameId : DEFAULT_PROFILE.frameId,
   };
 }
 
@@ -131,7 +186,32 @@ export async function saveProfile(profile: LearnFlowProfile): Promise<void> {
     payload.last_study_date = profile.lastStudyDate ?? null;
   }
 
+  if (Object.prototype.hasOwnProperty.call(profile, "avatarUrl")) {
+    payload.avatar_url = profile.avatarUrl ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(profile, "frameId")) {
+    payload.frame_id = profile.frameId ?? DEFAULT_PROFILE.frameId;
+  }
+
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+
+  if (error && isMissingProfileCustomizationColumn(error)) {
+    const legacyPayload: ProfileUpsertPayload = {
+      id: profile.id,
+      name: profile.name,
+      streak_days: profile.streakDays,
+      updated_at: payload.updated_at,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(profile, "lastStudyDate")) {
+      legacyPayload.last_study_date = profile.lastStudyDate ?? null;
+    }
+
+    const legacyResult = await supabase.from("profiles").upsert(legacyPayload, { onConflict: "id" });
+    if (legacyResult.error) throw new Error(getSupabaseErrorMessage(legacyResult.error));
+    throw new Error("Atualize o esquema do Supabase para salvar foto e moldura do perfil.");
+  }
 
   if (error) throw new Error(getSupabaseErrorMessage(error));
 }

@@ -4,11 +4,15 @@ create table if not exists public.profiles (
   streak_days integer not null default 0,
   last_study_date date,
   last_activity_at timestamptz,
+  avatar_url text,
+  frame_id text not null default 'learnflow',
   updated_at timestamptz not null default now()
 );
 
 alter table public.profiles add column if not exists last_study_date date;
 alter table public.profiles add column if not exists last_activity_at timestamptz;
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists frame_id text not null default 'learnflow';
 
 create table if not exists public.study_goals (
   profile_id text primary key references public.profiles(id) on delete cascade,
