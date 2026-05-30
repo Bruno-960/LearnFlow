@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Home,
   Calendar,
@@ -186,7 +186,7 @@ const getInitials = (name: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join("") || "LF";
 
-type ProfileFrameCategory = "basicas" | "conquistas" | "enem" | "elementais";
+type ProfileFrameCategory = "basicas" | "conquistas" | "enem" | "elementais" | "especiais";
 
 type ProfileFrame = {
   id: ProfileFrameId;
@@ -197,6 +197,7 @@ type ProfileFrame = {
   frameClass: string;
   assetSrc?: string;
   avatarInsetClass?: string;
+  avatarBoxClass?: string;
 };
 
 type ProfileUnlockStats = {
@@ -208,7 +209,9 @@ type ProfileUnlockStats = {
   totalSubjects: number;
   simuladoAttempts: number;
   bestSimuladoPercent: number;
+  bestEnemScore: number;
   hasCompletedFullExam: boolean;
+  userNumber?: number | null;
 };
 
 type ProfileFrameAccess = {
@@ -221,9 +224,32 @@ const PROFILE_FRAME_CATEGORIES: { id: ProfileFrameCategory; label: string }[] = 
   { id: "conquistas", label: "Conquistas" },
   { id: "enem", label: "ENEM" },
   { id: "elementais", label: "Elementais" },
+  { id: "especiais", label: "Especiais" },
+];
+
+type ProfileFrameFilter = ProfileFrameCategory | "all";
+type SettingsTab = "perfil" | "molduras" | "metas" | "notificacoes" | "conta" | "aparencia";
+
+const PROFILE_FRAME_FILTERS: { id: ProfileFrameFilter; label: string }[] = [
+  { id: "all", label: "Todas" },
+  { id: "basicas", label: "Básicas" },
+  { id: "conquistas", label: "Conquistas" },
+  { id: "enem", label: "ENEM" },
+  { id: "elementais", label: "Elementais" },
+  { id: "especiais", label: "Especiais" },
+];
+
+const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
+  { id: "perfil", label: "Perfil" },
+  { id: "molduras", label: "Molduras" },
+  { id: "metas", label: "Metas" },
+  { id: "notificacoes", label: "Notificações" },
+  { id: "conta", label: "Conta" },
+  { id: "aparencia", label: "Aparência" },
 ];
 
 const FRAME_ASSET_VERSION = "v=20260530-elementais-2";
+const SPECIAL_FRAME_ASSET_VERSION = "v=20260530-especiais-1";
 
 const PROFILE_FRAMES: ProfileFrame[] = [
   {
@@ -449,6 +475,66 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     frameClass: "bg-gradient-to-br from-violet-500 via-indigo-700 to-blue-500",
     assetSrc: `/frames/cosmos.png?${FRAME_ASSET_VERSION}`,
   },
+  {
+    id: "especial-fundador",
+    label: "Fundador",
+    description: "Marco reservado ao fundador do LearnFlow.",
+    unlock: "ID publico #1.",
+    category: "especiais",
+    frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-blue-700",
+    assetSrc: `/frames/especial-fundador.png?${SPECIAL_FRAME_ASSET_VERSION}`,
+    avatarBoxClass: "left-[25%] top-[24%] h-[46%] w-[46%]",
+  },
+  {
+    id: "especial-beta-tester",
+    label: "Beta Tester",
+    description: "Para quem testou o LearnFlow no inicio.",
+    unlock: "Participar dos testes beta.",
+    category: "especiais",
+    frameClass: "bg-gradient-to-br from-cyan-200 via-sky-500 to-slate-700",
+    assetSrc: `/frames/especial-beta-tester.png?${SPECIAL_FRAME_ASSET_VERSION}`,
+    avatarBoxClass: "left-[25%] top-[24%] h-[46%] w-[46%]",
+  },
+  {
+    id: "especial-veterano",
+    label: "Veterano",
+    description: "Para os primeiros estudantes cadastrados.",
+    unlock: "Estar entre os 196 primeiros usuarios.",
+    category: "especiais",
+    frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-yellow-900",
+    assetSrc: `/frames/especial-veterano.png?${SPECIAL_FRAME_ASSET_VERSION}`,
+    avatarBoxClass: "left-[24%] top-[23%] h-[48%] w-[48%]",
+  },
+  {
+    id: "especial-30-dias",
+    label: "30 Dias",
+    description: "Constancia forte de estudos.",
+    unlock: "Fazer 30 dias de sequencia.",
+    category: "especiais",
+    frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-red-700",
+    assetSrc: `/frames/especial-30-dias.png?${SPECIAL_FRAME_ASSET_VERSION}`,
+    avatarBoxClass: "left-[24%] top-[23%] h-[48%] w-[48%]",
+  },
+  {
+    id: "especial-portal",
+    label: "Portal",
+    description: "Moldura rara para eventos especiais.",
+    unlock: "Evento especial futuro.",
+    category: "especiais",
+    frameClass: "bg-gradient-to-br from-zinc-900 via-orange-700 to-amber-300",
+    assetSrc: `/frames/especial-portal.png?${SPECIAL_FRAME_ASSET_VERSION}`,
+    avatarInsetClass: "inset-[24%]",
+  },
+  {
+    id: "especial-100-modulos",
+    label: "100 Modulos",
+    description: "Dominio amplo de conteudo.",
+    unlock: "Completar 100 modulos.",
+    category: "especiais",
+    frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-emerald-700",
+    assetSrc: `/frames/especial-100-modulos.png?${SPECIAL_FRAME_ASSET_VERSION}`,
+    avatarBoxClass: "left-[31%] top-[19%] h-[36%] w-[38%]",
+  },
 ];
 
 function getProfileFrame(frameId?: ProfileFrameId) {
@@ -459,18 +545,28 @@ function getProfileLevel(completedModules: number, streakDays: number, totalActi
   return Math.max(1, Math.min(99, Math.floor((completedModules * 3 + streakDays + totalActivities) / 5) + 1));
 }
 
+function getProfileTotalXp(completedModules: number, streakDays: number, totalActivities: number) {
+  return (completedModules * 120) + (streakDays * 90) + (totalActivities * 35);
+}
+
+function getXpRequiredForNextLevel(level: number) {
+  return 2000 + (Math.max(1, level) * 250);
+}
+
 function getProfileUnlockStats({
   studyProgress,
   courseModules,
   streakDays,
   activitySummary,
   simuladoAttempts,
+  userNumber,
 }: {
   studyProgress: StudyProgress;
   courseModules: SubjectModuleMap;
   streakDays: number;
   activitySummary: LearningActivitySummary;
   simuladoAttempts: SimuladoAttemptData[];
+  userNumber?: number | null;
 }): ProfileUnlockStats {
   const { totalModules, completedModules } = getTotalProgressSummary(studyProgress, courseModules);
   const studiedSubjectCount = SUBJECTS.filter((subject) =>
@@ -487,9 +583,11 @@ function getProfileUnlockStats({
     totalSubjects: SUBJECTS.length,
     simuladoAttempts: simuladoAttempts.length,
     bestSimuladoPercent: simuladoAttempts.reduce((best, attempt) => Math.max(best, attempt.percent), 0),
+    bestEnemScore: 0,
     hasCompletedFullExam: simuladoAttempts.some((attempt) =>
       attempt.questionCount > 0 && attempt.answeredCount >= attempt.questionCount,
     ),
+    userNumber,
   };
 }
 
@@ -524,13 +622,16 @@ function getProfileFrameAccess(frame: ProfileFrame, stats: ProfileUnlockStats): 
     case "enem-maratonista":
       return { unlocked: stats.hasCompletedFullExam, reason: "Conclua uma prova completa do ENEM." };
     case "enem-700":
-      return { unlocked: stats.bestSimuladoPercent >= 70, reason: `Alcance 70% em um simulado. Melhor: ${stats.bestSimuladoPercent}%.` };
+      return { unlocked: stats.bestEnemScore >= 700, reason: "Alcance nota ENEM 700+ quando o cálculo de nota estiver disponível." };
     case "enem-800":
-      return { unlocked: stats.bestSimuladoPercent >= 80, reason: `Alcance 80% em um simulado. Melhor: ${stats.bestSimuladoPercent}%.` };
+      return { unlocked: stats.bestEnemScore >= 800, reason: "Alcance nota ENEM 800+ quando o cálculo de nota estiver disponível." };
     case "enem-900":
-      return { unlocked: stats.bestSimuladoPercent >= 90, reason: `Alcance 90% em um simulado. Melhor: ${stats.bestSimuladoPercent}%.` };
+      return { unlocked: stats.bestEnemScore >= 900, reason: "Alcance nota ENEM 900+ quando o cálculo de nota estiver disponível." };
     case "enem-ouro":
-      return { unlocked: stats.bestSimuladoPercent >= 85, reason: `Acerte mais de 85%. Melhor: ${stats.bestSimuladoPercent}%.` };
+      return {
+        unlocked: stats.hasCompletedFullExam && stats.bestSimuladoPercent >= 85,
+        reason: `Conclua a prova e acerte mais de 85%. Melhor: ${stats.bestSimuladoPercent}%.`,
+      };
     case "fogo":
       return { unlocked: stats.profileLevel >= 5, reason: `Chegue ao nível 5. Atual: ${stats.profileLevel}.` };
     case "agua":
@@ -547,6 +648,27 @@ function getProfileFrameAccess(frame: ProfileFrame, stats: ProfileUnlockStats): 
       return { unlocked: stats.profileLevel >= 35, reason: `Chegue ao nível 35. Atual: ${stats.profileLevel}.` };
     case "cosmos":
       return { unlocked: stats.profileLevel >= 40, reason: `Chegue ao nível 40. Atual: ${stats.profileLevel}.` };
+    case "especial-fundador":
+      return {
+        unlocked: stats.userNumber === 1,
+        reason: stats.userNumber ? `Reservada para o ID publico #1. Seu ID: #${stats.userNumber}.` : "Reservada para o ID publico #1.",
+      };
+    case "especial-beta-tester":
+      return {
+        unlocked: Boolean(stats.userNumber && stats.userNumber <= 3),
+        reason: stats.userNumber ? `Disponivel para testadores beta iniciais. Seu ID: #${stats.userNumber}.` : "Disponivel para testadores beta iniciais.",
+      };
+    case "especial-veterano":
+      return {
+        unlocked: Boolean(stats.userNumber && stats.userNumber <= 196),
+        reason: stats.userNumber ? `Disponivel para os 196 primeiros usuarios. Seu ID: #${stats.userNumber}.` : "Disponivel para os 196 primeiros usuarios.",
+      };
+    case "especial-30-dias":
+      return { unlocked: stats.streakDays >= 30, reason: `Faca 30 dias de sequencia. Atual: ${stats.streakDays}.` };
+    case "especial-portal":
+      return { unlocked: false, reason: "Reservada para evento especial futuro." };
+    case "especial-100-modulos":
+      return { unlocked: stats.completedModules >= 100, reason: `Complete 100 modulos. Atual: ${stats.completedModules}.` };
     default:
       return { unlocked: false, reason: frame.unlock };
   }
@@ -664,7 +786,10 @@ function ProfileFrameGallery({
   onSelect: (frameId: ProfileFrameId) => void;
   unlockStats: ProfileUnlockStats;
 }) {
-  const featuredCategories = PROFILE_FRAME_CATEGORIES.filter((category) => category.id !== "basicas");
+  const [activeFilter, setActiveFilter] = useState<ProfileFrameFilter>("all");
+  const visibleCategories = activeFilter === "all"
+    ? PROFILE_FRAME_CATEGORIES
+    : PROFILE_FRAME_CATEGORIES.filter((category) => category.id === activeFilter);
   const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats).unlocked).length;
 
   return (
@@ -686,19 +811,20 @@ function ProfileFrameGallery({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2 border-b border-border pb-3">
-        {["Todas", "Conquistas", "ENEM", "Elementais", "Especiais"].map((tab, index) => (
+        {PROFILE_FRAME_FILTERS.map((tab) => (
           <button
-            key={tab}
-            className={`rounded-lg px-4 py-2 text-sm transition-colors ${index === 0 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+            key={tab.id}
+            className={`rounded-lg px-4 py-2 text-sm transition-colors ${activeFilter === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+            onClick={() => setActiveFilter(tab.id)}
             type="button"
           >
-            {tab}
+            {tab.label}
           </button>
         ))}
       </div>
 
       <div className="mt-5 space-y-6">
-        {featuredCategories.map((category) => {
+        {visibleCategories.map((category) => {
           const frames = PROFILE_FRAMES.filter((frame) => frame.category === category.id);
           if (!frames.length) return null;
 
@@ -708,9 +834,11 @@ function ProfileFrameGallery({
                 <h3 className="text-base font-semibold text-foreground">
                   {category.label}
                 </h3>
-                <button className="text-xs font-medium text-primary hover:underline" type="button">
-                  Ver todas
-                </button>
+                {activeFilter !== "all" && (
+                  <button className="text-xs font-medium text-primary hover:underline" onClick={() => setActiveFilter("all")} type="button">
+                    Ver todas
+                  </button>
+                )}
               </div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {frames.map((frame) => {
@@ -765,14 +893,164 @@ function ProfileFrameGallery({
   );
 }
 
+function AvatarPositionControls({
+  x,
+  y,
+  onXChange,
+  onYChange,
+  onReset,
+}: {
+  x: number;
+  y: number;
+  onXChange: (value: number) => void;
+  onYChange: (value: number) => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-background/70 p-3 text-left">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-foreground">PosiÃ§Ã£o da foto</p>
+        <button className="text-xs font-medium text-primary hover:underline" type="button" onClick={onReset}>
+          Centralizar
+        </button>
+      </div>
+      <label className="block space-y-1">
+        <span className="text-xs text-muted-foreground">Horizontal</span>
+        <input
+          className="w-full accent-primary"
+          type="range"
+          min={-18}
+          max={18}
+          step={1}
+          value={x}
+          onChange={(event) => onXChange(Number(event.target.value))}
+        />
+      </label>
+      <label className="mt-3 block space-y-1">
+        <span className="text-xs text-muted-foreground">Vertical</span>
+        <input
+          className="w-full accent-primary"
+          type="range"
+          min={-18}
+          max={18}
+          step={1}
+          value={y}
+          onChange={(event) => onYChange(Number(event.target.value))}
+        />
+      </label>
+    </div>
+  );
+}
+
+const AVATAR_POSITION_LIMIT = 38;
+
+function clampAvatarPosition(value: number) {
+  return Math.max(-AVATAR_POSITION_LIMIT, Math.min(AVATAR_POSITION_LIMIT, Math.round(value)));
+}
+
+function DraggableAvatarPosition({
+  name,
+  avatarUrl,
+  avatarPositionX,
+  avatarPositionY,
+  frameId,
+  onPositionChange,
+  onReset,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  avatarPositionX: number;
+  avatarPositionY: number;
+  frameId: ProfileFrameId;
+  onPositionChange: (x: number, y: number) => void;
+  onReset: () => void;
+}) {
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!avatarUrl) return;
+    const rect = previewRef.current?.getBoundingClientRect();
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: avatarPositionX,
+      startY: avatarPositionY,
+      width: rect?.width || 112,
+      height: rect?.height || 112,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const nextX = drag.startX + ((event.clientX - drag.startClientX) / drag.width) * 68;
+    const nextY = drag.startY + ((event.clientY - drag.startClientY) / drag.height) * 68;
+    onPositionChange(clampAvatarPosition(nextX), clampAvatarPosition(nextY));
+  };
+
+  const handlePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (drag?.pointerId === event.pointerId) {
+      dragRef.current = null;
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        ref={previewRef}
+        className={`touch-none select-none ${avatarUrl ? "cursor-grab active:cursor-grabbing" : ""}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+      >
+        <ProfileAvatar
+          name={name}
+          avatarUrl={avatarUrl}
+          avatarPositionX={avatarPositionX}
+          avatarPositionY={avatarPositionY}
+          frameId={frameId}
+          size="lg"
+        />
+      </div>
+      {avatarUrl && (
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Arraste a foto para enquadrar.</p>
+          <button className="mt-1 text-xs font-medium text-primary hover:underline" type="button" onClick={onReset}>
+            Centralizar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfileAvatar({
   name,
   avatarUrl,
+  avatarPositionX = 0,
+  avatarPositionY = 0,
   frameId,
   size = "md",
 }: {
   name: string;
   avatarUrl?: string | null;
+  avatarPositionX?: number;
+  avatarPositionY?: number;
   frameId?: ProfileFrameId;
   size?: "sm" | "md" | "lg";
 }) {
@@ -801,9 +1079,14 @@ function ProfileAvatar({
 
   return (
     <div className={`${sizeClass} ${hasFrameAsset ? "text-white" : `${frame.frameClass} rounded-full p-1 text-white shadow-sm`} relative shrink-0`}>
-      <div className={`absolute ${innerInsetClass} overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-500`}>
+      <div className={`absolute ${frame.avatarBoxClass ?? innerInsetClass} overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-500`}>
         {avatarUrl ? (
-          <img src={avatarUrl} alt={`Foto de ${name}`} className="h-full w-full object-cover" />
+          <img
+            src={avatarUrl}
+            alt={`Foto de ${name}`}
+            className="absolute -inset-[30%] h-[160%] w-[160%] object-cover"
+            style={{ transform: `translate(${avatarPositionX}%, ${avatarPositionY}%)` }}
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center font-semibold text-white">
             {getInitials(name)}
@@ -837,17 +1120,17 @@ async function readProfileAvatarFile(file: File): Promise<string> {
       nextImage.src = imageUrl;
     });
 
-    const size = 320;
+    const maxSize = 640;
+    const scale = Math.min(1, maxSize / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
     const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = width;
+    canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Nao foi possivel preparar a imagem.");
 
-    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
-    const sourceX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
-    const sourceY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
-    context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+    context.drawImage(image, 0, 0, width, height);
 
     return canvas.toDataURL("image/webp", 0.86);
   } finally {
@@ -862,13 +1145,18 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [profileId, setProfileId] = useState(DEFAULT_PROFILE.id);
+  const [userNumber, setUserNumber] = useState(DEFAULT_PROFILE.userNumber ?? null);
   const [userName, setUserName] = useState(DEFAULT_PROFILE.name);
   const [avatarUrl, setAvatarUrl] = useState(DEFAULT_PROFILE.avatarUrl);
+  const [avatarPositionX, setAvatarPositionX] = useState(DEFAULT_PROFILE.avatarPositionX ?? 0);
+  const [avatarPositionY, setAvatarPositionY] = useState(DEFAULT_PROFILE.avatarPositionY ?? 0);
   const [profileFrameId, setProfileFrameId] = useState<ProfileFrameId>(DEFAULT_PROFILE.frameId ?? "learnflow");
   const [streakDays, setStreakDays] = useState(DEFAULT_PROFILE.streakDays);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [profileDraftName, setProfileDraftName] = useState(userName);
   const [profileDraftAvatarUrl, setProfileDraftAvatarUrl] = useState<string | null>(DEFAULT_PROFILE.avatarUrl ?? null);
+  const [profileDraftAvatarPositionX, setProfileDraftAvatarPositionX] = useState(DEFAULT_PROFILE.avatarPositionX ?? 0);
+  const [profileDraftAvatarPositionY, setProfileDraftAvatarPositionY] = useState(DEFAULT_PROFILE.avatarPositionY ?? 0);
   const [profileDraftFrameId, setProfileDraftFrameId] = useState<ProfileFrameId>(DEFAULT_PROFILE.frameId ?? "learnflow");
   const [profileError, setProfileError] = useState("");
   const [studyProgress, setStudyProgress] = useState<StudyProgress>({});
@@ -894,12 +1182,17 @@ export default function App() {
 
   const applyProfile = (profile: typeof DEFAULT_PROFILE) => {
       setProfileId(profile.id);
+      setUserNumber(profile.userNumber ?? null);
       setUserName(profile.name);
       setAvatarUrl(profile.avatarUrl ?? null);
+      setAvatarPositionX(profile.avatarPositionX ?? 0);
+      setAvatarPositionY(profile.avatarPositionY ?? 0);
       setProfileFrameId(profile.frameId ?? "learnflow");
       setStreakDays(profile.streakDays);
       setProfileDraftName(profile.name);
       setProfileDraftAvatarUrl(profile.avatarUrl ?? null);
+      setProfileDraftAvatarPositionX(profile.avatarPositionX ?? 0);
+      setProfileDraftAvatarPositionY(profile.avatarPositionY ?? 0);
       setProfileDraftFrameId(profile.frameId ?? "learnflow");
   };
 
@@ -1055,6 +1348,8 @@ export default function App() {
   const changeUserName = () => {
     setProfileDraftName(userName);
     setProfileDraftAvatarUrl(avatarUrl ?? null);
+    setProfileDraftAvatarPositionX(avatarPositionX);
+    setProfileDraftAvatarPositionY(avatarPositionY);
     setProfileDraftFrameId(profileFrameId);
     setProfileError("");
     setIsProfileEditorOpen(true);
@@ -1078,10 +1373,14 @@ export default function App() {
         name: nextName,
         streakDays,
         avatarUrl: profileDraftAvatarUrl,
+        avatarPositionX: profileDraftAvatarPositionX,
+        avatarPositionY: profileDraftAvatarPositionY,
         frameId: profileDraftFrameId,
       });
       setUserName(nextName);
       setAvatarUrl(profileDraftAvatarUrl);
+      setAvatarPositionX(profileDraftAvatarPositionX);
+      setAvatarPositionY(profileDraftAvatarPositionY);
       setProfileFrameId(profileDraftFrameId);
       setIsProfileEditorOpen(false);
     } catch (error) {
@@ -1095,6 +1394,8 @@ export default function App() {
     try {
       const nextAvatarUrl = await readProfileAvatarFile(file);
       setProfileDraftAvatarUrl(nextAvatarUrl);
+      setProfileDraftAvatarPositionX(0);
+      setProfileDraftAvatarPositionY(0);
     } catch (error) {
       setProfileError(error instanceof Error ? error.message : "Nao foi possivel carregar a foto.");
     }
@@ -1262,6 +1563,7 @@ export default function App() {
     streakDays,
     activitySummary,
     simuladoAttempts,
+    userNumber,
   });
 
   return (
@@ -1339,7 +1641,14 @@ export default function App() {
             type="button"
           >
             <div className={`transition-all duration-300 ease-out ${compactSidebar ? "md:scale-90" : ""}`}>
-              <ProfileAvatar name={userName} avatarUrl={avatarUrl} frameId={profileFrameId} size="md" />
+              <ProfileAvatar
+                name={userName}
+                avatarUrl={avatarUrl}
+                avatarPositionX={avatarPositionX}
+                avatarPositionY={avatarPositionY}
+                frameId={profileFrameId}
+                size="md"
+              />
             </div>
             <div className={`flex-1 text-left min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${compactSidebar ? "md:hidden" : "md:max-w-48 md:opacity-100 md:translate-x-0"}`}>
               <div className="text-sm md:text-base font-medium text-sidebar-foreground truncate">{userName}</div>
@@ -1458,26 +1767,41 @@ export default function App() {
           {currentView === "configuracoes" && (
             <ConfiguracoesView
               userName={userName}
+              userNumber={userNumber}
               avatarUrl={avatarUrl}
+              avatarPositionX={avatarPositionX}
+              avatarPositionY={avatarPositionY}
               frameId={profileFrameId}
               authUser={authUser}
               authReady={authReady}
-              onProfileSave={async ({ name, avatarUrl: nextAvatarUrl, frameId: nextFrameId }) => {
+              onProfileSave={async ({
+                name,
+                avatarUrl: nextAvatarUrl,
+                avatarPositionX: nextAvatarPositionX,
+                avatarPositionY: nextAvatarPositionY,
+                frameId: nextFrameId,
+              }) => {
                 await saveProfile({
                   id: profileId,
                   name,
                   streakDays,
                   avatarUrl: nextAvatarUrl,
+                  avatarPositionX: nextAvatarPositionX,
+                  avatarPositionY: nextAvatarPositionY,
                   frameId: nextFrameId,
                 });
                 setUserName(name);
                 setAvatarUrl(nextAvatarUrl);
+                setAvatarPositionX(nextAvatarPositionX);
+                setAvatarPositionY(nextAvatarPositionY);
                 setProfileFrameId(nextFrameId);
               }}
               onAuthChanged={reloadProfile}
               canInstallPwa={Boolean(installPromptEvent)}
               isPwaInstalled={isPwaInstalled}
               onInstallPwa={installPwa}
+              isDark={isDark}
+              onToggleTheme={toggleTheme}
               streakDays={streakDays}
               studyGoals={studyGoals}
               studyProgress={studyProgress}
@@ -1566,12 +1890,21 @@ export default function App() {
             </div>
 
             <div className="mb-5 flex flex-col gap-4 rounded-xl border border-border bg-muted/40 p-4 sm:flex-row sm:items-center">
-              <div className="flex h-32 w-32 shrink-0 items-center justify-center">
-                <ProfileAvatar
+              <div className="shrink-0">
+                <DraggableAvatarPosition
                   name={profileDraftName || userName}
                   avatarUrl={profileDraftAvatarUrl}
+                  avatarPositionX={profileDraftAvatarPositionX}
+                  avatarPositionY={profileDraftAvatarPositionY}
                   frameId={profileDraftFrameId}
-                  size="lg"
+                  onPositionChange={(x, y) => {
+                    setProfileDraftAvatarPositionX(x);
+                    setProfileDraftAvatarPositionY(y);
+                  }}
+                  onReset={() => {
+                    setProfileDraftAvatarPositionX(0);
+                    setProfileDraftAvatarPositionY(0);
+                  }}
                 />
               </div>
               <div className="flex-1">
@@ -1595,7 +1928,11 @@ export default function App() {
                     <button
                       className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-accent"
                       type="button"
-                      onClick={() => setProfileDraftAvatarUrl(null)}
+                      onClick={() => {
+                        setProfileDraftAvatarUrl(null);
+                        setProfileDraftAvatarPositionX(0);
+                        setProfileDraftAvatarPositionY(0);
+                      }}
                     >
                       Remover foto
                     </button>
@@ -5077,7 +5414,10 @@ function PlaceholderView() {
 
 function ConfiguracoesView({
   userName,
+  userNumber,
   avatarUrl,
+  avatarPositionX,
+  avatarPositionY,
   frameId,
   authUser,
   authReady,
@@ -5087,6 +5427,8 @@ function ConfiguracoesView({
   canInstallPwa,
   isPwaInstalled,
   onInstallPwa,
+  isDark,
+  onToggleTheme,
   streakDays,
   studyGoals,
   studyProgress,
@@ -5095,16 +5437,21 @@ function ConfiguracoesView({
   unlockStats,
 }: {
   userName: string;
+  userNumber?: number | null;
   avatarUrl?: string | null;
+  avatarPositionX: number;
+  avatarPositionY: number;
   frameId: ProfileFrameId;
   authUser: AuthUser | null;
   authReady: boolean;
-  onProfileSave: (profile: { name: string; avatarUrl: string | null; frameId: ProfileFrameId }) => Promise<void>;
+  onProfileSave: (profile: { name: string; avatarUrl: string | null; avatarPositionX: number; avatarPositionY: number; frameId: ProfileFrameId }) => Promise<void>;
   onStudyGoalsSave: (goals: StudyGoals) => Promise<void>;
   onAuthChanged: () => Promise<void>;
   canInstallPwa: boolean;
   isPwaInstalled: boolean;
   onInstallPwa: () => Promise<"installed" | "dismissed" | "manual">;
+  isDark: boolean;
+  onToggleTheme: () => void;
   streakDays: number;
   studyGoals: StudyGoals;
   studyProgress: StudyProgress;
@@ -5114,17 +5461,22 @@ function ConfiguracoesView({
 }) {
   const [draftName, setDraftName] = useState(userName);
   const [draftAvatarUrl, setDraftAvatarUrl] = useState<string | null>(avatarUrl ?? null);
+  const [draftAvatarPositionX, setDraftAvatarPositionX] = useState(avatarPositionX);
+  const [draftAvatarPositionY, setDraftAvatarPositionY] = useState(avatarPositionY);
   const [draftFrameId, setDraftFrameId] = useState<ProfileFrameId>(frameId);
   const [draftWeeklyActiveDays, setDraftWeeklyActiveDays] = useState(studyGoals.weeklyActiveDays);
   const [draftDailyActivityTarget, setDraftDailyActivityTarget] = useState(studyGoals.dailyActivityTarget);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>("perfil");
   const [status, setStatus] = useState("");
   const [goalsStatus, setGoalsStatus] = useState("");
 
   useEffect(() => {
     setDraftName(userName);
     setDraftAvatarUrl(avatarUrl ?? null);
+    setDraftAvatarPositionX(avatarPositionX);
+    setDraftAvatarPositionY(avatarPositionY);
     setDraftFrameId(frameId);
-  }, [avatarUrl, frameId, userName]);
+  }, [avatarPositionX, avatarPositionY, avatarUrl, frameId, userName]);
 
   useEffect(() => {
     setDraftWeeklyActiveDays(studyGoals.weeklyActiveDays);
@@ -5144,7 +5496,13 @@ function ConfiguracoesView({
         return;
       }
 
-      await onProfileSave({ name: nextName, avatarUrl: draftAvatarUrl, frameId: draftFrameId });
+      await onProfileSave({
+        name: nextName,
+        avatarUrl: draftAvatarUrl,
+        avatarPositionX: draftAvatarPositionX,
+        avatarPositionY: draftAvatarPositionY,
+        frameId: draftFrameId,
+      });
       setStatus("Perfil salvo na sua conta.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Nao foi possivel salvar o perfil.");
@@ -5157,6 +5515,8 @@ function ConfiguracoesView({
     try {
       const nextAvatarUrl = await readProfileAvatarFile(file);
       setDraftAvatarUrl(nextAvatarUrl);
+      setDraftAvatarPositionX(0);
+      setDraftAvatarPositionY(0);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Nao foi possivel carregar a foto.");
     }
@@ -5176,33 +5536,52 @@ function ConfiguracoesView({
     }
   };
 
-  const { totalModules, completedModules, overallProgress } = getTotalProgressSummary(studyProgress, courseModules);
+  const { totalModules, completedModules } = getTotalProgressSummary(studyProgress, courseModules);
   const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats).unlocked).length;
   const nextReward = PROFILE_FRAMES.find((frame) => !getProfileFrameAccess(frame, unlockStats).unlocked) ?? getProfileFrame("fogo");
   const nextRewardProgress = Math.min(100, Math.round((completedModules / Math.max(1, totalModules || 20)) * 100));
   const totalActivities = activitySummary.weekCount;
   const profileLevel = unlockStats.profileLevel;
-  const xpCurrent = Math.min(3000, (completedModules * 120) + (streakDays * 90) + (totalActivities * 35));
+  const xpRequiredForNextLevel = getXpRequiredForNextLevel(profileLevel);
+  const xpCurrent = Math.min(xpRequiredForNextLevel, getProfileTotalXp(completedModules, streakDays, totalActivities));
+  const xpProgressPercent = Math.min(100, Math.round((xpCurrent / xpRequiredForNextLevel) * 100));
 
   return (
     <PageContainer contentClassName="space-y-5">
       <div className="flex gap-2 overflow-x-auto border-b border-border pb-3">
-        {["Perfil", "Molduras", "Metas", "Notificações", "Conta", "Aparência"].map((tab, index) => (
+        {SETTINGS_TABS.map((tab) => (
           <button
-            key={tab}
-            className={`shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${index === 0 ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            key={tab.id}
+            className={`shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${activeSettingsTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setActiveSettingsTab(tab.id)}
             type="button"
           >
-            {tab}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="space-y-5">
+        {activeSettingsTab === "perfil" && (
+        <div className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="space-y-5">
           <form onSubmit={handleSaveProfile} className="rounded-2xl border border-border bg-card p-5 text-center shadow-sm md:p-6">
-            <div className="relative mx-auto flex h-36 w-36 items-center justify-center">
-              <ProfileAvatar name={draftName || userName} avatarUrl={draftAvatarUrl} frameId={draftFrameId} size="lg" />
+            <div className="relative mx-auto flex min-h-36 w-36 items-center justify-center">
+              <DraggableAvatarPosition
+                name={draftName || userName}
+                avatarUrl={draftAvatarUrl}
+                avatarPositionX={draftAvatarPositionX}
+                avatarPositionY={draftAvatarPositionY}
+                frameId={draftFrameId}
+                onPositionChange={(x, y) => {
+                  setDraftAvatarPositionX(x);
+                  setDraftAvatarPositionY(y);
+                }}
+                onReset={() => {
+                  setDraftAvatarPositionX(0);
+                  setDraftAvatarPositionY(0);
+                }}
+              />
               <label className="absolute right-2 top-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
                 <Camera className="h-4 w-4" />
                 <input
@@ -5229,15 +5608,20 @@ function ConfiguracoesView({
               </span>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">Foco • Disciplina • Evolução</p>
+            {userNumber && (
+              <p className="mt-1 text-xs font-medium text-primary">ID público #{userNumber}</p>
+            )}
             <p className="mt-1 text-sm text-muted-foreground">Sempre aprendendo.</p>
 
             <div className="mt-5 text-left">
               <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-medium text-foreground">{xpCurrent.toLocaleString("pt-BR")} / 3.000 XP</span>
-                <span className="text-muted-foreground">{overallProgress}%</span>
+                <span className="font-medium text-foreground">
+                  {xpCurrent.toLocaleString("pt-BR")} / {xpRequiredForNextLevel.toLocaleString("pt-BR")} XP
+                </span>
+                <span className="text-muted-foreground">{xpProgressPercent}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, overallProgress)}%` }} />
+                <div className="h-full rounded-full bg-primary" style={{ width: `${xpProgressPercent}%` }} />
               </div>
             </div>
 
@@ -5267,7 +5651,11 @@ function ConfiguracoesView({
                 <button
                   className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
                   type="button"
-                  onClick={() => setDraftAvatarUrl(null)}
+                  onClick={() => {
+                    setDraftAvatarUrl(null);
+                    setDraftAvatarPositionX(0);
+                    setDraftAvatarPositionY(0);
+                  }}
                 >
                   Remover foto
                 </button>
@@ -5315,10 +5703,17 @@ function ConfiguracoesView({
             </div>
           </div>
         </div>
+        <ProfileFrameGallery selectedFrameId={draftFrameId} onSelect={setDraftFrameId} unlockStats={unlockStats} />
+        </div>
+
+        )}
 
         <div className="space-y-5">
-          <ProfileFrameGallery selectedFrameId={draftFrameId} onSelect={setDraftFrameId} unlockStats={unlockStats} />
+          {activeSettingsTab === "molduras" && (
+            <ProfileFrameGallery selectedFrameId={draftFrameId} onSelect={setDraftFrameId} unlockStats={unlockStats} />
+          )}
 
+          {activeSettingsTab === "metas" && (
           <form onSubmit={handleSaveStudyGoals} className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
             <div>
               <h2 className="text-lg font-semibold text-foreground">Metas de estudo</h2>
@@ -5360,9 +5755,30 @@ function ConfiguracoesView({
             {!authUser && <p className="mt-3 text-sm text-muted-foreground">Entre na conta para salvar metas entre dispositivos.</p>}
             {goalsStatus && <p className="mt-3 text-sm text-muted-foreground">{goalsStatus}</p>}
           </form>
+          )}
 
-          <PwaInstallCard canInstall={canInstallPwa} isInstalled={isPwaInstalled} onInstall={onInstallPwa} compact />
-          <AuthPanel authUser={authUser} authReady={authReady} onAuthChanged={onAuthChanged} />
+          {activeSettingsTab === "notificacoes" && (
+            <PwaInstallCard canInstall={canInstallPwa} isInstalled={isPwaInstalled} onInstall={onInstallPwa} compact />
+          )}
+
+          {activeSettingsTab === "conta" && (
+            <AuthPanel authUser={authUser} authReady={authReady} onAuthChanged={onAuthChanged} />
+          )}
+
+          {activeSettingsTab === "aparencia" && (
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
+              <h2 className="text-lg font-semibold text-foreground">Aparência</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Escolha o tema visual usado no LearnFlow.</p>
+              <button
+                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                onClick={onToggleTheme}
+                type="button"
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                Usar tema {isDark ? "claro" : "escuro"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </PageContainer>

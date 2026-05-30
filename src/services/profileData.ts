@@ -3,10 +3,13 @@ import { getCurrentAuthUser } from "./authData";
 
 export type LearnFlowProfile = {
   id: string;
+  userNumber?: number | null;
   name: string;
   streakDays: number;
   lastStudyDate?: string | null;
   avatarUrl?: string | null;
+  avatarPositionX?: number;
+  avatarPositionY?: number;
   frameId?: ProfileFrameId;
 };
 
@@ -17,6 +20,8 @@ type ProfileUpsertPayload = {
   updated_at: string;
   last_study_date?: string | null;
   avatar_url?: string | null;
+  avatar_position_x?: number;
+  avatar_position_y?: number;
   frame_id?: ProfileFrameId;
 };
 
@@ -45,7 +50,13 @@ export type ProfileFrameId =
   | "raio"
   | "sombra"
   | "luz"
-  | "cosmos";
+  | "cosmos"
+  | "especial-fundador"
+  | "especial-beta-tester"
+  | "especial-veterano"
+  | "especial-30-dias"
+  | "especial-portal"
+  | "especial-100-modulos";
 
 export type UserActivityType = "materia" | "calendario" | "flashcard" | "simulado";
 
@@ -66,10 +77,13 @@ const PROFILE_STORAGE_KEY = "learnflow_guest_profile_id";
 
 export const DEFAULT_PROFILE: LearnFlowProfile = {
   id: "guest-pending",
+  userNumber: null,
   name: "Estudante",
   streakDays: 0,
   lastStudyDate: null,
   avatarUrl: null,
+  avatarPositionX: 0,
+  avatarPositionY: 0,
   frameId: "learnflow",
 };
 
@@ -115,21 +129,25 @@ function isMissingProfileCustomizationColumn(error: { message?: string } | null)
   const message = (error?.message || "").toLowerCase();
   return (
     message.includes("avatar_url")
+    || message.includes("avatar_position_x")
+    || message.includes("avatar_position_y")
     || message.includes("frame_id")
+    || message.includes("user_number")
     || message.includes("schema cache")
     || message.includes("column")
   );
 }
 
 export async function loadProfile(): Promise<LearnFlowProfile> {
-  const profileId = await getProfileId();
+  const authUser = await getCurrentAuthUser();
+  const profileId = authUser?.id ?? getGuestProfileId();
   const fallbackProfile: LearnFlowProfile = { ...DEFAULT_PROFILE, id: profileId };
 
-  if (!supabase) return fallbackProfile;
+  if (!supabase || !authUser) return fallbackProfile;
 
   let { data, error }: { data: Record<string, any> | null; error: { message?: string } | null } = await supabase
     .from("profiles")
-    .select("id,name,streak_days,last_study_date,avatar_url,frame_id")
+    .select("id,user_number,name,streak_days,last_study_date,avatar_url,avatar_position_x,avatar_position_y,frame_id")
     .eq("id", profileId)
     .maybeSingle();
 
@@ -162,10 +180,13 @@ export async function loadProfile(): Promise<LearnFlowProfile> {
 
   return {
     id: data.id,
+    userNumber: "user_number" in data && data.user_number !== null ? Number(data.user_number) : null,
     name: data.name || DEFAULT_PROFILE.name,
     streakDays: Number(data.streak_days || 0),
     lastStudyDate: data.last_study_date || null,
     avatarUrl: "avatar_url" in data ? data.avatar_url || null : null,
+    avatarPositionX: "avatar_position_x" in data && data.avatar_position_x !== null ? Number(data.avatar_position_x) : 0,
+    avatarPositionY: "avatar_position_y" in data && data.avatar_position_y !== null ? Number(data.avatar_position_y) : 0,
     frameId: "frame_id" in data ? data.frame_id || DEFAULT_PROFILE.frameId : DEFAULT_PROFILE.frameId,
   };
 }
@@ -188,6 +209,14 @@ export async function saveProfile(profile: LearnFlowProfile): Promise<void> {
 
   if (Object.prototype.hasOwnProperty.call(profile, "avatarUrl")) {
     payload.avatar_url = profile.avatarUrl ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(profile, "avatarPositionX")) {
+    payload.avatar_position_x = profile.avatarPositionX ?? 0;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(profile, "avatarPositionY")) {
+    payload.avatar_position_y = profile.avatarPositionY ?? 0;
   }
 
   if (Object.prototype.hasOwnProperty.call(profile, "frameId")) {
