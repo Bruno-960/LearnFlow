@@ -56,7 +56,15 @@ export type ProfileFrameId =
   | "especial-veterano"
   | "especial-30-dias"
   | "especial-portal"
-  | "especial-100-modulos";
+  | "especial-100-modulos"
+  | "loja-anel-fogo"
+  | "loja-anel-gelo"
+  | "loja-gelo-espinhoso"
+  | "loja-cristal-azul"
+  | "loja-vortice-cosmos"
+  | "loja-jade-real"
+  | "loja-ossos"
+  | "loja-roda-fogo";
 
 export type UserActivityType = "materia" | "calendario" | "flashcard" | "simulado";
 

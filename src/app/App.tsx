@@ -31,6 +31,7 @@ import {
   RefreshCw,
   Camera,
   Lock,
+  Coins,
 } from "lucide-react";
 import {
   DEFAULT_PROFILE,
@@ -186,7 +187,7 @@ const getInitials = (name: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join("") || "LF";
 
-type ProfileFrameCategory = "basicas" | "conquistas" | "enem" | "elementais" | "especiais";
+type ProfileFrameCategory = "basicas" | "conquistas" | "enem" | "elementais" | "especiais" | "loja";
 
 type ProfileFrameAvatarConfig = {
   size: number;
@@ -203,6 +204,7 @@ type ProfileFrame = {
   frameClass: string;
   assetSrc?: string;
   avatar?: ProfileFrameAvatarConfig;
+  priceCoins?: number;
 };
 
 type ProfileUnlockStats = {
@@ -230,6 +232,7 @@ const PROFILE_FRAME_CATEGORIES: { id: ProfileFrameCategory; label: string }[] = 
   { id: "enem", label: "ENEM" },
   { id: "elementais", label: "Elementais" },
   { id: "especiais", label: "Especiais" },
+  { id: "loja", label: "Loja" },
 ];
 
 type ProfileFrameFilter = ProfileFrameCategory | "all";
@@ -242,6 +245,7 @@ const PROFILE_FRAME_FILTERS: { id: ProfileFrameFilter; label: string }[] = [
   { id: "enem", label: "ENEM" },
   { id: "elementais", label: "Elementais" },
   { id: "especiais", label: "Especiais" },
+  { id: "loja", label: "Loja" },
 ];
 
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
@@ -255,6 +259,8 @@ const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
 
 const FRAME_ASSET_VERSION = "v=20260530-elementais-2";
 const SPECIAL_FRAME_ASSET_VERSION = "v=20260530-especiais-1";
+const STORE_FRAME_ASSET_VERSION = "v=20260530-loja-1";
+const STORE_FRAME_PURCHASES_KEY = "learnflow_store_frame_purchases";
 
 const PROFILE_FRAMES: ProfileFrame[] = [
   {
@@ -540,6 +546,94 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     assetSrc: `/frames/especial-100-modulos.png?${SPECIAL_FRAME_ASSET_VERSION}`,
     avatar: { size: 48, offsetX: 0, offsetY: -6 },
   },
+  {
+    id: "loja-anel-fogo",
+    label: "Anel de Fogo",
+    description: "Moldura premium com visual intenso.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-red-500 via-orange-500 to-yellow-300",
+    assetSrc: `/frames/loja-anel-fogo.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 58, offsetX: 0, offsetY: 0 },
+    priceCoins: 900,
+  },
+  {
+    id: "loja-anel-gelo",
+    label: "Anel de Gelo",
+    description: "Moldura premium de cristais azuis.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-cyan-200 via-sky-500 to-blue-700",
+    assetSrc: `/frames/loja-anel-gelo.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 56, offsetX: 0, offsetY: 0 },
+    priceCoins: 1100,
+  },
+  {
+    id: "loja-gelo-espinhoso",
+    label: "Gelo Espinhoso",
+    description: "Moldura premium com acabamento afiado.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-sky-200 via-cyan-400 to-slate-500",
+    assetSrc: `/frames/loja-gelo-espinhoso.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 56, offsetX: 0, offsetY: 0 },
+    priceCoins: 1250,
+  },
+  {
+    id: "loja-cristal-azul",
+    label: "Cristal Azul",
+    description: "Moldura premium de gelo nobre.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-blue-100 via-cyan-300 to-blue-700",
+    assetSrc: `/frames/loja-cristal-azul.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 54, offsetX: 0, offsetY: 1 },
+    priceCoins: 1450,
+  },
+  {
+    id: "loja-vortice-cosmos",
+    label: "Vortice Cosmos",
+    description: "Moldura premium com aura cosmica.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-purple-900 via-violet-600 to-fuchsia-400",
+    assetSrc: `/frames/loja-vortice-cosmos.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 54, offsetX: 0, offsetY: 0 },
+    priceCoins: 1800,
+  },
+  {
+    id: "loja-jade-real",
+    label: "Jade Real",
+    description: "Moldura premium com detalhe dourado.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-purple-600 via-indigo-800 to-amber-300",
+    assetSrc: `/frames/loja-jade-real.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 52, offsetX: 0, offsetY: -2 },
+    priceCoins: 2100,
+  },
+  {
+    id: "loja-ossos",
+    label: "Ossos Antigos",
+    description: "Moldura premium mineral.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-stone-300 via-cyan-500 to-slate-700",
+    assetSrc: `/frames/loja-ossos.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 58, offsetX: 0, offsetY: 0 },
+    priceCoins: 1500,
+  },
+  {
+    id: "loja-roda-fogo",
+    label: "Roda de Fogo",
+    description: "Moldura premium com borda flamejante.",
+    unlock: "Comprar na Loja.",
+    category: "loja",
+    frameClass: "bg-gradient-to-br from-orange-700 via-amber-400 to-red-500",
+    assetSrc: `/frames/loja-roda-fogo.png?${STORE_FRAME_ASSET_VERSION}`,
+    avatar: { size: 54, offsetX: 0, offsetY: 0 },
+    priceCoins: 1650,
+  },
 ];
 
 function getProfileFrame(frameId?: ProfileFrameId) {
@@ -556,6 +650,52 @@ function getProfileTotalXp(completedModules: number, streakDays: number, totalAc
 
 function getXpRequiredForNextLevel(level: number) {
   return 2000 + (Math.max(1, level) * 250);
+}
+
+function getStorePurchasesStorageKey(profileId: string) {
+  return `${STORE_FRAME_PURCHASES_KEY}:${profileId || "guest"}`;
+}
+
+function getStoreFrameIds() {
+  return new Set(PROFILE_FRAMES.filter((frame) => frame.category === "loja").map((frame) => frame.id));
+}
+
+function loadPurchasedStoreFrames(profileId: string): ProfileFrameId[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const storeFrameIds = getStoreFrameIds();
+    const rawValue = window.localStorage.getItem(getStorePurchasesStorageKey(profileId));
+    const parsed = rawValue ? JSON.parse(rawValue) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((frameId): frameId is ProfileFrameId => storeFrameIds.has(frameId as ProfileFrameId));
+  } catch {
+    return [];
+  }
+}
+
+function savePurchasedStoreFrames(profileId: string, frameIds: ProfileFrameId[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(getStorePurchasesStorageKey(profileId), JSON.stringify(frameIds));
+}
+
+function getLearnFlowCoinsEarned(stats: ProfileUnlockStats) {
+  return (
+    (stats.completedModules * 45)
+    + (stats.streakDays * 25)
+    + (stats.simuladoAttempts * 60)
+    + (stats.studiedSubjectCount * 80)
+    + (stats.hasCompletedFullExam ? 300 : 0)
+    + (Math.floor(stats.bestSimuladoPercent / 10) * 25)
+  );
+}
+
+function getPurchasedFrameCost(frameIds: Iterable<ProfileFrameId>) {
+  const purchasedFrameIds = new Set(frameIds);
+  return PROFILE_FRAMES.reduce((total, frame) => {
+    if (frame.category !== "loja" || !purchasedFrameIds.has(frame.id)) return total;
+    return total + (frame.priceCoins ?? 0);
+  }, 0);
 }
 
 function getProfileUnlockStats({
@@ -596,7 +736,22 @@ function getProfileUnlockStats({
   };
 }
 
-function getProfileFrameAccess(frame: ProfileFrame, stats: ProfileUnlockStats): ProfileFrameAccess {
+function getProfileFrameAccess(
+  frame: ProfileFrame,
+  stats: ProfileUnlockStats,
+  purchasedFrameIds: Set<ProfileFrameId> = new Set(),
+): ProfileFrameAccess {
+  if (frame.category === "loja") {
+    if (purchasedFrameIds.has(frame.id)) {
+      return { unlocked: true, reason: "Comprada na Loja." };
+    }
+
+    return {
+      unlocked: false,
+      reason: `Custa ${(frame.priceCoins ?? 0).toLocaleString("pt-BR")} moedas LearnFlow.`,
+    };
+  }
+
   switch (frame.id) {
     case "none":
     case "learnflow":
@@ -710,12 +865,14 @@ function ProfileFrameSelector({
   name,
   avatarUrl,
   unlockStats,
+  purchasedFrameIds = new Set<ProfileFrameId>(),
 }: {
   selectedFrameId: ProfileFrameId;
   onSelect: (frameId: ProfileFrameId) => void;
   name: string;
   avatarUrl?: string | null;
   unlockStats: ProfileUnlockStats;
+  purchasedFrameIds?: Set<ProfileFrameId>;
 }) {
   return (
     <div className="space-y-4">
@@ -731,7 +888,7 @@ function ProfileFrameSelector({
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {frames.map((frame) => {
-                const access = getProfileFrameAccess(frame, unlockStats);
+                const access = getProfileFrameAccess(frame, unlockStats, purchasedFrameIds);
 
                 return (
                   <button
@@ -786,16 +943,24 @@ function ProfileFrameGallery({
   selectedFrameId,
   onSelect,
   unlockStats,
+  purchasedFrameIds,
+  coinBalance,
+  coinsEarned,
+  onPurchase,
 }: {
   selectedFrameId: ProfileFrameId;
   onSelect: (frameId: ProfileFrameId) => void;
   unlockStats: ProfileUnlockStats;
+  purchasedFrameIds: Set<ProfileFrameId>;
+  coinBalance: number;
+  coinsEarned: number;
+  onPurchase: (frameId: ProfileFrameId) => void;
 }) {
   const [activeFilter, setActiveFilter] = useState<ProfileFrameFilter>("all");
   const visibleCategories = activeFilter === "all"
     ? PROFILE_FRAME_CATEGORIES
     : PROFILE_FRAME_CATEGORIES.filter((category) => category.id === activeFilter);
-  const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats).unlocked).length;
+  const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats, purchasedFrameIds).unlocked).length;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
@@ -812,6 +977,24 @@ function ProfileFrameGallery({
         <div className="text-left sm:text-right">
           <p className="text-2xl font-semibold text-primary">{unlockedFrameCount}/{PROFILE_FRAMES.length}</p>
           <p className="text-xs text-muted-foreground">molduras liberadas</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-500/25 dark:bg-amber-500/10 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+            <Coins className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Moedas LearnFlow</p>
+            <p className="text-muted-foreground">
+              Ganhe moedas concluindo modulos, mantendo sequencia, fazendo simulados e estudando novas materias.
+            </p>
+          </div>
+        </div>
+        <div className="rounded-xl bg-background px-4 py-2 text-left shadow-sm sm:text-right">
+          <p className="text-xl font-semibold text-foreground">{coinBalance.toLocaleString("pt-BR")}</p>
+          <p className="text-xs text-muted-foreground">{coinsEarned.toLocaleString("pt-BR")} ganhas no total</p>
         </div>
       </div>
 
@@ -848,7 +1031,9 @@ function ProfileFrameGallery({
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {frames.map((frame) => {
                   const isSelected = selectedFrameId === frame.id;
-                  const access = getProfileFrameAccess(frame, unlockStats);
+                  const access = getProfileFrameAccess(frame, unlockStats, purchasedFrameIds);
+                  const isStoreFrame = frame.category === "loja";
+                  const canPurchase = isStoreFrame && !access.unlocked && coinBalance >= (frame.priceCoins ?? 0);
 
                   return (
                     <button
@@ -861,10 +1046,18 @@ function ProfileFrameGallery({
                             : "border-border bg-muted/30 opacity-70"
                       }`}
                       type="button"
-                      disabled={!access.unlocked}
+                      disabled={!access.unlocked && !canPurchase}
                       title={access.unlocked ? frame.description : access.reason}
                       onClick={() => {
-                        if (access.unlocked) onSelect(frame.id);
+                        if (access.unlocked) {
+                          onSelect(frame.id);
+                          return;
+                        }
+
+                        if (canPurchase) {
+                          onPurchase(frame.id);
+                          onSelect(frame.id);
+                        }
                       }}
                     >
                       <ProfileFramePreview frame={frame} className="h-28 w-28 md:h-32 md:w-32" />
@@ -882,6 +1075,24 @@ function ProfileFrameGallery({
                       <p className="mt-1 text-xs leading-snug text-muted-foreground">
                         {access.unlocked ? frame.unlock : access.reason}
                       </p>
+                      {isStoreFrame && (
+                        <span className={`mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+                          access.unlocked
+                            ? "bg-green-500/10 text-green-600"
+                            : canPurchase
+                              ? "bg-amber-500 text-white"
+                              : "bg-muted text-muted-foreground"
+                        }`}>
+                          {access.unlocked ? (
+                            "Comprada"
+                          ) : (
+                            <>
+                              <Coins className="h-3.5 w-3.5" />
+                              {(frame.priceCoins ?? 0).toLocaleString("pt-BR")}
+                            </>
+                          )}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -892,7 +1103,7 @@ function ProfileFrameGallery({
       </div>
 
       <p className="mt-5 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-muted-foreground">
-        As molduras serão desbloqueadas conforme você avança nos estudos e conquista novos objetivos.
+        As molduras da Loja usam moedas internas de progresso. Por enquanto nao ha compra com dinheiro real.
       </p>
     </div>
   );
@@ -1160,6 +1371,7 @@ export default function App() {
   const [avatarPositionX, setAvatarPositionX] = useState(DEFAULT_PROFILE.avatarPositionX ?? 0);
   const [avatarPositionY, setAvatarPositionY] = useState(DEFAULT_PROFILE.avatarPositionY ?? 0);
   const [profileFrameId, setProfileFrameId] = useState<ProfileFrameId>(DEFAULT_PROFILE.frameId ?? "learnflow");
+  const [purchasedStoreFrameIds, setPurchasedStoreFrameIds] = useState<ProfileFrameId[]>([]);
   const [streakDays, setStreakDays] = useState(DEFAULT_PROFILE.streakDays);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [profileDraftName, setProfileDraftName] = useState(userName);
@@ -1209,6 +1421,10 @@ export default function App() {
     const profile = await loadProfile();
     applyProfile(profile);
   };
+
+  useEffect(() => {
+    setPurchasedStoreFrameIds(loadPurchasedStoreFrames(profileId));
+  }, [profileId]);
 
   const reloadCourseContent = async () => {
     setCourseContentLoading(true);
@@ -1371,7 +1587,7 @@ export default function App() {
     setProfileError("");
     try {
       const selectedFrame = getProfileFrame(profileDraftFrameId);
-      const selectedFrameAccess = getProfileFrameAccess(selectedFrame, profileUnlockStats);
+      const selectedFrameAccess = getProfileFrameAccess(selectedFrame, profileUnlockStats, purchasedStoreFrameSet);
       if (!selectedFrameAccess.unlocked) {
         setProfileError(`Moldura bloqueada: ${selectedFrameAccess.reason}`);
         return;
@@ -1574,6 +1790,23 @@ export default function App() {
     simuladoAttempts,
     userNumber,
   });
+  const purchasedStoreFrameSet = new Set(purchasedStoreFrameIds);
+  const coinsEarned = getLearnFlowCoinsEarned(profileUnlockStats);
+  const coinBalance = Math.max(0, coinsEarned - getPurchasedFrameCost(purchasedStoreFrameSet));
+  const purchaseStoreFrame = (frameId: ProfileFrameId) => {
+    const frame = getProfileFrame(frameId);
+    if (frame.category !== "loja" || purchasedStoreFrameSet.has(frameId)) return;
+    const price = frame.priceCoins ?? 0;
+    if (coinBalance < price) {
+      setProfileError(`Moedas insuficientes para comprar ${frame.label}.`);
+      return;
+    }
+
+    const nextFrameIds = [...purchasedStoreFrameSet, frameId];
+    setPurchasedStoreFrameIds(nextFrameIds);
+    savePurchasedStoreFrames(profileId, nextFrameIds);
+    setProfileError(`${frame.label} comprada. Agora voce pode selecionar essa moldura.`);
+  };
 
   return (
     <div className={`flex h-screen w-full overflow-hidden ${isDark ? "dark" : ""}`}>
@@ -1817,6 +2050,10 @@ export default function App() {
               courseModules={courseModules}
               activitySummary={activitySummary}
               unlockStats={profileUnlockStats}
+              purchasedFrameIds={purchasedStoreFrameSet}
+              coinBalance={coinBalance}
+              coinsEarned={coinsEarned}
+              onFramePurchase={purchaseStoreFrame}
               onStudyGoalsSave={async (goals) => {
                 const savedGoals = await saveStudyGoals(goals);
                 setStudyGoals(savedGoals);
@@ -1969,6 +2206,7 @@ export default function App() {
                 name={profileDraftName || userName}
                 avatarUrl={profileDraftAvatarUrl}
                 unlockStats={profileUnlockStats}
+                purchasedFrameIds={purchasedStoreFrameSet}
               />
               <p className="text-xs text-muted-foreground">
                 Molduras bloqueadas aparecem com cadeado e liberam conforme seu progresso.
@@ -5444,6 +5682,10 @@ function ConfiguracoesView({
   courseModules,
   activitySummary,
   unlockStats,
+  purchasedFrameIds,
+  coinBalance,
+  coinsEarned,
+  onFramePurchase,
 }: {
   userName: string;
   userNumber?: number | null;
@@ -5467,6 +5709,10 @@ function ConfiguracoesView({
   courseModules: SubjectModuleMap;
   activitySummary: LearningActivitySummary;
   unlockStats: ProfileUnlockStats;
+  purchasedFrameIds: Set<ProfileFrameId>;
+  coinBalance: number;
+  coinsEarned: number;
+  onFramePurchase: (frameId: ProfileFrameId) => void;
 }) {
   const [draftName, setDraftName] = useState(userName);
   const [draftAvatarUrl, setDraftAvatarUrl] = useState<string | null>(avatarUrl ?? null);
@@ -5499,7 +5745,7 @@ function ConfiguracoesView({
     setStatus("");
     try {
       const selectedFrame = getProfileFrame(draftFrameId);
-      const selectedFrameAccess = getProfileFrameAccess(selectedFrame, unlockStats);
+      const selectedFrameAccess = getProfileFrameAccess(selectedFrame, unlockStats, purchasedFrameIds);
       if (!selectedFrameAccess.unlocked) {
         setStatus(`Moldura bloqueada: ${selectedFrameAccess.reason}`);
         return;
@@ -5546,8 +5792,8 @@ function ConfiguracoesView({
   };
 
   const { totalModules, completedModules } = getTotalProgressSummary(studyProgress, courseModules);
-  const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats).unlocked).length;
-  const nextReward = PROFILE_FRAMES.find((frame) => !getProfileFrameAccess(frame, unlockStats).unlocked) ?? getProfileFrame("fogo");
+  const unlockedFrameCount = PROFILE_FRAMES.filter((frame) => getProfileFrameAccess(frame, unlockStats, purchasedFrameIds).unlocked).length;
+  const nextReward = PROFILE_FRAMES.find((frame) => frame.category !== "loja" && !getProfileFrameAccess(frame, unlockStats, purchasedFrameIds).unlocked) ?? getProfileFrame("fogo");
   const nextRewardProgress = Math.min(100, Math.round((completedModules / Math.max(1, totalModules || 20)) * 100));
   const totalActivities = activitySummary.weekCount;
   const profileLevel = unlockStats.profileLevel;
@@ -5712,14 +5958,30 @@ function ConfiguracoesView({
             </div>
           </div>
         </div>
-        <ProfileFrameGallery selectedFrameId={draftFrameId} onSelect={setDraftFrameId} unlockStats={unlockStats} />
+        <ProfileFrameGallery
+          selectedFrameId={draftFrameId}
+          onSelect={setDraftFrameId}
+          unlockStats={unlockStats}
+          purchasedFrameIds={purchasedFrameIds}
+          coinBalance={coinBalance}
+          coinsEarned={coinsEarned}
+          onPurchase={onFramePurchase}
+        />
         </div>
 
         )}
 
         <div className="space-y-5">
           {activeSettingsTab === "molduras" && (
-            <ProfileFrameGallery selectedFrameId={draftFrameId} onSelect={setDraftFrameId} unlockStats={unlockStats} />
+            <ProfileFrameGallery
+              selectedFrameId={draftFrameId}
+              onSelect={setDraftFrameId}
+              unlockStats={unlockStats}
+              purchasedFrameIds={purchasedFrameIds}
+              coinBalance={coinBalance}
+              coinsEarned={coinsEarned}
+              onPurchase={onFramePurchase}
+            />
           )}
 
           {activeSettingsTab === "metas" && (
