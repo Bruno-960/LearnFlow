@@ -195,6 +195,12 @@ type ProfileFrameAvatarConfig = {
   offsetY: number;
 };
 
+type ProfileFrameAssetConfig = {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+};
+
 type ProfileFrame = {
   id: ProfileFrameId;
   label: string;
@@ -204,6 +210,7 @@ type ProfileFrame = {
   frameClass: string;
   assetSrc?: string;
   avatar?: ProfileFrameAvatarConfig;
+  asset?: ProfileFrameAssetConfig;
   priceCoins?: number;
 };
 
@@ -227,7 +234,7 @@ type ProfileFrameAccess = {
 };
 
 const PROFILE_FRAME_CATEGORIES: { id: ProfileFrameCategory; label: string }[] = [
-  { id: "basicas", label: "Basicas" },
+  { id: "basicas", label: "Básicas" },
   { id: "conquistas", label: "Conquistas" },
   { id: "enem", label: "ENEM" },
   { id: "elementais", label: "Elementais" },
@@ -259,7 +266,7 @@ const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
 
 const FRAME_ASSET_VERSION = "v=20260530-elementais-2";
 const SPECIAL_FRAME_ASSET_VERSION = "v=20260530-especiais-1";
-const STORE_FRAME_ASSET_VERSION = "v=20260530-loja-1";
+const STORE_FRAME_ASSET_VERSION = "v=20260530-loja-2";
 const STORE_FRAME_PURCHASES_KEY = "learnflow_store_frame_purchases";
 
 const PROFILE_FRAMES: ProfileFrame[] = [
@@ -267,7 +274,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "none",
     label: "Simples",
     description: "Avatar sem moldura.",
-    unlock: "Disponivel para todos.",
+    unlock: "Disponível para todos.",
     category: "basicas",
     frameClass: "bg-border",
   },
@@ -275,7 +282,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "learnflow",
     label: "LearnFlow",
     description: "Gradiente principal do app.",
-    unlock: "Disponivel para todos.",
+    unlock: "Disponível para todos.",
     category: "basicas",
     frameClass: "bg-gradient-to-br from-primary via-purple-500 to-blue-500",
   },
@@ -283,7 +290,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "streak",
     label: "Sequência",
     description: "Visual de constância diária.",
-    unlock: "Disponivel para testes.",
+    unlock: "Disponível para testes.",
     category: "basicas",
     frameClass: "bg-gradient-to-br from-orange-400 via-rose-500 to-primary",
   },
@@ -291,7 +298,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "focus",
     label: "Foco",
     description: "Para sessões de estudo intenso.",
-    unlock: "Disponivel para testes.",
+    unlock: "Disponível para testes.",
     category: "basicas",
     frameClass: "bg-gradient-to-br from-cyan-400 via-blue-500 to-primary",
   },
@@ -299,7 +306,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "mastery",
     label: "Domínio",
     description: "Para destacar evolução.",
-    unlock: "Disponivel para testes.",
+    unlock: "Disponível para testes.",
     category: "basicas",
     frameClass: "bg-gradient-to-br from-emerald-400 via-teal-500 to-primary",
   },
@@ -307,7 +314,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "aprendiz",
     label: "Aprendiz",
     description: "Primeira conquista de progresso.",
-    unlock: "Completar o primeiro modulo.",
+    unlock: "Completar o primeiro módulo.",
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-amber-700 via-orange-500 to-yellow-300",
     assetSrc: "/frames/aprendiz.png",
@@ -316,8 +323,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "persistente",
     label: "Persistente",
-    description: "Ritmo constante de conclusoes.",
-    unlock: "Completar 5 modulos.",
+    description: "Ritmo constante de conclusões.",
+    unlock: "Completar 5 módulos.",
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-lime-500 via-emerald-500 to-yellow-200",
     assetSrc: "/frames/persistente.png",
@@ -325,8 +332,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "mestre",
     label: "Mestre dos Estudos",
-    description: "Marco alto de dominio.",
-    unlock: "Completar 20 modulos.",
+    description: "Marco alto de domínio.",
+    unlock: "Completar 20 módulos.",
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-fuchsia-500 via-violet-500 to-indigo-300",
     assetSrc: "/frames/mestre.png",
@@ -334,7 +341,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "invicto",
     label: "Invicto",
-    description: "Sequencia forte de estudos.",
+    description: "Sequência forte de estudos.",
     unlock: "7 dias seguidos estudando.",
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-yellow-300 via-orange-500 to-red-500",
@@ -344,16 +351,16 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "lenda-learnflow",
     label: "Lenda LearnFlow",
-    description: "Conquista maxima de conteudo.",
-    unlock: "Completar todos os modulos disponiveis.",
+    description: "Conquista máxima de conteúdo.",
+    unlock: "Completar todos os módulos disponíveis.",
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-zinc-200 via-zinc-500 to-zinc-900",
   },
   {
     id: "explorador",
     label: "Explorador",
-    description: "Passe por todas as areas.",
-    unlock: "Estudar todas as materias ao menos uma vez.",
+    description: "Passe por todas as áreas.",
+    unlock: "Estudar todas as matérias ao menos uma vez.",
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-slate-300 via-stone-500 to-emerald-500",
     assetSrc: "/frames/explorador.png",
@@ -371,7 +378,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "enem-maratonista",
     label: "Maratonista",
-    description: "Prova completa concluida.",
+    description: "Prova completa concluída.",
     unlock: "Concluir a prova completa do ENEM.",
     category: "enem",
     frameClass: "bg-gradient-to-br from-cyan-300 via-teal-500 to-blue-600",
@@ -381,7 +388,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "enem-700",
     label: "Nota 700+",
     description: "Primeiro patamar de destaque.",
-    unlock: "Media acima de 700.",
+    unlock: "Média acima de 700.",
     category: "enem",
     frameClass: "bg-gradient-to-br from-purple-400 via-fuchsia-500 to-indigo-600",
     assetSrc: "/frames/enem-700.png",
@@ -389,8 +396,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "enem-800",
     label: "Nota 800+",
-    description: "Desempenho avancado.",
-    unlock: "Media acima de 800.",
+    description: "Desempenho avançado.",
+    unlock: "Média acima de 800.",
     category: "enem",
     frameClass: "bg-gradient-to-br from-orange-300 via-amber-500 to-violet-700",
     assetSrc: "/frames/enem-800.png",
@@ -398,8 +405,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "enem-900",
     label: "Nota 900+",
-    description: "Nivel de excelencia.",
-    unlock: "Media acima de 900.",
+    description: "Nível de excelência.",
+    unlock: "Média acima de 900.",
     category: "enem",
     frameClass: "bg-gradient-to-br from-red-400 via-rose-600 to-yellow-400",
     assetSrc: "/frames/enem-900.png",
@@ -407,7 +414,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "enem-ouro",
     label: "Ouro ENEM",
-    description: "Alta precisao na prova.",
+    description: "Alta precisão na prova.",
     unlock: "Acertar mais de 85%.",
     category: "enem",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-400 to-yellow-700",
@@ -416,17 +423,17 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "fogo",
     label: "Fogo I",
-    description: "Energia para iniciar a progressao.",
-    unlock: "Nivel 5.",
+    description: "Energia para iniciar a progressão.",
+    unlock: "Nível 5.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-red-500 via-orange-500 to-yellow-300",
     assetSrc: `/frames/fogo.png?${FRAME_ASSET_VERSION}`,
   },
   {
     id: "agua",
-    label: "Agua I",
+    label: "Água I",
     description: "Ritmo fluido de estudo.",
-    unlock: "Nivel 10.",
+    unlock: "Nível 10.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-cyan-300 via-sky-500 to-blue-700",
     assetSrc: `/frames/agua.png?${FRAME_ASSET_VERSION}`,
@@ -435,7 +442,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "ar",
     label: "Ar I",
     description: "Leveza e velocidade.",
-    unlock: "Nivel 15.",
+    unlock: "Nível 15.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-slate-100 via-sky-200 to-blue-300",
     assetSrc: `/frames/ar.png?${FRAME_ASSET_VERSION}`,
@@ -443,8 +450,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "terra",
     label: "Terra I",
-    description: "Base solida de aprendizado.",
-    unlock: "Nivel 20.",
+    description: "Base sólida de aprendizado.",
+    unlock: "Nível 20.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-stone-600 via-lime-600 to-emerald-400",
     assetSrc: `/frames/terra.png?${FRAME_ASSET_VERSION}`,
@@ -452,8 +459,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "raio",
     label: "Raio I",
-    description: "Resposta rapida e foco.",
-    unlock: "Nivel 25.",
+    description: "Resposta rápida e foco.",
+    unlock: "Nível 25.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-400 to-orange-600",
     assetSrc: `/frames/raio.png?${FRAME_ASSET_VERSION}`,
@@ -463,7 +470,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "sombra",
     label: "Sombra I",
     description: "Estudo intenso e silencioso.",
-    unlock: "Nivel 30.",
+    unlock: "Nível 30.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-zinc-900 via-purple-900 to-fuchsia-500",
     assetSrc: `/frames/sombra.png?${FRAME_ASSET_VERSION}`,
@@ -471,8 +478,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "luz",
     label: "Luz I",
-    description: "Clareza nas revisoes.",
-    unlock: "Nivel 35.",
+    description: "Clareza nas revisões.",
+    unlock: "Nível 35.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-yellow-100 via-amber-200 to-orange-300",
     assetSrc: `/frames/luz.png?${FRAME_ASSET_VERSION}`,
@@ -480,8 +487,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "cosmos",
     label: "Cosmos I",
-    description: "Progressao rara e completa.",
-    unlock: "Nivel 40.",
+    description: "Progressão rara e completa.",
+    unlock: "Nível 40.",
     category: "elementais",
     frameClass: "bg-gradient-to-br from-violet-500 via-indigo-700 to-blue-500",
     assetSrc: `/frames/cosmos.png?${FRAME_ASSET_VERSION}`,
@@ -490,7 +497,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "especial-fundador",
     label: "Fundador",
     description: "Marco reservado ao fundador do LearnFlow.",
-    unlock: "ID publico #1.",
+    unlock: "ID público #1.",
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-blue-700",
     assetSrc: `/frames/especial-fundador.png?${SPECIAL_FRAME_ASSET_VERSION}`,
@@ -499,7 +506,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "especial-beta-tester",
     label: "Beta Tester",
-    description: "Para quem testou o LearnFlow no inicio.",
+    description: "Para quem testou o LearnFlow no início.",
     unlock: "Participar dos testes beta.",
     category: "especiais",
     frameClass: "bg-gradient-to-br from-cyan-200 via-sky-500 to-slate-700",
@@ -510,7 +517,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     id: "especial-veterano",
     label: "Veterano",
     description: "Para os primeiros estudantes cadastrados.",
-    unlock: "Estar entre os 196 primeiros usuarios.",
+    unlock: "Estar entre os 196 primeiros usuários.",
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-yellow-900",
     assetSrc: `/frames/especial-veterano.png?${SPECIAL_FRAME_ASSET_VERSION}`,
@@ -519,8 +526,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   {
     id: "especial-30-dias",
     label: "30 Dias",
-    description: "Constancia forte de estudos.",
-    unlock: "Fazer 30 dias de sequencia.",
+    description: "Constância forte de estudos.",
+    unlock: "Fazer 30 dias de sequência.",
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-red-700",
     assetSrc: `/frames/especial-30-dias.png?${SPECIAL_FRAME_ASSET_VERSION}`,
@@ -538,9 +545,9 @@ const PROFILE_FRAMES: ProfileFrame[] = [
   },
   {
     id: "especial-100-modulos",
-    label: "100 Modulos",
-    description: "Dominio amplo de conteudo.",
-    unlock: "Completar 100 modulos.",
+    label: "100 Módulos",
+    description: "Domínio amplo de conteúdo.",
+    unlock: "Completar 100 módulos.",
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-emerald-700",
     assetSrc: `/frames/especial-100-modulos.png?${SPECIAL_FRAME_ASSET_VERSION}`,
@@ -554,7 +561,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "loja",
     frameClass: "bg-gradient-to-br from-red-500 via-orange-500 to-yellow-300",
     assetSrc: `/frames/loja-anel-fogo.png?${STORE_FRAME_ASSET_VERSION}`,
-    avatar: { size: 58, offsetX: 0, offsetY: 0 },
+    avatar: { size: 55, offsetX: 0, offsetY: -5 },
+    asset: { scale: 0.9, offsetX: 0, offsetY: -7 },
     priceCoins: 900,
   },
   {
@@ -565,7 +573,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "loja",
     frameClass: "bg-gradient-to-br from-cyan-200 via-sky-500 to-blue-700",
     assetSrc: `/frames/loja-anel-gelo.png?${STORE_FRAME_ASSET_VERSION}`,
-    avatar: { size: 56, offsetX: 0, offsetY: 0 },
+    avatar: { size: 53, offsetX: 0, offsetY: -5 },
+    asset: { scale: 0.9, offsetX: 0, offsetY: -7 },
     priceCoins: 1100,
   },
   {
@@ -587,19 +596,9 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "loja",
     frameClass: "bg-gradient-to-br from-blue-100 via-cyan-300 to-blue-700",
     assetSrc: `/frames/loja-cristal-azul.png?${STORE_FRAME_ASSET_VERSION}`,
-    avatar: { size: 54, offsetX: 0, offsetY: 1 },
+    avatar: { size: 52, offsetX: -3, offsetY: -2 },
+    asset: { scale: 0.92, offsetX: -4, offsetY: 0 },
     priceCoins: 1450,
-  },
-  {
-    id: "loja-vortice-cosmos",
-    label: "Vortice Cosmos",
-    description: "Moldura premium com aura cosmica.",
-    unlock: "Comprar na Loja.",
-    category: "loja",
-    frameClass: "bg-gradient-to-br from-purple-900 via-violet-600 to-fuchsia-400",
-    assetSrc: `/frames/loja-vortice-cosmos.png?${STORE_FRAME_ASSET_VERSION}`,
-    avatar: { size: 54, offsetX: 0, offsetY: 0 },
-    priceCoins: 1800,
   },
   {
     id: "loja-jade-real",
@@ -609,7 +608,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "loja",
     frameClass: "bg-gradient-to-br from-purple-600 via-indigo-800 to-amber-300",
     assetSrc: `/frames/loja-jade-real.png?${STORE_FRAME_ASSET_VERSION}`,
-    avatar: { size: 52, offsetX: 0, offsetY: -2 },
+    avatar: { size: 49, offsetX: 0, offsetY: -8 },
+    asset: { scale: 0.88, offsetX: 0, offsetY: -8 },
     priceCoins: 2100,
   },
   {
@@ -631,7 +631,8 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "loja",
     frameClass: "bg-gradient-to-br from-orange-700 via-amber-400 to-red-500",
     assetSrc: `/frames/loja-roda-fogo.png?${STORE_FRAME_ASSET_VERSION}`,
-    avatar: { size: 54, offsetX: 0, offsetY: 0 },
+    avatar: { size: 52, offsetX: -3, offsetY: -1 },
+    asset: { scale: 0.92, offsetX: -4, offsetY: 0 },
     priceCoins: 1650,
   },
 ];
@@ -741,6 +742,10 @@ function getProfileFrameAccess(
   stats: ProfileUnlockStats,
   purchasedFrameIds: Set<ProfileFrameId> = new Set(),
 ): ProfileFrameAccess {
+  if (stats.userNumber === 1) {
+    return { unlocked: true, reason: "Liberada para o fundador." };
+  }
+
   if (frame.category === "loja") {
     if (purchasedFrameIds.has(frame.id)) {
       return { unlocked: true, reason: "Comprada na Loja." };
@@ -811,24 +816,24 @@ function getProfileFrameAccess(
     case "especial-fundador":
       return {
         unlocked: stats.userNumber === 1,
-        reason: stats.userNumber ? `Reservada para o ID publico #1. Seu ID: #${stats.userNumber}.` : "Reservada para o ID publico #1.",
+        reason: stats.userNumber ? `Reservada para o ID público #1. Seu ID: #${stats.userNumber}.` : "Reservada para o ID público #1.",
       };
     case "especial-beta-tester":
       return {
         unlocked: Boolean(stats.userNumber && stats.userNumber <= 3),
-        reason: stats.userNumber ? `Disponivel para testadores beta iniciais. Seu ID: #${stats.userNumber}.` : "Disponivel para testadores beta iniciais.",
+        reason: stats.userNumber ? `Disponível para testadores beta iniciais. Seu ID: #${stats.userNumber}.` : "Disponível para testadores beta iniciais.",
       };
     case "especial-veterano":
       return {
         unlocked: Boolean(stats.userNumber && stats.userNumber <= 196),
-        reason: stats.userNumber ? `Disponivel para os 196 primeiros usuarios. Seu ID: #${stats.userNumber}.` : "Disponivel para os 196 primeiros usuarios.",
+        reason: stats.userNumber ? `Disponível para os 196 primeiros usuários. Seu ID: #${stats.userNumber}.` : "Disponível para os 196 primeiros usuários.",
       };
     case "especial-30-dias":
-      return { unlocked: stats.streakDays >= 30, reason: `Faca 30 dias de sequencia. Atual: ${stats.streakDays}.` };
+      return { unlocked: stats.streakDays >= 30, reason: `Faça 30 dias de sequência. Atual: ${stats.streakDays}.` };
     case "especial-portal":
       return { unlocked: false, reason: "Reservada para evento especial futuro." };
     case "especial-100-modulos":
-      return { unlocked: stats.completedModules >= 100, reason: `Complete 100 modulos. Atual: ${stats.completedModules}.` };
+      return { unlocked: stats.completedModules >= 100, reason: `Complete 100 módulos. Atual: ${stats.completedModules}.` };
     default:
       return { unlocked: false, reason: frame.unlock };
   }
@@ -842,12 +847,17 @@ function ProfileFramePreview({
   className?: string;
 }) {
   if (frame.assetSrc) {
+    const assetConfig = frame.asset ?? { scale: 1, offsetX: 0, offsetY: 0 };
+
     return (
       <img
         src={frame.assetSrc}
         alt=""
         aria-hidden="true"
         className={`${className} object-contain drop-shadow-sm`}
+        style={{
+          transform: `translate(${assetConfig.offsetX}%, ${assetConfig.offsetY}%) scale(${assetConfig.scale})`,
+        }}
       />
     );
   }
@@ -988,7 +998,7 @@ function ProfileFrameGallery({
           <div>
             <p className="font-semibold text-foreground">Moedas LearnFlow</p>
             <p className="text-muted-foreground">
-              Ganhe moedas concluindo modulos, mantendo sequencia, fazendo simulados e estudando novas materias.
+              Ganhe moedas concluindo módulos, mantendo sequência, fazendo simulados e estudando novas matérias.
             </p>
           </div>
         </div>
@@ -1103,7 +1113,7 @@ function ProfileFrameGallery({
       </div>
 
       <p className="mt-5 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-muted-foreground">
-        As molduras da Loja usam moedas internas de progresso. Por enquanto nao ha compra com dinheiro real.
+        As molduras da Loja usam moedas internas de progresso. Por enquanto não há compra com dinheiro real.
       </p>
     </div>
   );
@@ -1285,6 +1295,7 @@ function ProfileAvatar({
         : "h-12 w-12 text-lg";
   const innerInsetClass = size === "lg" ? "inset-1.5" : "inset-1";
   const avatarConfig = frame.avatar ?? { size: 56, offsetX: 0, offsetY: 0 };
+  const assetConfig = frame.asset ?? { scale: 1, offsetX: 0, offsetY: 0 };
   const assetAvatarStyle = hasFrameAsset
     ? {
       height: `${avatarConfig.size}%`,
@@ -1319,6 +1330,9 @@ function ProfileAvatar({
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 h-full w-full object-contain drop-shadow-sm"
+          style={{
+            transform: `translate(${assetConfig.offsetX}%, ${assetConfig.offsetY}%) scale(${assetConfig.scale})`,
+          }}
         />
       )}
     </div>
@@ -1791,8 +1805,9 @@ export default function App() {
     userNumber,
   });
   const purchasedStoreFrameSet = new Set(purchasedStoreFrameIds);
-  const coinsEarned = getLearnFlowCoinsEarned(profileUnlockStats);
-  const coinBalance = Math.max(0, coinsEarned - getPurchasedFrameCost(purchasedStoreFrameSet));
+  const isFounderProfile = profileUnlockStats.userNumber === 1;
+  const coinsEarned = isFounderProfile ? 10_000 : getLearnFlowCoinsEarned(profileUnlockStats);
+  const coinBalance = isFounderProfile ? 10_000 : Math.max(0, coinsEarned - getPurchasedFrameCost(purchasedStoreFrameSet));
   const purchaseStoreFrame = (frameId: ProfileFrameId) => {
     const frame = getProfileFrame(frameId);
     if (frame.category !== "loja" || purchasedStoreFrameSet.has(frameId)) return;
@@ -3699,7 +3714,7 @@ function ModuleContent({
         </div>
         {!canSaveProgress && (
           <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-            Voce pode estudar normalmente, mas progresso, sequencia e continuar estudando so ficam salvos depois de entrar na conta.
+            Você pode estudar normalmente, mas progresso, sequência e continuar estudando só ficam salvos depois de entrar na conta.
           </p>
         )}
       </div>
@@ -6434,7 +6449,7 @@ function DashboardHomeView({
             {courseContentLoading ? (
               <div>
                 <h2 className="font-semibold text-foreground">Carregando conteudo...</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Carregando materias e modulos.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Carregando matérias e módulos.</p>
               </div>
             ) : (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -6461,7 +6476,7 @@ function DashboardHomeView({
                 <p className="text-sm font-medium text-primary">Plano de hoje</p>
                 <h2 className="mt-1 text-2xl font-semibold text-foreground md:text-3xl">Revisao inteligente</h2>
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
-                  Sugestoes geradas com seu progresso, historico recente e modulos em andamento.
+                  Sugestões geradas com seu progresso, histórico recente e módulos em andamento.
                 </p>
               </div>
               <button
@@ -6537,7 +6552,7 @@ function DashboardHomeView({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <DashboardMetricCard icon={<BarChart3 className="h-5 w-5" />} label="Progresso geral" value={`${overallProgress}%`} helper={`${completedModules}/${totalModules} modulos`} />
+          <DashboardMetricCard icon={<BarChart3 className="h-5 w-5" />} label="Progresso geral" value={`${overallProgress}%`} helper={`${completedModules}/${totalModules} módulos`} />
           <DashboardMetricCard
             icon={<Activity className="h-5 w-5" />}
             label="Hoje"

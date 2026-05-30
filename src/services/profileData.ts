@@ -61,7 +61,6 @@ export type ProfileFrameId =
   | "loja-anel-gelo"
   | "loja-gelo-espinhoso"
   | "loja-cristal-azul"
-  | "loja-vortice-cosmos"
   | "loja-jade-real"
   | "loja-ossos"
   | "loja-roda-fogo";
@@ -123,7 +122,7 @@ function getSupabaseErrorMessage(error: { message?: string } | null): string {
   const message = error?.message || "Erro desconhecido.";
 
   if (message.includes("Could not find the table 'public.profiles'")) {
-    return "A area de perfil ainda nao esta pronta. Verifique se o esquema de usuarios foi criado.";
+    return "A área de perfil ainda não está pronta. Verifique se o esquema de usuários foi criado.";
   }
 
   if (message.toLowerCase().includes("row-level security")) {
