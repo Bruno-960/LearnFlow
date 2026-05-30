@@ -188,6 +188,12 @@ const getInitials = (name: string) =>
 
 type ProfileFrameCategory = "basicas" | "conquistas" | "enem" | "elementais" | "especiais";
 
+type ProfileFrameAvatarConfig = {
+  size: number;
+  offsetX: number;
+  offsetY: number;
+};
+
 type ProfileFrame = {
   id: ProfileFrameId;
   label: string;
@@ -196,8 +202,7 @@ type ProfileFrame = {
   category: ProfileFrameCategory;
   frameClass: string;
   assetSrc?: string;
-  avatarInsetClass?: string;
-  avatarBoxClass?: string;
+  avatar?: ProfileFrameAvatarConfig;
 };
 
 type ProfileUnlockStats = {
@@ -300,7 +305,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-amber-700 via-orange-500 to-yellow-300",
     assetSrc: "/frames/aprendiz.png",
-    avatarInsetClass: "inset-[19%]",
+    avatar: { size: 62, offsetX: 0, offsetY: 0 },
   },
   {
     id: "persistente",
@@ -328,7 +333,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-yellow-300 via-orange-500 to-red-500",
     assetSrc: "/frames/invicto.png",
-    avatarInsetClass: "inset-[19%]",
+    avatar: { size: 62, offsetX: 0, offsetY: 0 },
   },
   {
     id: "lenda-learnflow",
@@ -346,7 +351,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "conquistas",
     frameClass: "bg-gradient-to-br from-slate-300 via-stone-500 to-emerald-500",
     assetSrc: "/frames/explorador.png",
-    avatarInsetClass: "inset-[19%]",
+    avatar: { size: 62, offsetX: 0, offsetY: 0 },
   },
   {
     id: "enem-candidato",
@@ -446,7 +451,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "elementais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-400 to-orange-600",
     assetSrc: `/frames/raio.png?${FRAME_ASSET_VERSION}`,
-    avatarInsetClass: "inset-[26%] translate-y-[7%]",
+    avatar: { size: 48, offsetX: 0, offsetY: 3 },
   },
   {
     id: "sombra",
@@ -483,7 +488,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-blue-700",
     assetSrc: `/frames/especial-fundador.png?${SPECIAL_FRAME_ASSET_VERSION}`,
-    avatarBoxClass: "left-[25%] top-[24%] h-[46%] w-[46%]",
+    avatar: { size: 60, offsetX: -2, offsetY: -2 },
   },
   {
     id: "especial-beta-tester",
@@ -493,7 +498,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "especiais",
     frameClass: "bg-gradient-to-br from-cyan-200 via-sky-500 to-slate-700",
     assetSrc: `/frames/especial-beta-tester.png?${SPECIAL_FRAME_ASSET_VERSION}`,
-    avatarBoxClass: "left-[25%] top-[24%] h-[46%] w-[46%]",
+    avatar: { size: 58, offsetX: -2, offsetY: -1 },
   },
   {
     id: "especial-veterano",
@@ -503,7 +508,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-yellow-900",
     assetSrc: `/frames/especial-veterano.png?${SPECIAL_FRAME_ASSET_VERSION}`,
-    avatarBoxClass: "left-[24%] top-[23%] h-[48%] w-[48%]",
+    avatar: { size: 60, offsetX: -2, offsetY: -1 },
   },
   {
     id: "especial-30-dias",
@@ -513,7 +518,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-red-700",
     assetSrc: `/frames/especial-30-dias.png?${SPECIAL_FRAME_ASSET_VERSION}`,
-    avatarBoxClass: "left-[24%] top-[23%] h-[48%] w-[48%]",
+    avatar: { size: 60, offsetX: -2, offsetY: -1 },
   },
   {
     id: "especial-portal",
@@ -523,7 +528,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "especiais",
     frameClass: "bg-gradient-to-br from-zinc-900 via-orange-700 to-amber-300",
     assetSrc: `/frames/especial-portal.png?${SPECIAL_FRAME_ASSET_VERSION}`,
-    avatarInsetClass: "inset-[24%]",
+    avatar: { size: 52, offsetX: 0, offsetY: 0 },
   },
   {
     id: "especial-100-modulos",
@@ -533,7 +538,7 @@ const PROFILE_FRAMES: ProfileFrame[] = [
     category: "especiais",
     frameClass: "bg-gradient-to-br from-yellow-200 via-amber-500 to-emerald-700",
     assetSrc: `/frames/especial-100-modulos.png?${SPECIAL_FRAME_ASSET_VERSION}`,
-    avatarBoxClass: "left-[31%] top-[19%] h-[36%] w-[38%]",
+    avatar: { size: 48, offsetX: 0, offsetY: -6 },
   },
 ];
 
@@ -942,7 +947,7 @@ function AvatarPositionControls({
   );
 }
 
-const AVATAR_POSITION_LIMIT = 38;
+const AVATAR_POSITION_LIMIT = 50;
 
 function clampAvatarPosition(value: number) {
   return Math.max(-AVATAR_POSITION_LIMIT, Math.min(AVATAR_POSITION_LIMIT, Math.round(value)));
@@ -995,8 +1000,8 @@ function DraggableAvatarPosition({
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    const nextX = drag.startX + ((event.clientX - drag.startClientX) / drag.width) * 68;
-    const nextY = drag.startY + ((event.clientY - drag.startClientY) / drag.height) * 68;
+    const nextX = drag.startX + ((event.clientX - drag.startClientX) / drag.width) * 80;
+    const nextY = drag.startY + ((event.clientY - drag.startClientY) / drag.height) * 80;
     onPositionChange(clampAvatarPosition(nextX), clampAvatarPosition(nextY));
   };
 
@@ -1067,24 +1072,28 @@ function ProfileAvatar({
       : size === "sm"
         ? "h-10 w-10 text-sm"
         : "h-12 w-12 text-lg";
-  const innerInsetClass = hasFrameAsset
-    ? frame.avatarInsetClass ?? (size === "lg"
-      ? "inset-[22%]"
-      : size === "sm"
-        ? "inset-[24%]"
-        : "inset-[23%]")
-    : size === "lg"
-      ? "inset-1.5"
-      : "inset-1";
+  const innerInsetClass = size === "lg" ? "inset-1.5" : "inset-1";
+  const avatarConfig = frame.avatar ?? { size: 56, offsetX: 0, offsetY: 0 };
+  const assetAvatarStyle = hasFrameAsset
+    ? {
+      height: `${avatarConfig.size}%`,
+      left: `${50 - (avatarConfig.size / 2) + avatarConfig.offsetX}%`,
+      top: `${50 - (avatarConfig.size / 2) + avatarConfig.offsetY}%`,
+      width: `${avatarConfig.size}%`,
+    }
+    : undefined;
 
   return (
     <div className={`${sizeClass} ${hasFrameAsset ? "text-white" : `${frame.frameClass} rounded-full p-1 text-white shadow-sm`} relative shrink-0`}>
-      <div className={`absolute ${frame.avatarBoxClass ?? innerInsetClass} overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-500`}>
+      <div
+        className={`absolute ${hasFrameAsset ? "" : innerInsetClass} overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-500`}
+        style={assetAvatarStyle}
+      >
         {avatarUrl ? (
           <img
             src={avatarUrl}
             alt={`Foto de ${name}`}
-            className="absolute -inset-[30%] h-[160%] w-[160%] object-cover"
+            className="absolute -inset-[40%] h-[180%] w-[180%] max-w-none object-cover"
             style={{ transform: `translate(${avatarPositionX}%, ${avatarPositionY}%)` }}
           />
         ) : (
