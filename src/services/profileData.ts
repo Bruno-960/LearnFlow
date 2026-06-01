@@ -63,7 +63,18 @@ export type ProfileFrameId =
   | "loja-cristal-azul"
   | "loja-jade-real"
   | "loja-ossos"
-  | "loja-roda-fogo";
+  | "loja-roda-fogo"
+  | "loja-arcanjo-supremo"
+  | "loja-trono-dos-deuses"
+  | "loja-serafim"
+  | "loja-olho-do-vazio"
+  | "loja-rei-do-abismo"
+  | "loja-pesadelo-eterno"
+  | "loja-rei-dos-dragoes"
+  | "loja-conquistador"
+  | "loja-diamante-celestial"
+  | "loja-coracao-de-safira"
+  | "loja-esmeralda-ancestral";
 
 export type UserActivityType = "materia" | "calendario" | "flashcard" | "simulado";
 
