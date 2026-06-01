@@ -266,9 +266,309 @@ function enhancePortugueseModuleContent(content: SubjectModuleContent): SubjectM
   };
 }
 
+function getTopicDeepDive(topic: CurriculumTopic): string[] {
+  const title = normalizeText(topic.title);
+
+  if (title.includes("leitura") && title.includes("interpretacao")) {
+    return [
+      "Interpretar um texto não é apenas dizer o assunto principal. O aluno precisa reconhecer quem fala, para quem fala, com qual finalidade e quais pistas linguísticas sustentam a resposta.",
+      "Na prática, vale observar título, gênero textual, marcas de opinião, conectivos, escolhas de palavras e relação entre parágrafo inicial e conclusão. Esses elementos ajudam a diferenciar tema, tese, finalidade e efeito de sentido.",
+      "Em provas, muitas alternativas erradas parecem corretas porque repetem palavras do texto, mas mudam o foco do comando. Por isso, a resposta deve sempre voltar ao trecho que comprova a interpretação.",
+    ];
+  }
+
+  if (title.includes("denotacao") || title.includes("conotacao") || title.includes("funcoes da linguagem")) {
+    return [
+      "Denotação é o sentido mais direto da palavra; conotação aparece quando a linguagem cria efeito figurado, irônico, poético ou expressivo.",
+      "As funções da linguagem ajudam a perceber a intenção comunicativa: informar, emocionar, convencer, explicar o código, testar o canal ou valorizar a própria forma da mensagem.",
+      "Um bom estudo desse tópico compara frases parecidas em contextos diferentes, porque a mesma palavra pode mudar de sentido conforme gênero, objetivo e interlocutor.",
+    ];
+  }
+
+  if (title.includes("intertextualidade")) {
+    return [
+      "Intertextualidade acontece quando um texto dialoga com outro texto, obra, imagem, fala histórica, meme, música, propaganda ou conhecimento cultural compartilhado.",
+      "Esse diálogo pode aparecer como citação, paródia, alusão, reescrita, crítica ou homenagem. O importante é perceber que o sentido novo depende da relação com o texto anterior.",
+      "Em questões, procure qual elemento foi retomado e qual efeito essa retomada cria: humor, crítica social, atualização de um tema antigo ou reforço de uma ideia.",
+    ];
+  }
+
+  if (title.includes("fonetica") || title.includes("ortografia") || title.includes("acentuacao") || title.includes("crase")) {
+    return [
+      "Esse bloco fortalece a escrita formal e evita erros que atrapalham clareza. A regra só fica útil quando ligada a exemplos reais de leitura e produção textual.",
+      "Acentuação depende de tonicidade e classificação das palavras; crase depende da fusão entre preposição e artigo ou pronome demonstrativo. Não é chute visual.",
+      "O melhor treino é justificar a regra aplicada: por que há acento, por que não há crase, qual som está sendo representado e que efeito o erro causaria no texto.",
+    ];
+  }
+
+  if (title.includes("coesao") || title.includes("coerencia")) {
+    return [
+      "Coesão liga partes do texto por conectivos, pronomes, repetições controladas e retomadas. Coerência garante que as ideias formem um sentido possível e progressivo.",
+      "Um parágrafo pode ter muitas palavras bonitas e ainda ser fraco se as ideias não avançam. Por isso, cada frase deve acrescentar informação ou explicar melhor a anterior.",
+      "Ao revisar, pergunte: está claro quem ou o que está sendo retomado? O conectivo combina com a relação lógica? A conclusão realmente nasce do que foi argumentado?",
+    ];
+  }
+
+  if (title.includes("figuras de linguagem")) {
+    return [
+      "Figuras de linguagem não servem apenas para decorar nomes. Elas criam efeito de sentido: intensificam, aproximam ideias, produzem humor, sugerem crítica ou tornam a imagem mais expressiva.",
+      "Metáfora, metonímia, ironia, antítese e hipérbole aparecem com frequência porque mudam a forma como o leitor interpreta uma situação.",
+      "Em questões, o foco costuma ser o efeito produzido pela figura, não apenas sua classificação. Identifique a figura e explique o que ela faz no texto.",
+    ];
+  }
+
+  if (title.includes("dissertacao") || title.includes("tese") || title.includes("repertorio")) {
+    return [
+      "A dissertação argumentativa organiza uma posição sobre um problema. A tese precisa aparecer com clareza e os argumentos devem sustentar essa posição, não apenas repetir o tema.",
+      "Repertório sociocultural só funciona quando é pertinente e produtivo. Citar uma obra, autor, dado ou fato histórico sem conectar ao argumento enfraquece o texto.",
+      "Uma boa estratégia é montar cada parágrafo com ideia central, explicação, exemplo ou repertório e fechamento que retome a tese.",
+    ];
+  }
+
+  if (title.includes("redacao") || title.includes("enem")) {
+    return [
+      "Na redação modelo ENEM, o aluno precisa apresentar tese, desenvolver argumentos consistentes e propor uma intervenção detalhada para o problema.",
+      "A proposta deve indicar agente, ação, meio ou modo, finalidade e detalhamento. Esses elementos mostram que a solução foi pensada de forma concreta.",
+      "O texto fica mais forte quando cada repertório aparece ligado ao argumento e quando a conclusão não surge como lista solta de soluções.",
+    ];
+  }
+
+  if (title.includes("conjunto") || title.includes("intervalos")) {
+    return [
+      "Conjuntos numéricos organizam os tipos de número que aparecem nos problemas. Essa organização evita confundir inteiro, racional, irracional e real.",
+      "Intervalos são uma forma compacta de representar muitos valores ao mesmo tempo. Eles aparecem quando a resposta não é um único número, mas uma faixa de possibilidades.",
+      "Antes de resolver funções e inequações, o aluno precisa ler corretamente símbolos como <, <=, colchetes, parênteses e representações na reta real.",
+    ];
+  }
+
+  if (title.includes("funcao")) {
+    return [
+      "Função descreve uma relação entre grandezas: para cada entrada do domínio, existe uma saída correspondente.",
+      "O mesmo objeto pode ser lido por lei, tabela, gráfico ou contexto verbal. Aprender funções é transitar entre essas representações sem perder o significado.",
+      "Em problemas, identifique o que varia, o que depende do que e qual pergunta está sendo feita: valor da função, raiz, crescimento, máximo, mínimo ou interpretação do gráfico.",
+    ];
+  }
+
+  if (title.includes("porcentagem") || title.includes("juros") || title.includes("financeira")) {
+    return [
+      "Matemática financeira liga cálculo a decisões reais: desconto, aumento, parcela, investimento, dívida e comparação de propostas.",
+      "Porcentagem deve ser lida como taxa sobre uma base. O maior erro é aplicar a taxa ao valor errado, principalmente em aumentos e descontos sucessivos.",
+      "Juros simples crescem por soma constante; juros compostos acumulam sobre o montante. Essa diferença muda completamente o comportamento ao longo do tempo.",
+    ];
+  }
+
+  if (title.includes("geometria") || title.includes("triangulo") || title.includes("areas")) {
+    return [
+      "Geometria exige transformar desenho em informação: identificar medidas conhecidas, medidas pedidas e relações entre lados, ângulos e áreas.",
+      "Muitas questões podem ser resolvidas decompondo figuras complexas em retângulos, triângulos, círculos ou sólidos mais simples.",
+      "Quando houver triângulo retângulo, verifique se Pitágoras ou razões trigonométricas conectam os dados. O desenho quase sempre contém pistas essenciais.",
+    ];
+  }
+
+  if (title.includes("probabilidade") || title.includes("combinatoria") || title.includes("contagem")) {
+    return [
+      "Contagem exige decidir se a ordem importa, se há repetição e se as escolhas são independentes. A fórmula vem depois dessa leitura.",
+      "Probabilidade compara casos favoráveis com casos possíveis, mas o desafio está em definir corretamente o espaço amostral.",
+      "Antes de calcular, escreva uma frase dizendo o que está sendo contado. Isso reduz confusões entre arranjo, combinação e permutação.",
+    ];
+  }
+
+  return [
+    `O primeiro passo é entender o papel de ${topic.title.toLowerCase()} dentro da unidade. Não basta reconhecer o nome: é preciso saber quando esse conceito aparece e que tipo de problema ele resolve.`,
+    "Durante o estudo, procure exemplos, contraexemplos e palavras-chave do enunciado. Isso ajuda a transformar teoria em decisão prática na hora da atividade.",
+    "Ao finalizar, explique o conceito com suas palavras e resolva uma questão curta sem consultar o resumo. Se a explicação travar, volte ao trecho principal e reescreva a ideia.",
+  ];
+}
+
+function getTopicExampleContent(topic: CurriculumTopic, index: number) {
+  const title = normalizeText(topic.title);
+
+  if (title.includes("leitura") && title.includes("interpretacao")) {
+    return "Leia uma notícia curta e separe três dados: o fato principal, quem foi afetado e qual finalidade o texto cumpre. A resposta melhora quando o aluno prova a interpretação com uma pista do próprio texto.";
+  }
+
+  if (title.includes("denotacao") || title.includes("conotacao") || title.includes("funcoes da linguagem")) {
+    return "Na frase 'o preço despencou', o verbo não indica queda física: cria sentido figurado para mostrar redução brusca. Depois, observe se a intenção é informar, convencer, emocionar ou destacar a forma da mensagem.";
+  }
+
+  if (title.includes("intertextualidade")) {
+    return "Quando uma propaganda recria um conto conhecido, ela usa o repertório do leitor para gerar humor ou crítica. A tarefa é identificar o texto de origem e explicar o novo efeito produzido.";
+  }
+
+  if (title.includes("fonetica") || title.includes("ortografia") || title.includes("acentuacao") || title.includes("crase")) {
+    return "Compare 'a noite' e 'à noite' com 'vou à escola'. A crase só aparece quando há encontro de preposição com artigo feminino; por isso a decisão depende da estrutura da frase, não do som.";
+  }
+
+  if (title.includes("coesao") || title.includes("coerencia")) {
+    return "Troque um conectivo do parágrafo por outro e veja se a relação lógica muda. 'Portanto' conclui, 'porém' opõe e 'além disso' soma informações.";
+  }
+
+  if (title.includes("figuras de linguagem")) {
+    return "Em 'a cidade acordou cedo', há personificação: a cidade recebe ação humana. O ponto da questão não é apenas nomear a figura, mas explicar o efeito de aproximar lugar e pessoas.";
+  }
+
+  if (title.includes("dissertacao") || title.includes("tese") || title.includes("repertorio")) {
+    return "Para defender leitura nas escolas, escreva primeiro a tese. Depois use um dado, obra ou fato histórico que realmente ajude a justificar essa posição.";
+  }
+
+  if (title.includes("redacao") || title.includes("enem")) {
+    return "Uma proposta de intervenção completa pode seguir: agente, ação, meio, finalidade e detalhamento. Se faltar um desses elementos, a solução parece vaga.";
+  }
+
+  if (title.includes("conjunto") || title.includes("intervalos")) {
+    return "A desigualdade -2 <= x < 4 vira o intervalo [-2, 4). O colchete inclui o -2; o parêntese mostra que o 4 não faz parte da solução.";
+  }
+
+  if (title.includes("funcao")) {
+    return "Se f(x) = 2x + 3, cada entrada gera uma saída: f(0) = 3, f(2) = 7. A tabela, a fórmula e o gráfico contam a mesma relação.";
+  }
+
+  if (title.includes("porcentagem") || title.includes("juros") || title.includes("financeira")) {
+    return "Um produto de R$ 120 com 10% de desconto perde R$ 12 e passa a custar R$ 108. Em descontos sucessivos, a segunda taxa incide sobre o novo valor.";
+  }
+
+  if (title.includes("equacoes") || title.includes("inequacoes")) {
+    return "Em 3x + 6 = 21, subtraia 6 dos dois lados e depois divida por 3: x = 5. Na inequação, o resultado pode ser um intervalo inteiro de valores.";
+  }
+
+  if (title.includes("progressoes")) {
+    return "Na sequência 2, 5, 8, 11, a razão é 3, então é uma P.A. Na sequência 3, 6, 12, 24, a razão multiplicativa é 2, então é uma P.G.";
+  }
+
+  if (title.includes("trigonometria")) {
+    return "No triângulo retângulo, seno usa cateto oposto sobre hipotenusa, cosseno usa adjacente sobre hipotenusa e tangente usa oposto sobre adjacente.";
+  }
+
+  if (title.includes("matrizes") || title.includes("sistemas lineares")) {
+    return "Uma matriz 2 x 3 tem 2 linhas e 3 colunas. Em sistemas, cada equação restringe os valores possíveis das incógnitas.";
+  }
+
+  if (title.includes("probabilidade") || title.includes("combinatoria") || title.includes("contagem")) {
+    return "Se há 3 camisas e 2 calças, existem 6 combinações. Antes de usar fórmula, pergunte se a ordem muda o resultado.";
+  }
+
+  if (title.includes("geometria analitica")) {
+    return "Entre A(0,0) e B(3,4), a distância é 5 porque os deslocamentos formam um triângulo retângulo de catetos 3 e 4.";
+  }
+
+  if (title.includes("geometria espacial")) {
+    return "Em um prisma, volume é área da base vezes altura. Se a base mede 12 cm² e a altura mede 5 cm, o volume é 60 cm³.";
+  }
+
+  if (title.includes("geometria") || title.includes("triangulo") || title.includes("areas")) {
+    return "Um triângulo de base 8 e altura 5 tem área 20, porque a área é base vezes altura dividida por 2.";
+  }
+
+  if (title.includes("estatistica")) {
+    return "Nos dados 2, 3, 3 e 8, a moda é 3, a mediana é 3 e a média é 4. O valor 8 puxa a média para cima.";
+  }
+
+  if (title.includes("complexos") || title.includes("polinomios") || title.includes("algebra")) {
+    return "Se P(2) = 0, então 2 é raiz do polinômio. Nos complexos, i² = -1 permite representar soluções fora dos reais.";
+  }
+
+  return index === 0
+    ? `Use ${topic.title.toLowerCase()} para transformar a definição em uma decisão prática: identifique dados, escolha a ferramenta e justifique o resultado.`
+    : `Crie um exemplo curto de ${topic.title.toLowerCase()} e explique em uma frase qual parte do problema exige esse conceito.`;
+}
+
+function enhanceGeneralModuleContent(subjectName: string, content: SubjectModuleContent): SubjectModuleContent {
+  const existingSections = content.sections ?? [];
+  const hasEnoughExamples = content.examples.length >= 3;
+  const hasEnoughSections = existingSections.length >= 3;
+  const hasUsefulReview = (content.review?.summary.length ?? 0) >= 3;
+
+  if (hasEnoughExamples && hasEnoughSections && hasUsefulReview) {
+    return content;
+  }
+
+  const explanation = content.explanation.filter(Boolean);
+  const baseParagraph = explanation[0] ?? content.objective;
+  const topic: CurriculumTopic = {
+    title: content.title,
+    description: content.objective,
+  };
+
+  const fallbackSections: SubjectLessonSection[] = hasEnoughSections
+    ? existingSections
+    : [
+      {
+        title: "Ideia central",
+        level: "introducao",
+        paragraphs: [
+          content.objective,
+          baseParagraph,
+          `Em ${subjectName}, este tema deve ser estudado conectando conceito, exemplo e aplicação. A leitura fica mais forte quando o aluno entende o que o problema pede antes de tentar memorizar a resposta.`,
+        ],
+        teacherTip: "Depois de ler, escreva uma pergunta que esse conteúdo ajuda a responder.",
+      },
+      {
+        title: "Como aplicar",
+        level: "intermediario",
+        paragraphs: explanation.slice(1, 3).length > 0
+          ? explanation.slice(1, 3)
+          : [
+            "Procure palavras-chave, dados apresentados e relações entre as partes do problema. Depois escolha o conceito adequado e justifique a decisão.",
+            "A aplicação deve mostrar quando usar o conteúdo, não apenas repetir a definição.",
+          ],
+        whyItMatters: "Esse passo transforma leitura em decisão prática durante exercícios e simulados.",
+      },
+      {
+        title: "Revisão ativa",
+        level: "avancado",
+        paragraphs: [
+          "Feche o estudo explicando o tema em voz alta, criando um exemplo próprio e resolvendo uma questão curta sem consultar o resumo.",
+          "Se a explicação ficar vaga, volte ao conceito principal e compare com o exemplo guiado.",
+        ],
+        commonMistake: "Achar que entendeu porque reconheceu o nome do conteúdo, mas não conseguir aplicar em uma situação nova.",
+      },
+    ];
+
+  const fallbackExamples = hasEnoughExamples
+    ? content.examples
+    : [
+      ...content.examples,
+      {
+        title: `Exemplo guiado: ${content.title}`,
+        content: getTopicExampleContent(topic, 0),
+      },
+      {
+        title: "Aplicação rápida",
+        content: `Leia uma situação curta de ${subjectName}, localize o dado principal e explique em uma frase como ${content.title.toLowerCase()} ajuda a chegar à resposta.`,
+      },
+    ].slice(0, 4);
+
+  return {
+    ...content,
+    sections: fallbackSections,
+    examples: fallbackExamples,
+    review: {
+      summary: hasUsefulReview
+        ? content.review?.summary ?? []
+        : [
+          content.objective,
+          "Estude o conceito com exemplo, aplicação e revisão ativa.",
+          "A resposta deve ser justificada com dados do problema ou pistas do texto.",
+          ...(content.review?.summary ?? []),
+        ].slice(0, 6),
+      mentalMap: content.review?.mentalMap.length
+        ? content.review.mentalMap
+        : [subjectName, content.title, "Conceito", "Exemplo", "Aplicação", "Revisão"],
+      flashcards: content.review?.flashcards.length
+        ? content.review.flashcards
+        : [
+          {
+            front: `Como estudar ${content.title}?`,
+            back: "Leia o conceito, acompanhe um exemplo, resolva uma aplicação e revise explicando com suas palavras.",
+          },
+        ],
+    },
+  };
+}
+
 function enhanceModuleContent(subjectName: string, content: SubjectModuleContent): SubjectModuleContent {
   if (subjectName === "Português") return enhancePortugueseModuleContent(content);
-  return content;
+  return enhanceGeneralModuleContent(subjectName, content);
 }
 
 function createCurriculumModule(seed: CurriculumModuleSeed): SubjectModuleContent {
@@ -293,8 +593,10 @@ function createCurriculumModule(seed: CurriculumModuleSeed): SubjectModuleConten
     ...seed.topics.map((topic, index) => ({
       title: topic.title,
       level: index === 0 ? "basico" : index < 3 ? "intermediario" : "avancado",
-      paragraphs: [topic.description],
+      paragraphs: [topic.description, ...getTopicDeepDive(topic)],
       whyItMatters: "Este conteúdo aparece em exercícios, simulados e na leitura de problemas com contexto.",
+      commonMistake: "Decorar a definição sem praticar quando aplicar o conceito.",
+      teacherTip: "Depois de ler, transforme o bloco em uma pergunta e tente responder sem olhar.",
     } satisfies SubjectLessonSection)),
   ];
 
@@ -304,7 +606,7 @@ function createCurriculumModule(seed: CurriculumModuleSeed): SubjectModuleConten
     explanation: [seed.overview, ...seed.topics.map((topic) => `${topic.title}: ${topic.description}`)],
     examples: seed.topics.slice(0, 4).map((topic, index) => ({
       title: index === 0 ? `Exemplo guiado: ${topic.title}` : `Aplicação: ${topic.title}`,
-      content: `Observe a definição, identifique os dados do problema e explique em uma frase como ${topic.title.toLowerCase()} ajuda a resolver a situação. ${topic.description}`,
+      content: getTopicExampleContent(topic, index),
     })),
     activities: [
       {
@@ -1195,111 +1497,379 @@ function enhancePortugueseCurriculumModuleContent(content: SubjectModuleContent)
 function buildPortugueseCurriculumModules(): SubjectModuleContent[] {
   return [
     createCurriculumModule({
-      title: "1ª Série: Base e Compreensão Textual",
-      objective: "Nivelar conhecimentos de língua portuguesa e desenvolver leitura crítica.",
-      overview: "A 1ª série organiza a base de leitura, gramática aplicada, sintaxe inicial e produção textual curta.",
+      title: "1ª Série: Leitura, Gêneros e Interpretação",
+      objective: "Construir base de leitura crítica em diferentes gêneros textuais.",
+      overview: "A 1ª série começa pela leitura interpretativa, pela finalidade dos gêneros e pela relação entre linguagem, público e efeito de sentido.",
       topics: [
         {
           title: "Leitura e interpretação",
-          description: "Gêneros textuais como contos, crônicas, notícias e artigos, com foco em finalidade, público, linguagem e efeito de sentido.",
+          description: "Identificação de tema, finalidade, público, ponto de vista, informações explícitas e inferências.",
         },
         {
-          title: "Denotação, conotação e funções da linguagem",
-          description: "Diferença entre sentido literal e figurado, intenção comunicativa e reconhecimento das funções presentes no texto.",
+          title: "Gêneros textuais",
+          description: "Contos, crônicas, notícias, reportagens, artigos, poemas, tirinhas e textos digitais, com atenção à função social de cada gênero.",
+        },
+        {
+          title: "Denotação, conotação e efeitos de sentido",
+          description: "Diferença entre sentido literal e figurado, escolha vocabular, ironia, humor e ambiguidade inicial.",
         },
         {
           title: "Intertextualidade",
-          description: "Relações entre textos, repertórios culturais, citações, paródias e referências usadas para construir sentido.",
-        },
-        {
-          title: "Fonética, ortografia, acentuação e crase",
-          description: "Revisão das regras que sustentam escrita formal, leitura correta e segurança em questões gramaticais.",
-        },
-        {
-          title: "Estrutura e formação de palavras",
-          description: "Radical, prefixos, sufixos, composição, derivação e efeitos de sentido criados pela escolha vocabular.",
-        },
-        {
-          title: "Orações coordenadas e subordinadas",
-          description: "Introdução às relações sintáticas entre orações substantivas, adjetivas e adverbiais.",
-        },
-        {
-          title: "Resumo, narração e descrição",
-          description: "Técnicas para sintetizar ideias, organizar fatos e construir cenas com clareza.",
+          description: "Relações entre textos, repertórios culturais, citações, paródias e referências usadas para construir novos sentidos.",
         },
       ],
-      activityPrompt: "Qual é a função principal da 1ª série em Português?",
-      activityAnswer: "Construir base de leitura crítica, gramática aplicada e produção textual inicial.",
+      activityPrompt: "Qual é a primeira habilidade de leitura a desenvolver na 1ª série?",
+      activityAnswer: "Reconhecer gênero, finalidade, tema e pistas textuais antes de responder.",
     }),
     createCurriculumModule({
-      title: "2ª Série: Aprofundamento e Argumentação",
-      objective: "Aprofundar análise textual e construir textos dissertativo-argumentativos.",
-      overview: "A 2ª série aproxima leitura crítica, sintaxe e escrita argumentativa para preparar o aluno para redações e questões interpretativas.",
+      title: "1ª Série: Textualidade e Funções da Linguagem",
+      objective: "Entender como textos produzem sentido por organização, intenção e contexto.",
+      overview: "Esta unidade aprofunda fatores de textualidade, funções da linguagem e elementos que tornam um texto compreensível e adequado.",
       topics: [
         {
-          title: "Coesão e coerência",
-          description: "Uso de conectivos, retomadas, progressão temática e organização lógica entre frases e parágrafos.",
+          title: "Funções da linguagem",
+          description: "Funções referencial, emotiva, conativa, fática, metalinguística e poética em textos verbais e multissemióticos.",
         },
         {
-          title: "Figuras de linguagem",
-          description: "Identificação de metáfora, metonímia, ironia, antítese, hipérbole e seus efeitos de sentido.",
+          title: "Fatores de textualidade",
+          description: "Coerência, coesão, informatividade, intencionalidade, aceitabilidade, situacionalidade e intertextualidade.",
         },
         {
-          title: "Textos publicitários e de opinião",
-          description: "Leitura de anúncios, campanhas, artigos e editoriais, observando persuasão, tese e público-alvo.",
-        },
-        {
-          title: "Concordância verbal e nominal",
-          description: "Relações entre sujeito, verbo, nomes e determinantes para garantir clareza e norma-padrão.",
-        },
-        {
-          title: "Regência verbal e nominal",
-          description: "Estudo das relações entre termos regentes e complementos, incluindo preposições exigidas.",
-        },
-        {
-          title: "Colocação pronominal",
-          description: "Próclise, mesóclise e ênclise em contextos formais, literários e de prova.",
-        },
-        {
-          title: "Dissertação, tese e repertório",
-          description: "Estrutura do texto argumentativo, construção de tese, seleção de repertório sociocultural e desenvolvimento de argumentos.",
-        },
-      ],
-      activityPrompt: "Qual habilidade deve ficar mais forte na 2ª série?",
-      activityAnswer: "Construir argumentos claros com coesão, repertório e domínio gramatical.",
-    }),
-    createCurriculumModule({
-      title: "3ª Série: Revisão, Literatura e Mundo do Trabalho",
-      objective: "Consolidar leitura, literatura e redação para ENEM, vestibulares e vida profissional.",
-      overview: "A 3ª série revisa pontos avançados, organiza literatura brasileira e intensifica a escrita no modelo ENEM e em gêneros digitais.",
-      topics: [
-        {
-          title: "Ambiguidade e semântica",
-          description: "Estudo de múltiplos sentidos, polissemia, sinonímia, antonímia e efeitos criados pela escolha das palavras.",
-        },
-        {
-          title: "Sintaxe do período composto",
-          description: "Revisão integrada de coordenação, subordinação e relações lógico-discursivas entre orações.",
+          title: "Coesão referencial e sequencial",
+          description: "Retomadas por pronomes, sinônimos, elipses, repetições controladas e conectivos.",
         },
         {
           title: "Variação linguística",
-          description: "Reconhecimento de variedades regionais, sociais, históricas e situacionais, sem preconceito linguístico.",
-        },
-        {
-          title: "Literatura brasileira",
-          description: "Movimentos do Quinhentismo ao Modernismo e à contemporaneidade, com análise de contexto, estética e obras obrigatórias.",
-        },
-        {
-          title: "Redação modelo ENEM",
-          description: "Introdução, desenvolvimento, repertório, argumentação e proposta de intervenção detalhada.",
-        },
-        {
-          title: "Gêneros digitais e mundo do trabalho",
-          description: "Leitura e produção de textos digitais, comunicação profissional, clareza, adequação e autoria.",
+          description: "Variedades regionais, sociais e situacionais, adequação ao contexto e combate ao preconceito linguístico.",
         },
       ],
-      activityPrompt: "Qual é o foco principal da 3ª série em Português?",
-      activityAnswer: "Revisar conteúdos avançados e aplicar leitura, literatura e redação em provas e contextos reais.",
+      activityPrompt: "Para que servem as funções da linguagem?",
+      activityAnswer: "Para reconhecer a intenção comunicativa predominante e o efeito criado no texto.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Morfologia, Léxico e Semântica",
+      objective: "Dominar a estrutura das palavras e os sentidos produzidos pelas escolhas vocabulares.",
+      overview: "A unidade trabalha fonética, ortografia, formação de palavras, classes gramaticais e relações semânticas usadas na leitura e na escrita.",
+      topics: [
+        {
+          title: "Fonética, ortografia, acentuação e crase",
+          description: "Sons da fala, escrita formal, regras de acentuação, emprego da crase e dúvidas recorrentes.",
+        },
+        {
+          title: "Estrutura e formação de palavras",
+          description: "Radical, afixos, vogal temática, composição, derivação e neologismos.",
+        },
+        {
+          title: "Classes de palavras",
+          description: "Substantivo, adjetivo, verbo, advérbio, pronome, artigo, numeral, preposição, conjunção e interjeição em uso.",
+        },
+        {
+          title: "Relações semânticas",
+          description: "Sinonímia, antonímia, polissemia, homonímia, campo lexical e seleção vocabular.",
+        },
+      ],
+      activityPrompt: "Por que estudar morfologia junto com leitura?",
+      activityAnswer: "Porque a forma das palavras ajuda a interpretar sentidos, relações e efeitos no texto.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Sintaxe e Produção Textual Inicial",
+      objective: "Relacionar estrutura da frase, clareza e produção de textos curtos.",
+      overview: "A unidade apresenta sintaxe inicial, período composto e técnicas de resumo, narração e descrição.",
+      topics: [
+        {
+          title: "Termos da oração",
+          description: "Sujeito, predicado, complementos verbais, adjuntos, predicativo, aposto e vocativo.",
+        },
+        {
+          title: "Orações coordenadas e subordinadas",
+          description: "Relações entre orações, conectivos, coordenação, subordinação substantiva, adjetiva e adverbial.",
+        },
+        {
+          title: "Pontuação e organização do período",
+          description: "Uso de vírgula, ponto, dois-pontos, travessão e pontuação como recurso de clareza.",
+        },
+        {
+          title: "Resumo, narração e descrição",
+          description: "Técnicas para sintetizar ideias, organizar fatos, construir personagens, espaços e cenas.",
+        },
+      ],
+      activityPrompt: "Qual é a função da sintaxe na produção textual?",
+      activityAnswer: "Organizar relações entre termos e orações para dar clareza ao texto.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Literatura - Origens ao Arcadismo",
+      objective: "Compreender a formação da literatura em língua portuguesa e seus primeiros movimentos.",
+      overview: "A unidade organiza o percurso literário inicial, relacionando contexto histórico, estética e temas recorrentes.",
+      topics: [
+        {
+          title: "Trovadorismo e Humanismo",
+          description: "Cantigas, teatro vicentino, visão medieval, transição cultural e marcas da oralidade.",
+        },
+        {
+          title: "Classicismo e Quinhentismo",
+          description: "Humanismo renascentista, medida nova, literatura de informação e literatura de catequese no Brasil.",
+        },
+        {
+          title: "Barroco",
+          description: "Conflito, contrastes, conceptismo, cultismo, religiosidade e crítica social.",
+        },
+        {
+          title: "Arcadismo",
+          description: "Ideal de simplicidade, bucolismo, razão, pastoralismo e contexto do Brasil colonial.",
+        },
+      ],
+      activityPrompt: "Como estudar literatura sem decorar movimentos?",
+      activityAnswer: "Relacionando contexto histórico, linguagem, temas e efeitos estéticos de cada período.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Argumentação e Textos de Opinião",
+      objective: "Aprofundar leitura crítica e construção de posicionamento argumentativo.",
+      overview: "A 2ª série intensifica análise de opinião, estratégias de persuasão, tese e repertório.",
+      topics: [
+        {
+          title: "Artigo de opinião, editorial e carta aberta",
+          description: "Tese, argumentos, contra-argumentos, público-alvo, autoria e circulação social.",
+        },
+        {
+          title: "Coesão e coerência",
+          description: "Progressão temática, conectores argumentativos, retomadas e encadeamento lógico.",
+        },
+        {
+          title: "Figuras de linguagem",
+          description: "Metáfora, metonímia, ironia, antítese, hipérbole e efeitos na argumentação.",
+        },
+        {
+          title: "Dissertação, tese e repertório",
+          description: "Estrutura do texto argumentativo, seleção de repertório e desenvolvimento de parágrafos.",
+        },
+      ],
+      activityPrompt: "Qual é o centro de um texto argumentativo?",
+      activityAnswer: "A tese defendida e os argumentos usados para sustentá-la.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Mídias, Publicidade e Multissemiose",
+      objective: "Ler textos que combinam palavra, imagem, som, layout e recursos digitais.",
+      overview: "A unidade trabalha campanhas, anúncios, memes, infográficos, charges e outros textos de circulação social.",
+      topics: [
+        {
+          title: "Textos publicitários e campanhas",
+          description: "Persuasão, slogan, imagem, público-alvo, valores sociais e estratégias de convencimento.",
+        },
+        {
+          title: "Textos multissemióticos",
+          description: "Relação entre linguagem verbal, imagem, cor, diagramação, ícones, gráficos e efeitos de sentido.",
+        },
+        {
+          title: "Charge, cartum, meme e tirinha",
+          description: "Humor, crítica social, intertextualidade, contexto histórico e inferência.",
+        },
+        {
+          title: "Leitura de dados e infográficos",
+          description: "Interpretação de tabelas, gráficos, legendas, fontes e escolhas visuais.",
+        },
+      ],
+      activityPrompt: "O que muda ao ler um texto multissemiótico?",
+      activityAnswer: "A resposta precisa considerar palavra, imagem, layout e contexto juntos.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Análise Linguística e Norma-Padrão",
+      objective: "Aprofundar recursos gramaticais usados para clareza, adequação e estilo.",
+      overview: "A unidade organiza concordância, regência, pronomes e pontuação em situações reais de leitura e escrita.",
+      topics: [
+        {
+          title: "Concordância verbal e nominal",
+          description: "Relações entre sujeito, verbo, nomes e determinantes em contextos simples e complexos.",
+        },
+        {
+          title: "Regência verbal e nominal",
+          description: "Complementos, preposições exigidas, transitividade e efeitos de sentido.",
+        },
+        {
+          title: "Colocação pronominal",
+          description: "Próclise, mesóclise, ênclise, adequação formal e uso em textos literários.",
+        },
+        {
+          title: "Pontuação e paralelismo",
+          description: "Pontuação como organização sintática, paralelismo, clareza e estilo.",
+        },
+      ],
+      activityPrompt: "Por que norma-padrão deve ser estudada em contexto?",
+      activityAnswer: "Porque a regra faz sentido quando melhora clareza, adequação e efeito do texto.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Textos Oficiais, Normativos e Vida Pública",
+      objective: "Compreender gêneros usados em participação social, cidadania e comunicação institucional.",
+      overview: "A unidade trabalha textos de circulação pública e sua relação com direitos, deveres e linguagem formal.",
+      topics: [
+        {
+          title: "Textos legais e normativos",
+          description: "Leitura de leis, estatutos, regulamentos, editais e documentos orientadores.",
+        },
+        {
+          title: "Requerimento, ofício e e-mail formal",
+          description: "Estrutura, vocativo, objetividade, adequação linguística e finalidade institucional.",
+        },
+        {
+          title: "Debate, seminário e apresentação oral",
+          description: "Argumentação oral, escuta ativa, organização de fala e uso de evidências.",
+        },
+        {
+          title: "Pesquisa e citação",
+          description: "Seleção de fontes, paráfrase, citação, autoria e ética no uso da informação.",
+        },
+      ],
+      activityPrompt: "Qual é a marca principal de textos oficiais?",
+      activityAnswer: "Clareza, objetividade, finalidade definida e adequação à situação institucional.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Literatura - Romantismo ao Simbolismo",
+      objective: "Aprofundar literatura brasileira e portuguesa dos séculos XIX e início do XX.",
+      overview: "A unidade relaciona movimentos literários a contexto histórico, estética, autoria e temas sociais.",
+      topics: [
+        {
+          title: "Romantismo",
+          description: "Nacionalismo, subjetividade, idealização, indianismo, romance urbano e poesia romântica.",
+        },
+        {
+          title: "Realismo e Naturalismo",
+          description: "Crítica social, objetividade, determinismo, análise psicológica e denúncia de problemas sociais.",
+        },
+        {
+          title: "Parnasianismo",
+          description: "Formalismo, rigor métrico, impessoalidade, culto à forma e linguagem trabalhada.",
+        },
+        {
+          title: "Simbolismo",
+          description: "Musicalidade, sugestão, subjetividade, espiritualidade, sinestesia e imagens simbólicas.",
+        },
+      ],
+      activityPrompt: "Como diferenciar Realismo e Romantismo?",
+      activityAnswer: "Romantismo tende à idealização; Realismo analisa a sociedade de forma crítica e menos idealizada.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Revisão de Leitura e Análise Linguística",
+      objective: "Consolidar leitura crítica e análise linguística para ENEM, vestibulares e vida social.",
+      overview: "A 3ª série retoma habilidades centrais com foco em autonomia, resolução de questões e escrita formal.",
+      topics: [
+        {
+          title: "Ambiguidade e semântica",
+          description: "Polissemia, pressupostos, subentendidos, modalização, implícitos e efeitos de sentido.",
+        },
+        {
+          title: "Sintaxe do período composto",
+          description: "Coordenação, subordinação e relações lógico-discursivas entre orações.",
+        },
+        {
+          title: "Variação linguística",
+          description: "Variedades regionais, sociais, históricas e situacionais, adequação e preconceito linguístico.",
+        },
+        {
+          title: "Revisão gramatical aplicada",
+          description: "Concordância, regência, crase, colocação pronominal e pontuação em situações de prova.",
+        },
+      ],
+      activityPrompt: "Qual é a melhor forma de revisar gramática no 3º ano?",
+      activityAnswer: "Aplicando regras em leitura, produção textual e questões contextualizadas.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Redação Modelo ENEM",
+      objective: "Construir redações dissertativo-argumentativas completas e bem avaliadas.",
+      overview: "A unidade trabalha competências da redação ENEM, repertório, argumentação e proposta de intervenção.",
+      topics: [
+        {
+          title: "Introdução e tese",
+          description: "Contextualização do tema, recorte do problema e apresentação clara do ponto de vista.",
+        },
+        {
+          title: "Desenvolvimento argumentativo",
+          description: "Tópico frasal, explicação, repertório produtivo, análise crítica e progressão lógica.",
+        },
+        {
+          title: "Coesão e projeto de texto",
+          description: "Conectivos, retomadas, organização de parágrafos e articulação entre ideias.",
+        },
+        {
+          title: "Proposta de intervenção",
+          description: "Agente, ação, meio, finalidade, detalhamento e respeito aos direitos humanos.",
+        },
+      ],
+      activityPrompt: "O que torna uma proposta de intervenção completa?",
+      activityAnswer: "Apresentar agente, ação, meio, finalidade e detalhamento de forma concreta.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Literatura - Modernismo e Contemporaneidade",
+      objective: "Revisar literatura brasileira moderna e contemporânea com foco interpretativo.",
+      overview: "A unidade trabalha Pré-Modernismo, Modernismo, produção contemporânea e análise de obras.",
+      topics: [
+        {
+          title: "Pré-Modernismo",
+          description: "Contradições sociais, regionalismo, crítica ao Brasil oficial e transição estética.",
+        },
+        {
+          title: "Modernismo",
+          description: "Ruptura estética, Semana de 1922, nacionalismo crítico, linguagem coloquial e experimentação.",
+        },
+        {
+          title: "Literatura contemporânea",
+          description: "Pluralidade de vozes, periferias, identidades, memória, oralidade e novas formas de publicação.",
+        },
+        {
+          title: "Análise de obras e poemas",
+          description: "Narrador, eu lírico, tempo, espaço, personagens, imagens poéticas e contexto de produção.",
+        },
+      ],
+      activityPrompt: "Qual é uma marca forte do Modernismo?",
+      activityAnswer: "Ruptura estética e busca por uma linguagem brasileira mais livre e crítica.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Gêneros Digitais, Pesquisa e Mundo do Trabalho",
+      objective: "Usar a linguagem em contextos digitais, acadêmicos e profissionais.",
+      overview: "A unidade aproxima leitura, escrita, tecnologia, autoria e comunicação no mundo do trabalho.",
+      topics: [
+        {
+          title: "Gêneros digitais",
+          description: "Post, comentário, thread, podcast, roteiro, vídeo curto, newsletter e curadoria de conteúdo.",
+        },
+        {
+          title: "Comunicação profissional",
+          description: "Currículo, carta de apresentação, e-mail formal, portfólio, entrevista e clareza objetiva.",
+        },
+        {
+          title: "Pesquisa, autoria e fontes",
+          description: "Busca, seleção, confiabilidade, citação, paráfrase, plágio e uso ético de informações.",
+        },
+        {
+          title: "Apresentação oral e projeto de vida",
+          description: "Organização de fala, síntese, argumentação, postura e adequação ao público.",
+        },
+      ],
+      activityPrompt: "Por que gêneros digitais entram no estudo de Português?",
+      activityAnswer: "Porque hoje leitura, escrita, autoria e circulação de textos também acontecem em ambientes digitais.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Revisão ENEM e Repertório Sociocultural",
+      objective: "Consolidar estratégias de prova, repertório e resolução de questões de Linguagens.",
+      overview: "A unidade fecha o ciclo com revisão ativa, leitura de comandos, repertórios e treino de habilidades cobradas no ENEM.",
+      topics: [
+        {
+          title: "Comandos de questão",
+          description: "Identificação do que a questão pede: função, efeito, crítica, comparação, inferência ou finalidade.",
+        },
+        {
+          title: "Estratégias de eliminação",
+          description: "Reconhecimento de alternativas exageradas, deslocadas, contraditórias ou sem apoio textual.",
+        },
+        {
+          title: "Repertório sociocultural",
+          description: "Uso produtivo de história, literatura, cinema, dados, filosofia, sociologia e atualidades.",
+        },
+        {
+          title: "Simulados e revisão de erros",
+          description: "Correção ativa, registro de padrões de erro e retomada dos conteúdos mais frágeis.",
+        },
+      ],
+      activityPrompt: "Qual é o erro mais comum em questões de Linguagens?",
+      activityAnswer: "Responder pelo tema geral ou opinião pessoal sem observar exatamente o comando e o texto.",
     }),
   ].map(enhancePortugueseCurriculumModuleContent);
 }
@@ -1503,14 +2073,758 @@ function buildMathCurriculumModules(): SubjectModuleContent[] {
   ].map(enhanceMathModuleContent);
 }
 
+function buildChemistryCurriculumModules(): SubjectModuleContent[] {
+  return [
+    createCurriculumModule({
+      title: "1ª Série: Matéria, Substâncias e Modelos Atômicos",
+      objective: "Compreender a composição da matéria, suas propriedades e os modelos que explicam átomos e substâncias.",
+      overview: "A 1ª série começa pela linguagem básica da Química: matéria, energia, propriedades, substâncias, misturas e modelos atômicos.",
+      topics: [
+        { title: "Matéria e energia", description: "Conceitos de matéria, corpo, objeto, energia, massa, volume e estados físicos." },
+        { title: "Propriedades da matéria", description: "Propriedades gerais e específicas, densidade, solubilidade, temperatura de fusão e ebulição." },
+        { title: "Substâncias e misturas", description: "Substâncias simples e compostas, misturas homogêneas e heterogêneas e métodos de separação." },
+        { title: "Modelos atômicos", description: "Evolução dos modelos de Dalton, Thomson, Rutherford, Bohr e noções de estrutura atômica." },
+      ],
+      activityPrompt: "Por que modelos atômicos são importantes em Química?",
+      activityAnswer: "Porque ajudam a explicar propriedades e transformações da matéria em escala microscópica.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Tabela Periódica e Ligações Químicas",
+      objective: "Relacionar estrutura atômica, organização periódica e formação de substâncias.",
+      overview: "Esta unidade conecta a posição dos elementos na tabela periódica às ligações e propriedades dos compostos.",
+      topics: [
+        { title: "Tabela periódica", description: "Famílias, períodos, metais, ametais, gases nobres e propriedades periódicas." },
+        { title: "Íons e estabilidade", description: "Formação de cátions e ânions, camada de valência e tendência à estabilidade." },
+        { title: "Ligações iônicas e covalentes", description: "Transferência e compartilhamento de elétrons, fórmulas e propriedades." },
+        { title: "Ligações metálicas e propriedades", description: "Modelo de elétrons livres, condutividade, maleabilidade e ligas metálicas." },
+      ],
+      activityPrompt: "O que diferencia ligação iônica de ligação covalente?",
+      activityAnswer: "Na iônica há transferência de elétrons; na covalente há compartilhamento.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Funções Inorgânicas e Reações",
+      objective: "Identificar substâncias inorgânicas, nomenclatura e transformações químicas.",
+      overview: "A unidade trabalha linguagem simbólica, funções inorgânicas e leitura de equações químicas.",
+      topics: [
+        { title: "Ácidos, bases, sais e óxidos", description: "Características, nomenclatura, exemplos do cotidiano e uso social." },
+        { title: "Indicadores e pH", description: "Escala de pH, acidez, basicidade, neutralização e aplicações ambientais." },
+        { title: "Reações químicas", description: "Evidências de reação, equações, reagentes, produtos e conservação da massa." },
+        { title: "Balanceamento", description: "Ajuste de coeficientes para respeitar a conservação dos átomos." },
+      ],
+      activityPrompt: "Por que balancear uma equação química?",
+      activityAnswer: "Para representar a conservação dos átomos durante a transformação.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Cálculos Químicos e Estequiometria",
+      objective: "Aplicar mol, massa molar e proporções em reações químicas.",
+      overview: "A 2ª série aprofunda a relação quantitativa entre partículas, massas, volumes e rendimento de reações.",
+      topics: [
+        { title: "Mol e massa molar", description: "Quantidade de matéria, constante de Avogadro e conversão entre mol, massa e partículas." },
+        { title: "Fórmulas químicas", description: "Fórmula molecular, percentual, mínima e relações de composição." },
+        { title: "Estequiometria", description: "Proporção entre reagentes e produtos em equações balanceadas." },
+        { title: "Rendimento e pureza", description: "Reagente limitante, excesso, rendimento percentual e grau de pureza." },
+      ],
+      activityPrompt: "Qual é a base de um cálculo estequiométrico?",
+      activityAnswer: "A proporção da equação química balanceada.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Soluções, Termoquímica e Cinética",
+      objective: "Estudar concentração, energia envolvida nas reações e velocidade de transformação.",
+      overview: "A unidade conecta propriedades de soluções a processos energéticos e fatores que alteram a rapidez das reações.",
+      topics: [
+        { title: "Soluções e concentração", description: "Soluto, solvente, concentração comum, molaridade, diluição e mistura." },
+        { title: "Termoquímica", description: "Calor, entalpia, reações endotérmicas e exotérmicas." },
+        { title: "Cinética química", description: "Velocidade de reação, temperatura, superfície de contato, concentração e catalisadores." },
+        { title: "Aplicações tecnológicas", description: "Alimentos, medicamentos, combustíveis, indústria e impactos ambientais." },
+      ],
+      activityPrompt: "Como um catalisador atua em uma reação?",
+      activityAnswer: "Aumenta a velocidade da reação sem ser consumido no processo.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Equilíbrio Químico, Ácidos e Bases",
+      objective: "Compreender sistemas reversíveis, equilíbrio e controle de pH.",
+      overview: "Esta unidade explica como sistemas químicos se ajustam e como ácidos e bases atuam em ambientes naturais e tecnológicos.",
+      topics: [
+        { title: "Equilíbrio químico", description: "Reações reversíveis, constante de equilíbrio e deslocamento." },
+        { title: "Princípio de Le Chatelier", description: "Efeito de concentração, pressão e temperatura sobre sistemas em equilíbrio." },
+        { title: "Equilíbrio ácido-base", description: "pH, pOH, neutralização, hidrólise e soluções tampão." },
+        { title: "Equilíbrio ambiental", description: "Chuva ácida, oceanos, solos, tratamento de água e controle de poluição." },
+      ],
+      activityPrompt: "O que acontece quando um equilíbrio sofre perturbação?",
+      activityAnswer: "O sistema se desloca para reduzir o efeito da perturbação.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Eletroquímica e Energia",
+      objective: "Relacionar reações de oxirredução, pilhas, baterias e eletrólise.",
+      overview: "A 3ª série conecta transformações químicas, eletricidade, energia e impactos sociais do consumo tecnológico.",
+      topics: [
+        { title: "Oxidação e redução", description: "Número de oxidação, transferência de elétrons, agente oxidante e redutor." },
+        { title: "Pilhas e baterias", description: "Geração de corrente elétrica por reação espontânea e potenciais eletroquímicos." },
+        { title: "Eletrólise", description: "Transformações não espontâneas provocadas por corrente elétrica." },
+        { title: "Energia e sustentabilidade", description: "Baterias, descarte, mineração, combustíveis e impactos ambientais." },
+      ],
+      activityPrompt: "Qual é a relação entre eletroquímica e tecnologia?",
+      activityAnswer: "Pilhas, baterias e eletrólise dependem de reações com transferência de elétrons.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Química Orgânica",
+      objective: "Estudar compostos de carbono, funções orgânicas e aplicações no cotidiano.",
+      overview: "A unidade organiza hidrocarbonetos, funções orgânicas, nomenclatura e propriedades de substâncias presentes em combustíveis, alimentos e medicamentos.",
+      topics: [
+        { title: "Carbono e cadeias carbônicas", description: "Tetravalência, tipos de cadeia, saturação, ramificação e aromaticidade." },
+        { title: "Hidrocarbonetos", description: "Alcanos, alcenos, alcinos, aromáticos e relação com combustíveis." },
+        { title: "Funções orgânicas oxigenadas e nitrogenadas", description: "Álcoois, aldeídos, cetonas, ácidos, ésteres, aminas e amidas." },
+        { title: "Isomeria", description: "Isomeria plana e espacial, propriedades e implicações biológicas." },
+      ],
+      activityPrompt: "Por que a Química Orgânica é central no Ensino Médio?",
+      activityAnswer: "Porque explica muitas substâncias ligadas à vida, aos combustíveis, aos alimentos e aos medicamentos.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Química Ambiental e Materiais",
+      objective: "Analisar materiais, recursos naturais, poluição e soluções sustentáveis.",
+      overview: "A unidade fecha Química conectando conhecimento científico a problemas sociais, ambientais e econômicos.",
+      topics: [
+        { title: "Polímeros e materiais", description: "Plásticos, borrachas, fibras, reciclagem, propriedades e usos." },
+        { title: "Combustíveis e recursos minerais", description: "Petróleo, biocombustíveis, mineração, energia e impactos." },
+        { title: "Água, ar e solo", description: "Ciclos, poluentes, tratamento, qualidade ambiental e saúde." },
+        { title: "Química verde", description: "Prevenção de resíduos, eficiência energética, reaproveitamento e consumo consciente." },
+      ],
+      activityPrompt: "Como a Química ajuda em problemas ambientais?",
+      activityAnswer: "Identificando substâncias, processos, riscos e alternativas de menor impacto.",
+    }),
+  ].map((module) => enhanceModuleContent("Química", module));
+}
+
+function buildPhysicsCurriculumModules(): SubjectModuleContent[] {
+  return [
+    createCurriculumModule({
+      title: "1ª Série: Grandezas, Medidas e Cinemática",
+      objective: "Interpretar movimentos por meio de grandezas, unidades, gráficos e equações.",
+      overview: "A Física começa pela descrição do movimento e pela leitura de medidas em diferentes representações.",
+      topics: [
+        { title: "Grandezas e unidades", description: "Sistema Internacional, conversões, ordem de grandeza e notação científica." },
+        { title: "Movimento uniforme", description: "Posição, deslocamento, velocidade média, função horária e gráficos." },
+        { title: "Movimento uniformemente variado", description: "Aceleração, velocidade, queda livre e interpretação gráfica." },
+        { title: "Vetores", description: "Direção, sentido, módulo, decomposição e aplicação em deslocamentos e forças." },
+      ],
+      activityPrompt: "O que um gráfico posição-tempo permite analisar?",
+      activityAnswer: "Permite identificar posição, deslocamento e velocidade do movimento.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Dinâmica e Leis de Newton",
+      objective: "Explicar movimentos a partir de forças, interações e equilíbrio.",
+      overview: "A unidade apresenta as leis de Newton e a relação entre força resultante, massa e aceleração.",
+      topics: [
+        { title: "Forças e interações", description: "Peso, normal, tração, atrito, força elástica e força resultante." },
+        { title: "Leis de Newton", description: "Inércia, princípio fundamental da dinâmica e ação e reação." },
+        { title: "Equilíbrio e aplicações", description: "Corpos em repouso, movimento retilíneo uniforme e sistemas com forças equilibradas." },
+        { title: "Atrito e segurança", description: "Atrito estático e cinético, frenagem, transporte e uso tecnológico." },
+      ],
+      activityPrompt: "O que causa aceleração em um corpo?",
+      activityAnswer: "Uma força resultante diferente de zero.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Energia, Trabalho e Potência",
+      objective: "Relacionar trabalho, energia, potência e conservação em sistemas físicos.",
+      overview: "A unidade conecta fenômenos mecânicos com transformações e conservação de energia.",
+      topics: [
+        { title: "Trabalho de uma força", description: "Trabalho, deslocamento, ângulo e unidades de energia." },
+        { title: "Energia cinética e potencial", description: "Energia de movimento, energia gravitacional e elástica." },
+        { title: "Conservação da energia", description: "Transformações, dissipação, rendimento e sistemas conservativos." },
+        { title: "Potência e rendimento", description: "Taxa de transformação de energia, máquinas e eficiência." },
+      ],
+      activityPrompt: "Qual é a ideia central da conservação de energia?",
+      activityAnswer: "A energia não desaparece; ela se transforma ou se transfere.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Termologia e Calorimetria",
+      objective: "Interpretar temperatura, calor, mudanças de estado e equilíbrio térmico.",
+      overview: "A 2ª série aprofunda fenômenos térmicos presentes em clima, máquinas, alimentos e tecnologia.",
+      topics: [
+        { title: "Temperatura e escalas", description: "Celsius, Kelvin, Fahrenheit, equilíbrio térmico e agitação molecular." },
+        { title: "Calor e capacidade térmica", description: "Calor sensível, calor específico e trocas de energia térmica." },
+        { title: "Mudanças de estado", description: "Calor latente, fusão, vaporização, condensação e solidificação." },
+        { title: "Dilatação térmica", description: "Dilatação linear, superficial, volumétrica e aplicações em materiais." },
+      ],
+      activityPrompt: "Qual é a diferença entre calor e temperatura?",
+      activityAnswer: "Temperatura mede estado térmico; calor é energia transferida por diferença de temperatura.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Termodinâmica, Fluidos e Gases",
+      objective: "Analisar pressão, densidade, gases e máquinas térmicas.",
+      overview: "A unidade conecta trocas de calor, trabalho, pressão, densidade e rendimento de sistemas.",
+      topics: [
+        { title: "Pressão e densidade", description: "Grandezas em fluidos, pressão atmosférica, empuxo e princípio de Arquimedes." },
+        { title: "Gases", description: "Transformações isotérmica, isobárica, isovolumétrica e equação geral dos gases." },
+        { title: "Leis da Termodinâmica", description: "Energia interna, trabalho, calor, entropia e sentido dos processos." },
+        { title: "Máquinas térmicas", description: "Motores, refrigeradores, rendimento e impactos energéticos." },
+      ],
+      activityPrompt: "Por que nenhuma máquina térmica tem rendimento de 100%?",
+      activityAnswer: "Porque parte da energia é dissipada e os processos reais são irreversíveis.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Ondulatória e Óptica",
+      objective: "Compreender ondas sonoras, eletromagnéticas, luz e formação de imagens.",
+      overview: "A unidade trabalha fenômenos de propagação, comunicação, visão, instrumentos ópticos e tecnologias.",
+      topics: [
+        { title: "Ondas", description: "Frequência, período, comprimento de onda, velocidade, amplitude e energia." },
+        { title: "Som", description: "Ondas sonoras, eco, ressonância, intensidade, altura e timbre." },
+        { title: "Luz e óptica geométrica", description: "Reflexão, refração, espelhos, lentes e formação de imagens." },
+        { title: "Ondas eletromagnéticas", description: "Espectro eletromagnético, comunicação, radiação e aplicações tecnológicas." },
+      ],
+      activityPrompt: "O que diferencia som e luz quanto à propagação?",
+      activityAnswer: "O som precisa de meio material; a luz pode se propagar no vácuo.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Eletricidade e Circuitos",
+      objective: "Dimensionar e interpretar circuitos elétricos em contextos domésticos e tecnológicos.",
+      overview: "A unidade relaciona corrente, tensão, resistência, potência e segurança elétrica.",
+      topics: [
+        { title: "Carga, corrente e tensão", description: "Conceitos elétricos básicos, diferença de potencial e movimento de cargas." },
+        { title: "Resistência e Lei de Ohm", description: "Relação entre tensão, corrente e resistência elétrica." },
+        { title: "Circuitos elétricos", description: "Associação em série e paralelo, medição e análise de componentes." },
+        { title: "Potência e consumo", description: "Energia elétrica, potência, contas de luz, segurança e eficiência." },
+      ],
+      activityPrompt: "Como calcular a potência elétrica de um aparelho?",
+      activityAnswer: "Multiplicando tensão pela corrente elétrica.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Magnetismo e Eletromagnetismo",
+      objective: "Relacionar eletricidade, magnetismo, indução e tecnologias de geração de energia.",
+      overview: "A unidade mostra como correntes e campos magnéticos se relacionam em motores, geradores e transformadores.",
+      topics: [
+        { title: "Campo magnético", description: "Ímãs, polos magnéticos, linhas de campo e campo terrestre." },
+        { title: "Força magnética", description: "Ação sobre cargas em movimento e fios percorridos por corrente." },
+        { title: "Indução eletromagnética", description: "Variação de fluxo magnético, corrente induzida e Lei de Faraday." },
+        { title: "Motores e geradores", description: "Transformação entre energia elétrica e mecânica em tecnologias reais." },
+      ],
+      activityPrompt: "Qual fenômeno permite gerar eletricidade em usinas?",
+      activityAnswer: "A indução eletromagnética.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Física Moderna e Astronomia",
+      objective: "Introduzir ideias de Física Moderna, radiação, tecnologia e universo.",
+      overview: "A unidade fecha Física com temas contemporâneos: relatividade, quântica, radiação, partículas e cosmologia básica.",
+      topics: [
+        { title: "Relatividade", description: "Noções de velocidade da luz, espaço-tempo, energia e massa." },
+        { title: "Física quântica", description: "Quantização, fótons, efeito fotoelétrico e aplicações tecnológicas." },
+        { title: "Radioatividade", description: "Radiações alfa, beta, gama, meia-vida, medicina, energia e riscos." },
+        { title: "Astronomia", description: "Sistema Solar, estrelas, gravitação, galáxias e expansão do universo." },
+      ],
+      activityPrompt: "Por que estudar Física Moderna no Ensino Médio?",
+      activityAnswer: "Porque ela explica tecnologias, radiações e fenômenos que a Física clássica não descreve sozinha.",
+    }),
+  ].map((module) => enhanceModuleContent("Física", module));
+}
+
+function buildBiologyCurriculumModules(): SubjectModuleContent[] {
+  return [
+    createCurriculumModule({
+      title: "1ª Série: Citologia e Bioquímica Celular",
+      objective: "Compreender a célula como unidade básica da vida.",
+      overview: "A Biologia começa pela organização celular, pelas moléculas da vida e pelos processos que mantêm os seres vivos.",
+      topics: [
+        { title: "Moléculas da vida", description: "Água, sais minerais, carboidratos, lipídios, proteínas e ácidos nucleicos." },
+        { title: "Tipos celulares", description: "Células procarióticas, eucarióticas, animais, vegetais e organização básica." },
+        { title: "Organelas", description: "Núcleo, ribossomos, mitocôndrias, cloroplastos, retículo, Golgi e lisossomos." },
+        { title: "Metabolismo celular", description: "Respiração celular, fermentação, fotossíntese e fluxo de energia." },
+      ],
+      activityPrompt: "Por que a célula é considerada unidade da vida?",
+      activityAnswer: "Porque realiza funções essenciais e compõe todos os seres vivos.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Genética e Divisão Celular",
+      objective: "Relacionar DNA, hereditariedade, mitose, meiose e transmissão de características.",
+      overview: "A unidade explica como informações hereditárias são armazenadas, copiadas e transmitidas.",
+      topics: [
+        { title: "DNA, RNA e genes", description: "Material genético, síntese de proteínas e expressão gênica inicial." },
+        { title: "Mitose e meiose", description: "Divisão celular, crescimento, reprodução, gametas e variabilidade genética." },
+        { title: "Leis de Mendel", description: "Herança dominante, recessiva, segregação e combinação de alelos." },
+        { title: "Genética humana", description: "Heredogramas, grupos sanguíneos, doenças hereditárias e aconselhamento genético." },
+      ],
+      activityPrompt: "Qual é a diferença entre mitose e meiose?",
+      activityAnswer: "Mitose mantém o número de cromossomos; meiose reduz pela metade e forma gametas.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Origem da Vida e Evolução",
+      objective: "Analisar hipóteses sobre a origem da vida e mecanismos evolutivos.",
+      overview: "A unidade conecta evidências, seleção natural, adaptação e diversidade dos seres vivos.",
+      topics: [
+        { title: "Origem da vida", description: "Hipóteses, abiogênese, biogênese, experimentos históricos e evolução química." },
+        { title: "Evidências evolutivas", description: "Fósseis, anatomia comparada, embriologia, biogeografia e biologia molecular." },
+        { title: "Seleção natural", description: "Variabilidade, adaptação, sobrevivência diferencial e reprodução." },
+        { title: "Especiação", description: "Isolamento reprodutivo, divergência populacional e formação de novas espécies." },
+      ],
+      activityPrompt: "O que a seleção natural favorece?",
+      activityAnswer: "Características hereditárias que aumentam sobrevivência e reprodução em certo ambiente.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Zoologia e Fisiologia Animal",
+      objective: "Estudar grupos animais, adaptações e sistemas fisiológicos.",
+      overview: "A unidade relaciona formas de vida animal, evolução, ambiente e funcionamento dos organismos.",
+      topics: [
+        { title: "Invertebrados", description: "Principais filos, características, importância ecológica e econômica." },
+        { title: "Vertebrados", description: "Peixes, anfíbios, répteis, aves, mamíferos e adaptações." },
+        { title: "Sistemas fisiológicos", description: "Digestão, respiração, circulação, excreção, locomoção e integração." },
+        { title: "Reprodução e desenvolvimento", description: "Reprodução sexuada, assexuada, fecundação e desenvolvimento embrionário." },
+      ],
+      activityPrompt: "Como comparar grupos animais de forma eficiente?",
+      activityAnswer: "Relacionando características, ambiente, adaptação e modo de vida.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Botânica e Fisiologia Vegetal",
+      objective: "Compreender plantas, tecidos, reprodução e processos fisiológicos.",
+      overview: "A unidade trabalha diversidade vegetal, estrutura, transporte, fotossíntese e importância ecológica.",
+      topics: [
+        { title: "Grupos vegetais", description: "Briófitas, pteridófitas, gimnospermas e angiospermas." },
+        { title: "Tecidos e órgãos vegetais", description: "Raiz, caule, folha, flor, fruto, semente e tecidos de condução." },
+        { title: "Fotossíntese e transpiração", description: "Produção de matéria orgânica, trocas gasosas, estômatos e água." },
+        { title: "Reprodução vegetal", description: "Ciclos, polinização, fecundação, dispersão e importância dos polinizadores." },
+      ],
+      activityPrompt: "Por que angiospermas são tão abundantes?",
+      activityAnswer: "Porque flores e frutos favorecem reprodução, proteção e dispersão das sementes.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Microbiologia, Vírus e Saúde",
+      objective: "Relacionar microrganismos, doenças, imunidade, biotecnologia e saúde coletiva.",
+      overview: "A unidade conecta vírus, bactérias, protozoários e fungos a saúde, ambiente e produção de alimentos.",
+      topics: [
+        { title: "Vírus", description: "Estrutura, reprodução, vacinas, epidemias e prevenção." },
+        { title: "Bactérias", description: "Estrutura, metabolismo, doenças, antibióticos, decomposição e biotecnologia." },
+        { title: "Protozoários, algas e fungos", description: "Diversidade, ciclos, doenças, alimentos e equilíbrio ambiental." },
+        { title: "Imunidade e saúde pública", description: "Defesas do organismo, vacinação, saneamento e indicadores de saúde." },
+      ],
+      activityPrompt: "Por que vacinação é uma ação coletiva?",
+      activityAnswer: "Porque reduz circulação de doenças e protege também pessoas vulneráveis.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Ecologia e Ciclos Biogeoquímicos",
+      objective: "Analisar relações ecológicas, fluxos de energia e ciclos da matéria.",
+      overview: "A 3ª série retoma ecologia com foco em sistemas, equilíbrio, impacto humano e sustentabilidade.",
+      topics: [
+        { title: "Níveis ecológicos", description: "População, comunidade, ecossistema, biosfera e nicho ecológico." },
+        { title: "Cadeias e teias alimentares", description: "Produtores, consumidores, decompositores, fluxo de energia e pirâmides." },
+        { title: "Ciclos biogeoquímicos", description: "Ciclos da água, carbono, nitrogênio, fósforo e impactos humanos." },
+        { title: "Relações ecológicas", description: "Predação, competição, mutualismo, parasitismo, comensalismo e sucessão ecológica." },
+      ],
+      activityPrompt: "Por que a energia diminui ao longo da cadeia alimentar?",
+      activityAnswer: "Porque parte da energia é dissipada em cada nível trófico.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Biotecnologia e Genética Aplicada",
+      objective: "Avaliar aplicações, riscos e benefícios da biotecnologia.",
+      overview: "A unidade conecta genética a transgênicos, clonagem, terapia, diagnóstico e debates éticos.",
+      topics: [
+        { title: "DNA recombinante", description: "Técnicas de manipulação genética e produção de organismos modificados." },
+        { title: "Transgênicos e melhoramento", description: "Agricultura, produtividade, riscos, benefícios e regulação." },
+        { title: "Clonagem e células-tronco", description: "Conceitos, aplicações médicas, limites técnicos e debates éticos." },
+        { title: "Bioética", description: "Decisões responsáveis sobre ciência, saúde, ambiente e sociedade." },
+      ],
+      activityPrompt: "Como avaliar uma tecnologia genética?",
+      activityAnswer: "Comparando benefícios, riscos, evidências científicas e impactos sociais.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Ambiente, Sustentabilidade e Saúde",
+      objective: "Relacionar impactos ambientais, saúde humana e conservação da biodiversidade.",
+      overview: "A unidade fecha Biologia com problemas ambientais, indicadores de saúde e propostas de intervenção.",
+      topics: [
+        { title: "Biodiversidade brasileira", description: "Biomas, espécies, serviços ecossistêmicos e conservação." },
+        { title: "Impactos ambientais", description: "Desmatamento, queimadas, poluição, mudanças climáticas e perda de habitat." },
+        { title: "Saúde e ambiente", description: "Saneamento, indicadores de saúde, nutrição, mortalidade e qualidade de vida." },
+        { title: "Sustentabilidade", description: "Conservação, recuperação ambiental, consumo consciente e políticas públicas." },
+      ],
+      activityPrompt: "Por que saúde e ambiente devem ser estudados juntos?",
+      activityAnswer: "Porque qualidade ambiental afeta diretamente doenças, alimentação, saneamento e bem-estar.",
+    }),
+  ].map((module) => enhanceModuleContent("Biologia", module));
+}
+
+function buildHistoryCurriculumModules(): SubjectModuleContent[] {
+  return [
+    createCurriculumModule({
+      title: "1ª Série: Fontes, Memória e História Antiga",
+      objective: "Ler fontes históricas e compreender sociedades antigas.",
+      overview: "História começa pela análise de fontes, memória, cultura e formação das primeiras sociedades.",
+      topics: [
+        { title: "Tempo histórico e fontes", description: "Fontes materiais, escritas, orais, visuais, memória e interpretação histórica." },
+        { title: "Primeiras sociedades", description: "Nomadismo, sedentarização, agricultura, cidades e organização social." },
+        { title: "Antiguidade Oriental", description: "Egito, Mesopotâmia, povos hebreus, fenícios, persas e relações de poder." },
+        { title: "Grécia e Roma", description: "Democracia, cidadania, escravidão, república, império e legado cultural." },
+      ],
+      activityPrompt: "Por que uma fonte histórica precisa ser interpretada?",
+      activityAnswer: "Porque ela expressa contexto, interesses, autoria e limites de uma época.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Idade Média e Mundo Feudal",
+      objective: "Compreender relações sociais, cultura, religião e poder na Idade Média.",
+      overview: "A unidade analisa feudalismo, cristandade, mundo islâmico, cidades e transformações medievais.",
+      topics: [
+        { title: "Feudalismo", description: "Servidão, senhorio, vassalagem, economia agrária e relações de dependência." },
+        { title: "Igreja e cultura medieval", description: "Cristandade, educação, poder simbólico, arte e visões de mundo." },
+        { title: "Mundo islâmico", description: "Expansão, ciência, comércio, cultura e trocas com outros povos." },
+        { title: "Renascimento comercial e urbano", description: "Cidades, burguesia, rotas comerciais e crise do feudalismo." },
+      ],
+      activityPrompt: "Qual é uma característica central do feudalismo?",
+      activityAnswer: "Relações de dependência em torno da terra e do trabalho servil.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Modernidade, Colonização e África",
+      objective: "Analisar formação do mundo moderno, colonialismo e sociedades africanas e americanas.",
+      overview: "A unidade conecta expansão marítima, Estados modernos, colonialismo, África e povos originários.",
+      topics: [
+        { title: "Renascimento e Reforma", description: "Humanismo, ciência, arte, Reforma religiosa e mudanças culturais." },
+        { title: "Estados modernos e absolutismo", description: "Centralização política, mercantilismo, monarquias e conflitos." },
+        { title: "Expansão marítima e colonização", description: "Conquista, exploração, escravidão, resistências e impactos." },
+        { title: "África e povos originários", description: "Diversidade africana e indígena, cultura, política, trabalho e resistência." },
+      ],
+      activityPrompt: "Por que estudar África e povos originários junto com colonização?",
+      activityAnswer: "Porque eles foram sujeitos históricos centrais, com culturas, resistências e projetos próprios.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Brasil Colônia e Independências",
+      objective: "Compreender colonização portuguesa, escravidão, economia e processos de independência.",
+      overview: "A unidade trabalha a formação colonial, conflitos, circulação de riquezas e ruptura política no Atlântico.",
+      topics: [
+        { title: "Economia colonial", description: "Açúcar, mineração, pecuária, comércio, trabalho escravizado e mercado interno." },
+        { title: "Escravidão e resistências", description: "Tráfico atlântico, quilombos, revoltas, cultura afro-brasileira e legislação." },
+        { title: "Crise colonial", description: "Inconfidências, ideias iluministas, Revolução Haitiana e tensões metropolitanas." },
+        { title: "Independências americanas", description: "Independência do Brasil, América espanhola, continuidades e rupturas." },
+      ],
+      activityPrompt: "Por que a independência não eliminou todas as estruturas coloniais?",
+      activityAnswer: "Porque manteve elites, escravidão e muitas desigualdades sociais.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Revoluções, Capitalismo e Século XIX",
+      objective: "Analisar revoluções políticas, industriais e transformações sociais do mundo contemporâneo.",
+      overview: "A unidade conecta iluminismo, revoluções, industrialização, trabalho e conflitos sociais.",
+      topics: [
+        { title: "Iluminismo e Revolução Francesa", description: "Direitos, cidadania, soberania popular, conflitos e limites." },
+        { title: "Revolução Industrial", description: "Máquinas, fábricas, urbanização, trabalho e organização operária." },
+        { title: "Liberalismo, socialismo e nacionalismo", description: "Ideologias, movimentos políticos e disputas sociais." },
+        { title: "Imperialismo", description: "Neocolonialismo, África, Ásia, racismo científico e disputas econômicas." },
+      ],
+      activityPrompt: "Qual relação existe entre indústria e mundo do trabalho?",
+      activityAnswer: "A industrialização reorganizou produção, cidades, classe trabalhadora e conflitos sociais.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Brasil Império e Primeira República",
+      objective: "Estudar Estado nacional brasileiro, escravidão, cidadania e república oligárquica.",
+      overview: "A unidade analisa formação do Brasil independente, Segundo Reinado, abolição e República Velha.",
+      topics: [
+        { title: "Primeiro Reinado e Regências", description: "Constituição, centralização, revoltas regenciais e disputas políticas." },
+        { title: "Segundo Reinado", description: "Café, escravidão, parlamentarismo, Guerra do Paraguai e crise imperial." },
+        { title: "Abolição e pós-abolição", description: "Movimento abolicionista, Lei Áurea, exclusão social e racismo estrutural." },
+        { title: "Primeira República", description: "Coronelismo, política dos governadores, movimentos sociais e urbanização." },
+      ],
+      activityPrompt: "Por que a abolição deve ser estudada além da Lei Áurea?",
+      activityAnswer: "Porque envolve lutas, resistências, exclusões e permanências do racismo.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Guerras Mundiais e Totalitarismos",
+      objective: "Compreender guerras, crises, regimes totalitários e seus impactos globais.",
+      overview: "A unidade trabalha os conflitos do século XX, crise econômica, fascismos e reorganização mundial.",
+      topics: [
+        { title: "Primeira Guerra Mundial", description: "Imperialismo, nacionalismos, alianças, trincheiras e consequências." },
+        { title: "Crise de 1929", description: "Superprodução, colapso financeiro, desemprego e respostas estatais." },
+        { title: "Fascismo, nazismo e stalinismo", description: "Totalitarismo, propaganda, violência, controle social e perseguições." },
+        { title: "Segunda Guerra Mundial", description: "Expansionismo, genocídio, resistência, tecnologia e nova ordem mundial." },
+      ],
+      activityPrompt: "Qual é o risco político dos regimes totalitários?",
+      activityAnswer: "Concentram poder, controlam a sociedade e perseguem grupos considerados inimigos.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Brasil República, Democracia e Ditadura",
+      objective: "Analisar transformações políticas e sociais do Brasil no século XX e XXI.",
+      overview: "A unidade conecta Era Vargas, populismo, ditadura civil-militar, redemocratização e cidadania.",
+      topics: [
+        { title: "Era Vargas", description: "Trabalho, indústria, Estado, nacionalismo, autoritarismo e legislação social." },
+        { title: "República populista", description: "Democracia, desenvolvimento, conflitos sociais e crise política." },
+        { title: "Ditadura civil-militar", description: "Golpe de 1964, censura, repressão, resistência e milagre econômico." },
+        { title: "Redemocratização", description: "Constituição de 1988, cidadania, movimentos sociais e desafios democráticos." },
+      ],
+      activityPrompt: "Por que a Constituição de 1988 é chamada de cidadã?",
+      activityAnswer: "Porque ampliou direitos sociais, políticos e garantias democráticas.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Mundo Contemporâneo e Cidadania",
+      objective: "Relacionar globalização, conflitos, direitos humanos, memória e participação social.",
+      overview: "A unidade fecha História com debates contemporâneos e leitura crítica do presente.",
+      topics: [
+        { title: "Guerra Fria e nova ordem mundial", description: "Bipolaridade, corrida tecnológica, descolonização e reorganização geopolítica." },
+        { title: "Globalização e neoliberalismo", description: "Economia, trabalho, cultura, tecnologia e desigualdades." },
+        { title: "Movimentos sociais", description: "Lutas por direitos, mulheres, negros, indígenas, trabalhadores e juventudes." },
+        { title: "Memória e direitos humanos", description: "Justiça, reparação, patrimônio, democracia e combate a exclusões." },
+      ],
+      activityPrompt: "Como História ajuda a entender o presente?",
+      activityAnswer: "Relacionando processos, permanências, rupturas, disputas de memória e conflitos sociais.",
+    }),
+  ].map((module) => enhanceModuleContent("História", module));
+}
+
+function buildGeographyCurriculumModules(): SubjectModuleContent[] {
+  return [
+    createCurriculumModule({
+      title: "1ª Série: Espaço Geográfico e Cartografia",
+      objective: "Compreender espaço geográfico, paisagem, lugar, território e representações cartográficas.",
+      overview: "A Geografia começa pela leitura do espaço e pelas ferramentas de representação e localização.",
+      topics: [
+        { title: "Espaço geográfico", description: "Relação sociedade-natureza, paisagem, lugar, território, região e escala." },
+        { title: "Cartografia", description: "Mapas, escala, legenda, orientação, coordenadas e projeções." },
+        { title: "Geotecnologias", description: "Sensoriamento remoto, GPS, imagens de satélite e sistemas de informação geográfica." },
+        { title: "Leitura de gráficos e mapas", description: "Interpretação de dados espaciais, tabelas, mapas temáticos e anamorfoses." },
+      ],
+      activityPrompt: "Por que escala é importante em Geografia?",
+      activityAnswer: "Porque o fenômeno muda de sentido conforme a análise local, regional, nacional ou global.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Natureza, Relevo, Clima e Biomas",
+      objective: "Analisar sistemas naturais e sua relação com ocupação humana.",
+      overview: "A unidade trabalha estrutura da Terra, relevo, clima, hidrografia, vegetação e biomas.",
+      topics: [
+        { title: "Estrutura geológica e relevo", description: "Placas tectônicas, rochas, agentes internos e externos e formas de relevo." },
+        { title: "Clima e atmosfera", description: "Tempo, clima, massas de ar, fatores climáticos e problemas climáticos." },
+        { title: "Hidrografia", description: "Bacias hidrográficas, rios, águas subterrâneas, usos da água e conflitos." },
+        { title: "Biomas do Brasil e do mundo", description: "Características, distribuição, biodiversidade e impactos humanos." },
+      ],
+      activityPrompt: "Qual é a diferença entre tempo e clima?",
+      activityAnswer: "Tempo é condição momentânea; clima é padrão observado por longo período.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: População, Cultura e Território",
+      objective: "Interpretar distribuição populacional, migrações, diversidade cultural e organização territorial.",
+      overview: "A unidade conecta população, identidade, fluxos migratórios e desigualdades territoriais.",
+      topics: [
+        { title: "Dinâmica populacional", description: "Crescimento, natalidade, mortalidade, envelhecimento e transição demográfica." },
+        { title: "Migrações", description: "Fluxos internos e externos, refúgio, trabalho, urbanização e conflitos." },
+        { title: "Cultura e território", description: "Identidades, territorialidades, patrimônio e diversidade." },
+        { title: "Desigualdades socioespaciais", description: "Renda, acesso a serviços, segregação e indicadores sociais." },
+      ],
+      activityPrompt: "O que uma pirâmide etária permite analisar?",
+      activityAnswer: "A estrutura por idade e sexo de uma população e suas tendências demográficas.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Urbanização e Rede Urbana",
+      objective: "Analisar cidades, metropolização, problemas urbanos e hierarquia urbana.",
+      overview: "A unidade trabalha crescimento urbano, rede de cidades, planejamento e desigualdades.",
+      topics: [
+        { title: "Urbanização", description: "Industrialização, êxodo rural, crescimento urbano e metropolização." },
+        { title: "Rede e hierarquia urbana", description: "Metrópoles, cidades globais, regiões metropolitanas e fluxos." },
+        { title: "Problemas urbanos", description: "Habitação, transporte, saneamento, violência, segregação e mobilidade." },
+        { title: "Planejamento urbano", description: "Direito à cidade, políticas públicas, sustentabilidade e participação social." },
+      ],
+      activityPrompt: "O que diferencia urbanização de crescimento urbano?",
+      activityAnswer: "Urbanização é aumento da participação urbana na população; crescimento urbano é expansão da cidade.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Campo, Agricultura e Questão Agrária",
+      objective: "Compreender espaço agrário, produção agropecuária, conflitos e tecnologia.",
+      overview: "A unidade analisa uso da terra, agricultura, agroindústria, reforma agrária e impactos ambientais.",
+      topics: [
+        { title: "Estrutura fundiária", description: "Concentração de terras, latifúndio, minifúndio, reforma agrária e conflitos." },
+        { title: "Agricultura brasileira", description: "Agronegócio, agricultura familiar, produção de alimentos e exportações." },
+        { title: "Tecnologia no campo", description: "Mecanização, biotecnologia, produtividade, desemprego e concentração." },
+        { title: "Impactos ambientais no campo", description: "Desmatamento, queimadas, agrotóxicos, água e conservação do solo." },
+      ],
+      activityPrompt: "Por que a questão agrária envolve política e economia?",
+      activityAnswer: "Porque trata de acesso à terra, produção, trabalho, renda e poder territorial.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Indústria, Energia e Circulação",
+      objective: "Relacionar produção industrial, transportes, energia e organização do espaço.",
+      overview: "A unidade conecta desenvolvimento técnico, redes, logística e impactos socioambientais.",
+      topics: [
+        { title: "Industrialização", description: "Fatores locacionais, fases da indústria, desconcentração e reestruturação produtiva." },
+        { title: "Transportes e logística", description: "Rodovias, ferrovias, hidrovias, portos, custos e integração territorial." },
+        { title: "Fontes de energia", description: "Matriz energética, fontes renováveis e não renováveis, riscos e impactos." },
+        { title: "Tecnologia e trabalho", description: "Automação, redes produtivas, desterritorialização e novas relações de trabalho." },
+      ],
+      activityPrompt: "Como a tecnologia altera a produção industrial?",
+      activityAnswer: "Aumenta produtividade, reorganiza o trabalho e muda a localização das atividades.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Globalização e Geopolítica",
+      objective: "Analisar relações de poder, blocos econômicos, conflitos e fluxos globais.",
+      overview: "A unidade trabalha mundo globalizado, redes, desigualdades e disputas territoriais.",
+      topics: [
+        { title: "Globalização", description: "Fluxos de capital, mercadorias, informações, pessoas e cultura." },
+        { title: "Blocos econômicos", description: "Integração regional, comércio, acordos e disputas comerciais." },
+        { title: "Geopolítica mundial", description: "Estados, fronteiras, conflitos, poder militar, recursos e diplomacia." },
+        { title: "Organizações internacionais", description: "ONU, OMC, FMI, Banco Mundial e governança global." },
+      ],
+      activityPrompt: "O que caracteriza a globalização?",
+      activityAnswer: "A intensificação de fluxos econômicos, culturais, tecnológicos e informacionais em escala mundial.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Brasil, Região e Desenvolvimento",
+      objective: "Interpretar formação territorial brasileira, regionalização e desigualdades.",
+      overview: "A unidade aprofunda território brasileiro, população, economia, redes e desigualdades regionais.",
+      topics: [
+        { title: "Formação territorial do Brasil", description: "Ocupação, fronteiras, ciclos econômicos e integração nacional." },
+        { title: "Regionalização", description: "Regiões do IBGE, complexos regionais, critérios econômicos, naturais e culturais." },
+        { title: "Economia brasileira", description: "Indústria, agropecuária, serviços, comércio externo e infraestrutura." },
+        { title: "Desigualdades regionais", description: "Indicadores sociais, concentração econômica, políticas públicas e território." },
+      ],
+      activityPrompt: "Por que existem várias formas de regionalizar o Brasil?",
+      activityAnswer: "Porque cada regionalização usa critérios diferentes para explicar o território.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Meio Ambiente e Sustentabilidade",
+      objective: "Avaliar problemas ambientais e propostas de desenvolvimento sustentável.",
+      overview: "A unidade fecha Geografia com impactos socioambientais, conservação e políticas ambientais.",
+      topics: [
+        { title: "Problemas ambientais", description: "Desmatamento, queimadas, poluição, desertificação, ilhas de calor e enchentes." },
+        { title: "Mudanças climáticas", description: "Efeito estufa, aquecimento global, eventos extremos e adaptação." },
+        { title: "Recursos naturais", description: "Água, solo, florestas, minérios, energia e conflitos de uso." },
+        { title: "Sustentabilidade", description: "Conservação, recuperação, justiça ambiental, consumo e políticas públicas." },
+      ],
+      activityPrompt: "Por que sustentabilidade envolve sociedade e natureza?",
+      activityAnswer: "Porque depende de uso responsável dos recursos e redução de desigualdades socioambientais.",
+    }),
+  ].map((module) => enhanceModuleContent("Geografia", module));
+}
+
+function buildLiteratureCurriculumModules(): SubjectModuleContent[] {
+  return [
+    createCurriculumModule({
+      title: "1ª Série: Leitura Literária e Gêneros",
+      objective: "Desenvolver leitura literária com atenção à forma, linguagem e contexto.",
+      overview: "Literatura começa pela leitura de gêneros, recursos expressivos e relação entre texto e sociedade.",
+      topics: [
+        { title: "Texto literário e não literário", description: "Linguagem conotativa, ficcionalidade, plurissignificação e função estética." },
+        { title: "Gêneros literários", description: "Épico, lírico, dramático, narrativo moderno e formas híbridas." },
+        { title: "Elementos da narrativa", description: "Narrador, personagem, tempo, espaço, enredo, foco narrativo e conflito." },
+        { title: "Poema e eu lírico", description: "Verso, estrofe, ritmo, rima, imagem poética e voz lírica." },
+      ],
+      activityPrompt: "O que diferencia leitura literária de leitura informativa?",
+      activityAnswer: "A leitura literária observa forma, linguagem, imagens, ambiguidades e contexto estético.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Literatura Medieval, Classicismo e Quinhentismo",
+      objective: "Compreender a formação da literatura em língua portuguesa.",
+      overview: "A unidade apresenta os primeiros movimentos e suas relações com religião, oralidade, humanismo e colonização.",
+      topics: [
+        { title: "Trovadorismo", description: "Cantigas líricas e satíricas, oralidade, amor cortês e sociedade medieval." },
+        { title: "Humanismo", description: "Teatro de Gil Vicente, transição cultural e crítica de costumes." },
+        { title: "Classicismo", description: "Racionalidade, equilíbrio, medida nova, Camões e ideal renascentista." },
+        { title: "Quinhentismo", description: "Literatura de informação, catequese, colonização e representação do território." },
+      ],
+      activityPrompt: "Por que Quinhentismo tem relação com colonização?",
+      activityAnswer: "Porque registra o olhar europeu sobre o território e os povos encontrados.",
+    }),
+    createCurriculumModule({
+      title: "1ª Série: Barroco e Arcadismo",
+      objective: "Analisar contrastes barrocos e o ideal clássico do Arcadismo.",
+      overview: "A unidade relaciona formas poéticas, contexto colonial e tensões entre fé, razão, corpo e natureza.",
+      topics: [
+        { title: "Barroco", description: "Contrastes, religiosidade, conflito, cultismo e conceptismo." },
+        { title: "Gregório de Matos e Padre Vieira", description: "Sátira, crítica social, sermão, argumentação e linguagem barroca." },
+        { title: "Arcadismo", description: "Bucolismo, simplicidade, razão, pastoralismo e referências clássicas." },
+        { title: "Arcadismo no Brasil", description: "Inconfidência Mineira, poesia lírica, épica e contexto colonial." },
+      ],
+      activityPrompt: "Qual contraste marca o Barroco?",
+      activityAnswer: "O conflito entre fé e razão, corpo e alma, vida terrena e salvação.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Romantismo",
+      objective: "Estudar o Romantismo e suas relações com nação, subjetividade e sociedade.",
+      overview: "A unidade trabalha poesia, romance, indianismo, urbanidade e crítica social no século XIX.",
+      topics: [
+        { title: "Primeira geração romântica", description: "Nacionalismo, indianismo, natureza, identidade e idealização." },
+        { title: "Segunda geração romântica", description: "Subjetividade, ultrarromantismo, pessimismo, morte e evasão." },
+        { title: "Terceira geração romântica", description: "Condoreirismo, crítica social, abolicionismo e poesia pública." },
+        { title: "Romance romântico", description: "Romance urbano, regionalista, indianista, histórico e formação do público leitor." },
+      ],
+      activityPrompt: "O que o Romantismo ajudou a construir no Brasil?",
+      activityAnswer: "Uma ideia de identidade nacional, ainda marcada por idealizações e exclusões.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Realismo, Naturalismo e Parnasianismo",
+      objective: "Comparar tendências literárias do fim do século XIX.",
+      overview: "A unidade apresenta crítica social, análise psicológica, determinismo e culto à forma.",
+      topics: [
+        { title: "Realismo", description: "Crítica à sociedade burguesa, análise psicológica, ironia e objetividade." },
+        { title: "Machado de Assis", description: "Narrador, ironia, ambiguidade, crítica social e ruptura com idealizações." },
+        { title: "Naturalismo", description: "Determinismo, cientificismo, meio, raça, hereditariedade e denúncia social." },
+        { title: "Parnasianismo", description: "Formalismo, impessoalidade, rigor métrico e culto à forma." },
+      ],
+      activityPrompt: "Como o Realismo se distancia do Romantismo?",
+      activityAnswer: "Critica idealizações e observa a sociedade de forma mais irônica e analítica.",
+    }),
+    createCurriculumModule({
+      title: "2ª Série: Simbolismo e Pré-Modernismo",
+      objective: "Entender transições estéticas rumo ao Modernismo.",
+      overview: "A unidade trabalha musicalidade simbolista e crítica social pré-modernista.",
+      topics: [
+        { title: "Simbolismo", description: "Sugestão, musicalidade, sinestesia, espiritualidade e subjetividade." },
+        { title: "Cruz e Sousa e Alphonsus de Guimaraens", description: "Imagens poéticas, dor, transcendência e linguagem simbólica." },
+        { title: "Pré-Modernismo", description: "Crítica ao Brasil oficial, regionalismo, denúncia social e transição estética." },
+        { title: "Euclides, Lima Barreto e Monteiro Lobato", description: "Conflitos sociais, linguagem crítica, sertão, cidade e exclusões." },
+      ],
+      activityPrompt: "Por que o Pré-Modernismo é uma transição?",
+      activityAnswer: "Porque ainda mantém formas antigas, mas já denuncia problemas sociais do Brasil moderno.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Modernismo Brasileiro",
+      objective: "Analisar a ruptura modernista e suas fases no Brasil.",
+      overview: "A unidade trabalha Semana de 1922, experimentação, identidade nacional e crítica social.",
+      topics: [
+        { title: "Semana de 1922", description: "Ruptura estética, vanguarda, polêmica, liberdade formal e projeto moderno." },
+        { title: "Primeira fase modernista", description: "Experimentação, humor, linguagem coloquial e nacionalismo crítico." },
+        { title: "Segunda fase modernista", description: "Romance de 30, regionalismo, crítica social e poesia madura." },
+        { title: "Terceira fase modernista", description: "Geração de 45, Guimarães Rosa, Clarice Lispector e aprofundamento formal." },
+      ],
+      activityPrompt: "Qual foi a principal ruptura modernista?",
+      activityAnswer: "A busca por liberdade formal e por uma linguagem brasileira mais crítica e cotidiana.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Literatura Contemporânea e Vozes Plurais",
+      objective: "Ler produções contemporâneas considerando diversidade de vozes e suportes.",
+      overview: "A unidade trabalha literatura pós-1960, periferias, autoria feminina, negra, indígena e novas mídias.",
+      topics: [
+        { title: "Poesia e prosa contemporâneas", description: "Fragmentação, memória, identidade, metalinguagem e experimentação." },
+        { title: "Literatura negra e indígena", description: "Ancestralidade, território, denúncia, autoria e disputa de memória." },
+        { title: "Literatura feminina e periférica", description: "Vozes sociais, corpo, trabalho, violência, pertencimento e resistência." },
+        { title: "Literatura digital", description: "Blogs, redes sociais, slam, fanfic, hipertexto e circulação cultural." },
+      ],
+      activityPrompt: "O que muda ao ler literatura contemporânea?",
+      activityAnswer: "É preciso considerar pluralidade de vozes, suportes, identidades e disputas sociais.",
+    }),
+    createCurriculumModule({
+      title: "3ª Série: Obras, ENEM e Revisão Literária",
+      objective: "Revisar literatura para provas com foco em análise, contexto e comparação.",
+      overview: "A unidade fecha Literatura com estratégias de leitura de obras, poemas e questões de vestibular/ENEM.",
+      topics: [
+        { title: "Contexto de produção", description: "Autor, época, movimento, circulação, público e projeto estético." },
+        { title: "Análise de poema", description: "Eu lírico, imagens, ritmo, recursos sonoros, figuras e efeitos de sentido." },
+        { title: "Análise de narrativa", description: "Narrador, personagens, tempo, espaço, enredo, conflito e crítica social." },
+        { title: "Comparação entre textos", description: "Intertextualidade, permanências, rupturas e diálogo entre obras." },
+      ],
+      activityPrompt: "O que uma boa análise literária precisa unir?",
+      activityAnswer: "Forma, linguagem, contexto histórico e efeito de sentido.",
+    }),
+  ].map((module) => enhanceModuleContent("Literatura", module));
+}
+
 function applyCuratedCurriculum(contentMap: SubjectModuleMap): SubjectModuleMap {
   const nextMap = { ...contentMap };
   const subjectNames = Object.keys(nextMap);
   const portugueseKey = subjectNames.find((name) => normalizeText(name) === "portugues") ?? "Português";
   const mathKey = subjectNames.find((name) => normalizeText(name) === "matematica") ?? "Matemática";
+  const chemistryKey = subjectNames.find((name) => normalizeText(name) === "quimica") ?? "Química";
+  const physicsKey = subjectNames.find((name) => normalizeText(name) === "fisica") ?? "Física";
+  const biologyKey = subjectNames.find((name) => normalizeText(name) === "biologia") ?? "Biologia";
+  const historyKey = subjectNames.find((name) => normalizeText(name) === "historia") ?? "História";
+  const geographyKey = subjectNames.find((name) => normalizeText(name) === "geografia") ?? "Geografia";
+  const literatureKey = subjectNames.find((name) => normalizeText(name) === "literatura") ?? "Literatura";
 
   nextMap[portugueseKey] = buildPortugueseCurriculumModules();
   nextMap[mathKey] = buildMathCurriculumModules();
+  nextMap[chemistryKey] = buildChemistryCurriculumModules();
+  nextMap[physicsKey] = buildPhysicsCurriculumModules();
+  nextMap[biologyKey] = buildBiologyCurriculumModules();
+  nextMap[historyKey] = buildHistoryCurriculumModules();
+  nextMap[geographyKey] = buildGeographyCurriculumModules();
+  nextMap[literatureKey] = buildLiteratureCurriculumModules();
 
   return nextMap;
 }

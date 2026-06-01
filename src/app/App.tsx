@@ -1754,6 +1754,10 @@ export default function App() {
       return;
     }
 
+    if (studyProgress[subjectName]?.[moduleTitle]?.includes(activityKey)) {
+      return;
+    }
+
     setStudyProgress((current) => {
       const subjectProgress = current[subjectName] ?? {};
       const answeredActivities = subjectProgress[moduleTitle] ?? [];
@@ -3129,6 +3133,7 @@ function MateriasView({
                   module={activeModule}
                   subjectName={s.name}
                   moduleProgress={getModuleProgressPercent(studyProgress, s.name, activeModule)}
+                  answeredActivityKeys={studyProgress[s.name]?.[activeModule.title] ?? []}
                   canSaveProgress={Boolean(authUser)}
                   onActivityAnswered={onActivityAnswered}
                 />
@@ -3249,6 +3254,7 @@ function MateriasView({
                   module={activeModule}
                       subjectName={s.name}
                       moduleProgress={getModuleProgressPercent(studyProgress, s.name, activeModule)}
+                      answeredActivityKeys={studyProgress[s.name]?.[activeModule.title] ?? []}
                       canSaveProgress={Boolean(authUser)}
                       onActivityAnswered={onActivityAnswered}
                     />
@@ -3722,12 +3728,14 @@ function ModuleContent({
   module,
   subjectName,
   moduleProgress,
+  answeredActivityKeys,
   canSaveProgress,
   onActivityAnswered,
 }: {
   module: SubjectModuleContent;
   subjectName: string;
   moduleProgress: number;
+  answeredActivityKeys: string[];
   canSaveProgress: boolean;
   onActivityAnswered: (subjectName: string, moduleTitle: string, activityKey: string) => void;
 }) {
@@ -3750,6 +3758,7 @@ function ModuleContent({
   }));
   const objectivePracticeActivities = indexedPracticeActivities.filter(({ activity }) => Boolean(activity.choices?.length));
   const writtenPracticeActivities = indexedPracticeActivities.filter(({ activity }) => !activity.choices?.length);
+  const answeredActivitySet = new Set(answeredActivityKeys);
   const navigationItems = [
     ["Aula", "aula-guiada"],
     guidedActivity ? ["Exercício", "exercicio-guiado"] : null,
@@ -3925,6 +3934,7 @@ function ModuleContent({
             activity={guidedActivity}
             index={0}
             difficulty={getActivityDifficulty(guidedActivity, 0)}
+            isAnswered={answeredActivitySet.has(guidedActivity.question)}
             onAnswered={() => onActivityAnswered(subjectName, module.title, guidedActivity.question)}
           />
         </section>
@@ -3953,6 +3963,7 @@ function ModuleContent({
             items={objectivePracticeActivities}
             subjectName={subjectName}
             moduleTitle={module.title}
+            answeredActivityKeys={answeredActivityKeys}
             onActivityAnswered={onActivityAnswered}
           />
           <ModulePracticeGroup
@@ -3961,6 +3972,7 @@ function ModuleContent({
             items={writtenPracticeActivities}
             subjectName={subjectName}
             moduleTitle={module.title}
+            answeredActivityKeys={answeredActivityKeys}
             onActivityAnswered={onActivityAnswered}
           />
         </div>
@@ -3973,6 +3985,7 @@ function ModuleContent({
             activity={module.miniChallenge}
             index={0}
             difficulty="dificil"
+            isAnswered={answeredActivitySet.has(`desafio:${module.miniChallenge?.question ?? module.title}`)}
             onAnswered={() => onActivityAnswered(subjectName, module.title, `desafio:${module.miniChallenge?.question ?? module.title}`)}
           />
         </section>
@@ -4019,8 +4032,8 @@ function ModuleExamples({
         </p>
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <article className="rounded-2xl border border-border bg-background p-4 md:p-5">
+      <div className="grid items-start gap-3 xl:grid-cols-[minmax(320px,0.8fr)_minmax(420px,1.2fr)]">
+        <article className="h-fit rounded-2xl border border-border bg-background p-4 md:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
@@ -4041,7 +4054,7 @@ function ModuleExamples({
         </article>
 
         {supportExamples.length > 0 && (
-          <aside className="rounded-2xl border border-border bg-background p-4 md:p-5">
+          <aside className="h-fit rounded-2xl border border-border bg-background p-4 md:p-5">
             <h5 className="font-semibold text-foreground">Aplicações rápidas</h5>
             <div className="mt-3 space-y-3">
               {supportExamples.slice(0, 5).map((example, index) => (
@@ -5897,6 +5910,7 @@ function ModulePracticeGroup({
   items,
   subjectName,
   moduleTitle,
+  answeredActivityKeys,
   onActivityAnswered,
 }: {
   title: string;
@@ -5904,9 +5918,12 @@ function ModulePracticeGroup({
   items: { activity: SubjectModuleContent["activities"][number]; index: number }[];
   subjectName: string;
   moduleTitle: string;
+  answeredActivityKeys: string[];
   onActivityAnswered: (subjectName: string, moduleTitle: string, activityKey: string) => void;
 }) {
   if (items.length === 0) return null;
+
+  const answeredActivitySet = new Set(answeredActivityKeys);
 
   return (
     <div className="rounded-2xl border border-border bg-background p-4 md:p-5">
@@ -5926,6 +5943,7 @@ function ModulePracticeGroup({
             activity={activity}
             index={index}
             difficulty={getActivityDifficulty(activity, index)}
+            isAnswered={answeredActivitySet.has(activity.question)}
             onAnswered={() => onActivityAnswered(subjectName, moduleTitle, activity.question)}
           />
         ))}
@@ -5938,11 +5956,13 @@ function ModuleActivity({
   activity,
   index,
   difficulty,
+  isAnswered,
   onAnswered,
 }: {
   activity: SubjectModuleContent["activities"][number];
   index: number;
   difficulty: "facil" | "medio" | "dificil";
+  isAnswered: boolean;
   onAnswered: () => void;
 }) {
   const [writtenAnswer, setWrittenAnswer] = useState("");
@@ -5961,14 +5981,26 @@ function ModuleActivity({
     ? evaluateWrittenAnswer(activity, writtenAnswer)
     : null;
   const activityKind = hasChoices ? "Objetiva" : "Resposta escrita";
+  const wasAnsweredBeforeOpening = isAnswered && !showFeedback;
+  const shouldShowFeedback = showFeedback || isAnswered;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className={`rounded-xl border p-4 ${
+      isAnswered
+        ? "border-green-200 bg-green-50/50 dark:border-green-900/60 dark:bg-green-950/20"
+        : "border-border bg-card"
+    }`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <p className="font-medium leading-relaxed text-foreground">
           {index + 1}. {activity.question}
         </p>
         <div className="flex shrink-0 flex-wrap gap-2">
+          {isAnswered && (
+            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Respondida
+            </span>
+          )}
           <span className="w-fit rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
             {activityKind}
           </span>
@@ -5997,9 +6029,11 @@ function ModuleActivity({
                     : "border-border hover:bg-accent text-foreground"
                 }`}
                 onClick={() => {
+                  if (isAnswered) return;
                   setSelectedChoice(choiceIndex);
                   setShowFeedback(false);
                 }}
+                disabled={isAnswered}
                 type="button"
               >
                 <span className="mr-2 font-semibold">{String.fromCharCode(65 + choiceIndex)}.</span>
@@ -6012,10 +6046,12 @@ function ModuleActivity({
         <textarea
           value={writtenAnswer}
           onChange={(event) => {
+            if (isAnswered) return;
             setWrittenAnswer(event.target.value);
             setShowFeedback(false);
           }}
-          className="mt-4 min-h-28 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+          disabled={isAnswered}
+          className="mt-4 min-h-28 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
           placeholder="Escreva sua resposta aqui antes de conferir."
         />
       )}
@@ -6023,20 +6059,26 @@ function ModuleActivity({
       <div className="mt-3 flex justify-end">
         <button
           className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={hasChoices ? selectedChoice === null : writtenAnswer.trim().length === 0}
+          disabled={isAnswered || (hasChoices ? selectedChoice === null : writtenAnswer.trim().length === 0)}
           onClick={() => {
+            if (isAnswered) return;
             setShowFeedback(true);
             onAnswered();
           }}
           type="button"
         >
-          Conferir resposta
+          {isAnswered ? "Respondida" : "Conferir resposta"}
         </button>
       </div>
 
-      {showFeedback && (
+      {shouldShowFeedback && (
         <div className="mt-3 rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">
-          {hasChoices && activity.correctChoice !== undefined && (
+          {wasAnsweredBeforeOpening && (
+            <p className="mb-2 font-medium text-green-700 dark:text-green-400">
+              Questão já respondida. Ela não conta novamente no progresso.
+            </p>
+          )}
+          {!wasAnsweredBeforeOpening && hasChoices && activity.correctChoice !== undefined && (
             <p className={isChoiceCorrect ? "mb-2 font-medium text-green-700 dark:text-green-400" : "mb-2 font-medium text-destructive"}>
               {isChoiceCorrect ? "Resposta correta." : "Resposta incorreta."}
             </p>
