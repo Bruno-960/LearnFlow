@@ -2444,8 +2444,8 @@ function PageContainer({
 const SUBJECTS = [
   {
     name: "Português",
-    subtitle: "Gramática e Literatura",
-    topics: ["Morfologia", "Sintaxe", "Redação", "Interpretação de Texto"],
+    subtitle: "Leitura, gramática, redação e literatura",
+    topics: ["1ª Série: Base textual", "2ª Série: Argumentação", "3ª Série: ENEM e literatura"],
     progress: 0,
     color: "bg-rose-100 dark:bg-rose-950",
     iconColor: "text-rose-600 dark:text-rose-400",
@@ -2454,8 +2454,8 @@ const SUBJECTS = [
   },
   {
     name: "Matemática",
-    subtitle: "Álgebra, Geometria e mais",
-    topics: ["Funções", "Geometria Plana", "Estatística", "Trigonometria"],
+    subtitle: "Álgebra, funções, geometria e dados",
+    topics: ["1º Ano: Funções e álgebra", "2º Ano: Trigonometria e espaço", "3º Ano: Revisão ENEM"],
     progress: 0,
     color: "bg-indigo-100 dark:bg-indigo-950",
     iconColor: "text-indigo-600 dark:text-indigo-400",
@@ -2605,28 +2605,73 @@ type StudyTrack = {
 
 const STUDY_TRACK_META: Record<StudyTrackKey, { title: string; description: string }> = {
   basico: {
-    title: "Base essencial",
-    description: "Fundamentos para criar segurança antes dos exercícios mais longos.",
+    title: "1ª série",
+    description: "",
   },
   enem: {
-    title: "ENEM e vestibulares",
-    description: "Interpretação, aplicação e resolução no estilo prova.",
+    title: "2ª série",
+    description: "",
   },
   aprofundamento: {
-    title: "Aprofundamento",
-    description: "Revisões, desafios e tópicos para consolidar domínio.",
+    title: "3ª série",
+    description: "",
   },
 };
+
+function getStudyTrackMeta(subjectName: string, key: StudyTrackKey) {
+  if (subjectName === "Matemática") {
+    const mathMeta: Record<StudyTrackKey, { title: string; description: string }> = {
+      basico: {
+        title: "1º ano",
+        description: "Base",
+      },
+      enem: {
+        title: "2º ano",
+        description: "Aprofundamento",
+      },
+      aprofundamento: {
+        title: "3º ano",
+        description: "Revisão ENEM",
+      },
+    };
+
+    return mathMeta[key];
+  }
+
+  return STUDY_TRACK_META[key];
+}
 
 function normalizeStudyTrackText(value: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ª/g, "a")
+    .replace(/º/g, "o")
     .toLowerCase();
+}
+
+function formatQuestionCount(count: number) {
+  return `${count} ${count === 1 ? "questão" : "questões"}`;
+}
+
+function getModuleDisplayTitle(title: string) {
+  return title.replace(/^\d+\s*(?:[ªº]|Âª|Âº)?\s*(série|serie|ano):\s*/i, "");
 }
 
 function getModuleTrackKey(module: SubjectModuleContent, index: number, total: number): StudyTrackKey {
   const text = normalizeStudyTrackText(`${module.title} ${module.objective} ${module.learningPath?.join(" ") ?? ""}`);
+
+  if (/(1a serie|1 serie|1o ano|1 ano|primeira serie|primeiro ano)/.test(text)) {
+    return "basico";
+  }
+
+  if (/(2a serie|2 serie|2o ano|2 ano|segunda serie|segundo ano)/.test(text)) {
+    return "enem";
+  }
+
+  if (/(3a serie|3 serie|3o ano|3 ano|terceira serie|terceiro ano)/.test(text)) {
+    return "aprofundamento";
+  }
 
   if (/(enem|vestibular|prova|questao|interpretacao|redacao|competencia|habilidade)/.test(text)) {
     return "enem";
@@ -2679,8 +2724,8 @@ function buildStudyTracks(
 
       return {
         key,
-        title: STUDY_TRACK_META[key].title,
-        description: STUDY_TRACK_META[key].description,
+        title: getStudyTrackMeta(subjectName, key).title,
+        description: getStudyTrackMeta(subjectName, key).description,
         modules: trackModules,
         progressPercent,
         completedModules,
@@ -2751,7 +2796,7 @@ function buildDashboardReviewItems(
 
   if (lastStudy) {
     items.push({
-      title: `Continuar ${lastStudy.moduleTitle}`,
+      title: `Continuar ${getModuleDisplayTitle(lastStudy.moduleTitle ?? "")}`,
       description: `${lastStudy.subjectName} ja esta em andamento. Retome pelo ponto mais recente.`,
       target: lastStudy,
       action: "materias",
@@ -2768,7 +2813,7 @@ function buildDashboardReviewItems(
 
   if (activeModuleEntry) {
     items.push({
-      title: `Finalizar ${activeModuleEntry.module.title}`,
+      title: `Finalizar ${getModuleDisplayTitle(activeModuleEntry.module.title)}`,
       description: `${activeModuleEntry.subjectName} tem um modulo parcialmente concluido.`,
       target: { subjectName: activeModuleEntry.subjectName, moduleTitle: activeModuleEntry.module.title },
       action: "materias",
@@ -2990,12 +3035,12 @@ function MateriasView({
                   </span>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-2 md:grid-cols-3">
                   {studyTracks.map((track) => (
                     <button
                       key={track.key}
                       type="button"
-                      className={`rounded-xl border p-4 text-left transition-colors ${
+                      className={`rounded-xl border px-4 py-3 text-left transition-colors ${
                         activeTrack?.key === track.key
                           ? `${identity.border} ${identity.soft}`
                           : "border-border bg-background hover:bg-muted/50"
@@ -3005,10 +3050,9 @@ function MateriasView({
                         setSelectedModuleTitle(track.modules[0]?.title ?? null);
                       }}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
                           <h4 className="font-semibold text-foreground">{track.title}</h4>
-                          <p className="mt-1 text-sm text-muted-foreground">{track.description}</p>
                         </div>
                         <span
                           className={`rounded-full px-2 py-1 text-xs font-semibold ${
@@ -3019,7 +3063,7 @@ function MateriasView({
                         </span>
                       </div>
 
-                      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                         <div
                           className="h-full rounded-full bg-primary transition-all"
                           style={{ width: `${track.progressPercent}%` }}
@@ -3041,6 +3085,7 @@ function MateriasView({
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {(visibleModules.length ? visibleModules.map((module) => module.title) : s.topics).map((topic) => {
                   const module = visibleModules.find((item) => item.title === topic);
+                  const topicLabel = module ? getModuleDisplayTitle(module.title) : topic;
                   const isActive = activeModule?.title === topic;
                   const moduleProgress = module ? getModuleProgressPercent(studyProgress, s.name, module) : 0;
 
@@ -3062,7 +3107,7 @@ function MateriasView({
                     >
                       <div className="flex items-center gap-2">
                         <span className={`h-2.5 w-2.5 rounded-full ${s.iconColor.replace("text-", "bg-")}`} />
-                        <span className="truncate text-sm font-medium text-foreground">{topic}</span>
+                        <span className="truncate text-sm font-medium text-foreground">{topicLabel}</span>
                         <span className={`ml-auto text-xs ${module ? identity.accent : "text-muted-foreground"}`}>
                           {module ? `${moduleProgress}%` : "Em breve"}
                         </span>
@@ -3229,22 +3274,22 @@ const LESSON_STAGE_LABELS: Record<
   introducao: {
     title: "Introdução",
     badge: "Comece aqui",
-    tone: "border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/30",
+    tone: "border-border bg-card",
   },
   basico: {
     title: "Explicação básica",
     badge: "Base",
-    tone: "border-green-200 bg-green-50/80 dark:border-green-900 dark:bg-green-950/30",
+    tone: "border-border bg-card",
   },
   intermediario: {
     title: "Explicação intermediária",
     badge: "Aprofunde",
-    tone: "border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/30",
+    tone: "border-border bg-card",
   },
   avancado: {
     title: "Explicação avançada",
     badge: "Pegadinhas",
-    tone: "border-purple-200 bg-purple-50/80 dark:border-purple-900 dark:bg-purple-950/30",
+    tone: "border-border bg-card",
   },
 };
 
@@ -3372,15 +3417,17 @@ function buildFallbackSections(module: SubjectModuleContent): NonNullable<Subjec
 }
 
 function buildFallbackReview(module: SubjectModuleContent): NonNullable<SubjectModuleContent["review"]> {
+  const moduleDisplayTitle = getModuleDisplayTitle(module.title);
+
   return {
     summary: module.explanation
       .slice(0, 4)
       .map((paragraph) => paragraph.split(".")[0].trim())
       .filter(Boolean),
-    mentalMap: [module.title, "Conceitos", "Exemplos", "Prática", "Revisão"],
+    mentalMap: [moduleDisplayTitle, "Conceitos", "Exemplos", "Prática", "Revisão"],
     flashcards: [
       {
-        front: `Qual é a ideia central de ${module.title}?`,
+        front: `Qual é a ideia central de ${moduleDisplayTitle}?`,
         back: module.objective,
       },
       {
@@ -3406,11 +3453,12 @@ type CourseBlock = {
 };
 
 function getSubjectCourseMethod(subjectName: string, moduleTitle: string): CourseBlock[] {
+  const moduleDisplayTitle = getModuleDisplayTitle(moduleTitle);
   const commonMastery = {
     title: "Plano de domínio",
     label: "método",
     paragraphs: [
-      `Estudar ${moduleTitle} no nível completo exige três voltas: entender a ideia, aplicar em situações diferentes e revisar os erros depois de algum intervalo.`,
+      `Estudar ${moduleDisplayTitle} no nível completo exige três voltas: entender a ideia, aplicar em situações diferentes e revisar os erros depois de algum intervalo.`,
       "Na primeira volta, o foco é compreender o conceito sem pressa. Na segunda, o foco é resolver problemas. Na terceira, o foco é explicar com suas próprias palavras e corrigir lacunas.",
     ],
     tasks: [
@@ -3566,6 +3614,7 @@ function getSubjectCourseMethod(subjectName: string, moduleTitle: string): Cours
 function buildCourseBlocks(subjectName: string, module: SubjectModuleContent): CourseBlock[] {
   const firstExample = module.examples[0];
   const firstActivity = module.activities[0];
+  const moduleDisplayTitle = getModuleDisplayTitle(module.title);
 
   return [
     ...getSubjectCourseMethod(subjectName, module.title),
@@ -3575,7 +3624,7 @@ function buildCourseBlocks(subjectName: string, module: SubjectModuleContent): C
       paragraphs: [
         module.explanation[0] ?? module.objective,
         module.explanation[1] ?? "Aprofunde o conceito ligando definição, aplicação e erro comum.",
-        `Para dominar ${module.title}, o aluno precisa alternar leitura, resolução, explicação oral e revisão. O objetivo é reconhecer o tema em contextos novos, não apenas repetir a definição.`,
+        `Para dominar ${moduleDisplayTitle}, o aluno precisa alternar leitura, resolução, explicação oral e revisão. O objetivo é reconhecer o tema em contextos novos, não apenas repetir a definição.`,
       ],
       tasks: [
         "Transforme a explicação em um mapa de 6 palavras-chave.",
@@ -3588,7 +3637,7 @@ function buildCourseBlocks(subjectName: string, module: SubjectModuleContent): C
       title: "Aplicação no ENEM",
       label: "prova",
       paragraphs: [
-        `Em prova, ${module.title} costuma aparecer misturado a interpretação de texto, gráficos, situações cotidianas ou problemas sociais.`,
+        `Em prova, ${moduleDisplayTitle} costuma aparecer misturado a interpretação de texto, gráficos, situações cotidianas ou problemas sociais.`,
         "A banca normalmente não cobra só memória. Ela cobra leitura do contexto, identificação da regra útil e escolha da alternativa mais coerente com o enunciado.",
       ],
       tasks: [
@@ -3606,8 +3655,8 @@ function buildCourseBlocks(subjectName: string, module: SubjectModuleContent): C
         "O treino deve misturar reconhecimento, aplicação e explicação. Isso evita falsa sensação de aprendizado causada por apenas ler o conteúdo.",
       ],
       tasks: [
-        `Defina ${module.title} em uma frase objetiva.`,
-        `Dê um exemplo real de aplicação de ${module.title}.`,
+        `Defina ${moduleDisplayTitle} em uma frase objetiva.`,
+        `Dê um exemplo real de aplicação de ${moduleDisplayTitle}.`,
         "Explique um erro comum que alguém cometeria nesse assunto.",
         "Resolva uma questão com consulta e depois outra sem consulta.",
         "Crie uma analogia própria para o conceito principal.",
@@ -3687,30 +3736,94 @@ function ModuleContent({
   const learningPath = module.learningPath ?? DEFAULT_LEARNING_PATH;
   const identity = getSubjectIdentity(subjectName);
   const courseBlocks = buildCourseBlocks(subjectName, module);
+  const totalTasks = getModuleActivityTotal(module);
+  const completedTasks = Math.min(totalTasks, Math.round((moduleProgress / 100) * totalTasks));
+  const estimatedMinutes = Math.max(8, Math.min(28, 8 + sections.length * 2 + module.activities.length * 2));
+  const xpReward = 40 + module.activities.length * 5 + (module.miniChallenge ? 15 : 0);
+  const hasHardActivity = module.activities.some((activity) => getActivityDifficulty(activity, 0) === "dificil");
+  const difficultyLabel = hasHardActivity ? "Médio" : "Fácil";
+  const guidedActivity = module.activities[0] ?? null;
+  const practiceActivities = guidedActivity ? module.activities.slice(1) : module.activities;
+  const indexedPracticeActivities = practiceActivities.map((activity, index) => ({
+    activity,
+    index: index + (guidedActivity ? 1 : 0),
+  }));
+  const objectivePracticeActivities = indexedPracticeActivities.filter(({ activity }) => Boolean(activity.choices?.length));
+  const writtenPracticeActivities = indexedPracticeActivities.filter(({ activity }) => !activity.choices?.length);
+  const navigationItems = [
+    ["Aula", "aula-guiada"],
+    guidedActivity ? ["Exercício", "exercicio-guiado"] : null,
+    ["Visual", "visual-conceito"],
+    ["Exemplos", "exemplos-resolvidos"],
+    ["Prática", "pratica-graduada"],
+    ["Revisão", "revisao-final"],
+  ].filter(Boolean) as [string, string][];
 
   return (
-    <div className="space-y-6 rounded-xl border border-border bg-background/60 p-4 md:p-6">
-      <div className={`rounded-2xl border ${identity.border} ${identity.soft} p-5 md:p-6`}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-background text-base font-semibold ${identity.accent}`}>
-            {identity.icon}
-          </span>
-          <p className={`text-sm font-medium ${identity.accent}`}>{identity.label}</p>
-        </div>
-        <div className="mt-1 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <h3 className="text-2xl md:text-3xl font-semibold text-foreground">{module.title}</h3>
-          <div className="min-w-40">
-            <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Andamento</span>
-              <span>{moduleProgress}%</span>
+    <div className="space-y-8 rounded-2xl border border-border bg-card p-5 md:p-8">
+      <div className="overflow-hidden rounded-2xl border border-border bg-background p-5 md:p-7">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-lg font-semibold text-primary">
+                {identity.icon}
+              </span>
+              <p className="text-sm font-medium text-muted-foreground">{identity.label}</p>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${moduleProgress}%` }} />
+            <h3 className="mt-3 text-2xl font-semibold text-foreground md:text-3xl">{getModuleDisplayTitle(module.title)}</h3>
+            <p className="mt-2 max-w-4xl text-sm leading-relaxed text-muted-foreground md:text-base">{module.objective}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {difficultyLabel}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-semibold text-muted-foreground">
+                <Timer className="h-3.5 w-3.5" />
+                {estimatedMinutes} min
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full rounded-2xl border border-border bg-card p-4 lg:w-64">
+            <div
+              className="hidden"
+              style={{
+                background: `conic-gradient(hsl(var(--primary)) ${moduleProgress * 3.6}deg, hsl(var(--muted)) 0deg)`,
+              }}
+            >
+              <div className="absolute inset-2 flex flex-col items-center justify-center rounded-full bg-background text-center">
+                <span className="text-2xl font-bold text-foreground">{moduleProgress}%</span>
+                <span className="text-[10px] font-medium uppercase text-muted-foreground">concluído</span>
+              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">Progresso do módulo</p>
+              <div className="mt-1 flex items-end justify-between gap-3">
+                <p className="text-2xl font-semibold text-foreground">{moduleProgress}%</p>
+                <p className="pb-1 text-xs text-muted-foreground">{completedTasks}/{totalTasks} atividades</p>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${moduleProgress}%` }} />
+              </div>
             </div>
           </div>
         </div>
-        <div className="mt-2">
-          <p className="max-w-4xl text-sm md:text-base leading-relaxed text-muted-foreground">{module.objective}</p>
+
+        <div className="hidden">
+          <div className="rounded-xl bg-card p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Primeiro passo</p>
+            <p className="mt-1 text-sm font-semibold leading-snug text-foreground">{learningPath[0] ?? "Entenda a ideia central"}</p>
+          </div>
+          <div className="rounded-xl bg-card p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Treino ativo</p>
+            <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
+              {formatQuestionCount(module.activities.length)} + exemplos resolvidos
+            </p>
+          </div>
+          <div className="rounded-xl bg-card p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Saída esperada</p>
+            <p className="mt-1 text-sm font-semibold leading-snug text-foreground">Explicar, aplicar e revisar sem depender do resumo.</p>
+          </div>
         </div>
         {!canSaveProgress && (
           <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
@@ -3719,30 +3832,20 @@ function ModuleContent({
         )}
       </div>
 
-      <section className="space-y-3">
-        <h4 className="text-base md:text-lg font-semibold text-foreground">Rota de aprendizagem</h4>
-        <div className="grid gap-3 md:grid-cols-4">
-          {learningPath.map((step, index) => (
-            <div key={step} className="rounded-xl border border-border bg-card p-4">
-              <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                {index + 1}
-              </div>
-              <p className="text-sm font-medium leading-relaxed text-foreground">{step}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ModuleLearningOverview
+        learningPath={learningPath}
+        review={review}
+        activityCount={module.activities.length}
+        hasVisual={Boolean(module.visual)}
+        moduleProgress={moduleProgress}
+        completedTasks={completedTasks}
+        totalTasks={totalTasks}
+        xpReward={xpReward}
+      />
 
       <div className="sticky top-0 z-10 -mx-4 border-y border-border bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <div className="flex gap-2 overflow-x-auto">
-          {[
-            ["Aula", "aula-guiada"],
-            ["Aprofundamento", "aprofundamento"],
-            ["Visual", "visual-conceito"],
-            ["Exemplos", "exemplos-resolvidos"],
-            ["Prática", "pratica-graduada"],
-            ["Revisão", "revisao-final"],
-          ].map(([label, target]) => (
+          {navigationItems.map(([label, target]) => (
             <a
               key={target}
               href={`#${target}`}
@@ -3754,7 +3857,7 @@ function ModuleContent({
         </div>
       </div>
 
-      <section id="aula-guiada" className="scroll-mt-24 space-y-3">
+      <section id="aula-guiada" className="scroll-mt-24 space-y-4">
         <div>
           <h4 className="text-base md:text-lg font-semibold text-foreground">Aula guiada</h4>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -3767,38 +3870,38 @@ function ModuleContent({
             return (
               <article
                 key={`${section.level}-${section.title}`}
-                className={`rounded-2xl border p-4 md:p-5 ${stage.tone}`}
+                className={`rounded-2xl border p-5 md:p-7 ${stage.tone}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className="rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-primary">
+                    <span className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
                       {stage.badge}
                     </span>
                     <h5 className="mt-2 text-base md:text-lg font-semibold text-foreground">{section.title}</h5>
                     <p className="text-xs text-muted-foreground">{stage.title}</p>
                   </div>
                 </div>
-                <div className="mt-4 space-y-3 text-sm md:text-base leading-relaxed text-foreground">
+                <div className="mt-5 max-w-4xl space-y-4 text-sm leading-7 text-foreground md:text-base md:leading-8">
                   {section.paragraphs.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
                   {section.analogy && (
-                    <div className="rounded-lg bg-background/70 p-3">
+                    <div className="rounded-xl border border-border bg-background p-4">
                       <strong>Analogia: </strong>{section.analogy}
                     </div>
                   )}
                   {section.whyItMatters && (
-                    <div className="rounded-lg bg-background/70 p-3">
+                    <div className="rounded-xl border border-border bg-background p-4">
                       <strong>Por que importa: </strong>{section.whyItMatters}
                     </div>
                   )}
                   {section.commonMistake && (
-                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                    <div className="rounded-xl border border-border bg-background p-4">
                       <strong>Erro comum: </strong>{section.commonMistake}
                     </div>
                   )}
                   {section.teacherTip && (
-                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <div className="rounded-xl border border-border bg-background p-4">
                       <strong>Truque de professor: </strong>{section.teacherTip}
                     </div>
                   )}
@@ -3808,6 +3911,24 @@ function ModuleContent({
           })}
         </div>
       </section>
+
+      {guidedActivity && (
+        <section id="exercicio-guiado" className="scroll-mt-24 space-y-3 rounded-2xl border border-border bg-background p-4 md:p-5">
+          <div>
+            <p className="text-sm font-medium text-primary">Checkpoint guiado</p>
+            <h4 className="mt-1 text-base font-semibold text-foreground md:text-lg">Tente antes de seguir</h4>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Responda uma questão curta para confirmar se o conceito principal ficou claro.
+            </p>
+          </div>
+          <ModuleActivity
+            activity={guidedActivity}
+            index={0}
+            difficulty={getActivityDifficulty(guidedActivity, 0)}
+            onAnswered={() => onActivityAnswered(subjectName, module.title, guidedActivity.question)}
+          />
+        </section>
+      )}
 
       <div id="aprofundamento" className="scroll-mt-24">
         <CourseCompleteSection blocks={courseBlocks} identity={identity} />
@@ -3820,29 +3941,28 @@ function ModuleContent({
       )}
 
       <section id="exemplos-resolvidos" className="scroll-mt-24 space-y-3">
-        <h4 className="text-base md:text-lg font-semibold text-foreground">Exemplos resolvidos</h4>
-        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-          {module.examples.map((example) => (
-            <div key={example.title} className="rounded-xl border border-border bg-card p-4">
-              <h5 className="font-semibold text-foreground">{example.title}</h5>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{example.content}</p>
-            </div>
-          ))}
-        </div>
+        <ModuleExamples examples={module.examples} />
       </section>
 
       <section id="pratica-graduada" className="scroll-mt-24 space-y-3">
         <h4 className="text-base md:text-lg font-semibold text-foreground">Prática graduada</h4>
-        <div className="space-y-3">
-          {module.activities.map((activity, index) => (
-            <ModuleActivity
-              key={activity.question}
-              activity={activity}
-              index={index}
-              difficulty={getActivityDifficulty(activity, index)}
-              onAnswered={() => onActivityAnswered(subjectName, module.title, activity.question)}
-            />
-          ))}
+        <div className="space-y-4">
+          <ModulePracticeGroup
+            title="Questões objetivas"
+            description="Resolva primeiro para testar reconhecimento, cálculo e eliminação de alternativas."
+            items={objectivePracticeActivities}
+            subjectName={subjectName}
+            moduleTitle={module.title}
+            onActivityAnswered={onActivityAnswered}
+          />
+          <ModulePracticeGroup
+            title="Respostas escritas"
+            description="Use para explicar o raciocínio com suas palavras e fechar lacunas de compreensão."
+            items={writtenPracticeActivities}
+            subjectName={subjectName}
+            moduleTitle={module.title}
+            onActivityAnswered={onActivityAnswered}
+          />
         </div>
       </section>
 
@@ -3858,11 +3978,241 @@ function ModuleContent({
         </section>
       )}
 
+      <section className="rounded-2xl border border-border bg-background p-5 md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h4 className="text-base font-semibold text-foreground md:text-lg">Fechamento da aula</h4>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Ao terminar, revise o que errou e registre a atividade para manter seu progresso.
+            </p>
+          </div>
+          <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-3 md:min-w-[420px]">
+            <span className="rounded-xl border border-border bg-card px-3 py-2">+{xpReward} XP</span>
+            <span className="rounded-xl border border-border bg-card px-3 py-2">+1 aula concluída</span>
+            <span className="rounded-xl border border-border bg-card px-3 py-2">sequência mantida</span>
+          </div>
+        </div>
+      </section>
+
       <div id="revisao-final" className="scroll-mt-24">
         <ModuleReview review={review} subjectName={subjectName} />
       </div>
     </div>
   );
+}
+
+function ModuleExamples({
+  examples,
+}: {
+  examples: SubjectModuleContent["examples"];
+}) {
+  if (examples.length === 0) return null;
+
+  const [mainExample, ...supportExamples] = examples;
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h4 className="text-base font-semibold text-foreground md:text-lg">Exemplos resolvidos</h4>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          Comece pelo exemplo guiado e depois compare com as aplicações rápidas.
+        </p>
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+        <article className="rounded-2xl border border-border bg-background p-4 md:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                exemplo guiado
+              </span>
+              <h5 className="mt-3 text-lg font-semibold text-foreground">{mainExample.title}</h5>
+            </div>
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-primary">
+              <BookOpen className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-foreground md:text-base md:leading-8">
+            {mainExample.content}
+          </p>
+          <div className="mt-4 rounded-xl border border-border bg-card p-3 text-sm leading-relaxed text-muted-foreground">
+            <strong className="text-foreground">Como estudar:</strong> cubra a resposta, tente refazer o raciocínio e só depois compare com o exemplo.
+          </div>
+        </article>
+
+        {supportExamples.length > 0 && (
+          <aside className="rounded-2xl border border-border bg-background p-4 md:p-5">
+            <h5 className="font-semibold text-foreground">Aplicações rápidas</h5>
+            <div className="mt-3 space-y-3">
+              {supportExamples.slice(0, 5).map((example, index) => (
+                <article key={example.title} className="rounded-xl border border-border bg-card p-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-background text-xs font-semibold text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <h6 className="text-sm font-semibold text-foreground">{example.title}</h6>
+                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{example.content}</p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </aside>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GuidedLessonPlan({
+  learningPath,
+  review,
+  activityCount,
+  hasVisual,
+}: {
+  learningPath: string[];
+  review: NonNullable<SubjectModuleContent["review"]>;
+  activityCount: number;
+  hasVisual: boolean;
+}) {
+  const supportItems = [
+    `${review.summary.length} pontos de resumo`,
+    `${formatQuestionCount(activityCount)} de prática`,
+    hasVisual ? "mapa visual disponível" : "mapa mental de revisão",
+  ];
+
+  return (
+    <section className="rounded-2xl border border-border bg-background p-5 md:p-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div>
+          <h4 className="text-base font-semibold text-foreground md:text-lg">Plano de leitura</h4>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            Siga a aula em ordem. Primeiro entenda, depois aplique, depois revise.
+          </p>
+          <ol className="mt-5 space-y-3">
+            {learningPath.slice(0, 4).map((step, index) => (
+              <li key={step} className="flex gap-3 rounded-xl border border-border bg-card p-4">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-background text-xs font-semibold text-muted-foreground">
+                  {index + 1}
+                </span>
+                <span className="text-sm font-medium leading-relaxed text-foreground">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <aside className="rounded-xl border border-border bg-card p-4">
+          <h5 className="text-sm font-semibold text-foreground">Apoio da aula</h5>
+          <div className="mt-3 space-y-2">
+            {supportItems.map((item) => (
+              <p key={item} className="rounded-lg bg-background px-3 py-2 text-sm text-muted-foreground">
+                {item}
+              </p>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function ModuleLearningOverview({
+  learningPath,
+  review,
+  activityCount,
+  hasVisual,
+  moduleProgress,
+  completedTasks,
+  totalTasks,
+  xpReward,
+}: {
+  learningPath: string[];
+  review: NonNullable<SubjectModuleContent["review"]>;
+  activityCount: number;
+  hasVisual: boolean;
+  moduleProgress: number;
+  completedTasks: number;
+  totalTasks: number;
+  xpReward: number;
+}) {
+  const goals = learningPath.slice(0, 4);
+  const tools = [
+    {
+      icon: <BookOpen className="h-4 w-4" />,
+      title: "Resumo guiado",
+      description: `${review.summary.length} pontos para revisar sem reler tudo.`,
+    },
+    {
+      icon: <Target className="h-4 w-4" />,
+      title: "Prática do conteúdo",
+      description: `${formatQuestionCount(activityCount)} para treinar aplicação.`,
+    },
+    {
+      icon: <BarChart3 className="h-4 w-4" />,
+      title: hasVisual ? "Mapa visual" : "Mapa mental",
+      description: `${review.mentalMap.length} conexões para fixar o tema.`,
+    },
+  ];
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h4 className="text-base font-semibold text-foreground md:text-lg">O que você vai aprender</h4>
+        <p className="text-sm text-muted-foreground">Objetivos práticos para sair da aula sabendo aplicar.</p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {goals.map((goal, index) => (
+          <div key={goal} className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card text-xs font-semibold text-muted-foreground">
+              {index + 1}
+            </span>
+            <p className="text-sm font-medium leading-relaxed text-foreground">{goal}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {tools.map((tool) => (
+          <div key={tool.title} className="flex gap-3 rounded-xl border border-border bg-background p-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
+              {tool.icon}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{tool.title}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{tool.description}</p>
+            </div>
+          </div>
+        ))}
+        <div className="rounded-xl border border-border bg-background p-3">
+          <p className="text-sm font-semibold text-foreground">Desempenho</p>
+          <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
+            <div className="rounded-lg bg-card p-2">
+              <strong className="block text-foreground">{moduleProgress}%</strong>
+              <span className="text-xs text-muted-foreground">progresso</span>
+            </div>
+            <div className="rounded-lg bg-card p-2">
+              <strong className="block text-foreground">{completedTasks}</strong>
+              <span className="text-xs text-muted-foreground">feitas</span>
+            </div>
+            <div className="rounded-lg bg-card p-2">
+              <strong className="block text-foreground">{Math.max(totalTasks - completedTasks, 0)}</strong>
+              <span className="text-xs text-muted-foreground">restantes</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-background p-3">
+          <p className="text-sm font-semibold text-foreground">Recompensas</p>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-card px-2.5 py-1">+{xpReward} XP</span>
+            <span className="rounded-full bg-card px-2.5 py-1">+1 aula</span>
+            <span className="rounded-full bg-card px-2.5 py-1">sequência</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
 }
 
 function CourseCompleteSection({
@@ -3943,20 +4293,25 @@ function ModuleVisual({
 }) {
   const identity = getSubjectIdentity(subjectName);
   const isCustomChemistryVisual = subjectName === "Química";
+  const isCustomMathVisual = subjectName === "Matemática";
 
   return (
     <section className="space-y-3">
       <h4 className="text-base md:text-lg font-semibold text-foreground">{identity.visualTitle}</h4>
       <div className={`rounded-xl border ${identity.border} bg-card p-4 md:p-5`}>
-        <div className={`flex flex-col gap-5 ${isCustomChemistryVisual ? "" : "lg:flex-row lg:items-start"}`}>
-          <div className={isCustomChemistryVisual ? "w-full" : "flex-1"}>
-            <p className={`text-sm font-medium ${identity.accent}`}>{visual.title}</p>
-            <p className="mt-2 text-sm md:text-base leading-relaxed text-muted-foreground">{visual.description}</p>
-            <div className="mt-4">
+        <div className={`flex flex-col gap-5 ${isCustomChemistryVisual || isCustomMathVisual ? "" : "lg:flex-row lg:items-start"}`}>
+          <div className={isCustomChemistryVisual || isCustomMathVisual ? "w-full" : "flex-1"}>
+            {!isCustomMathVisual && (
+              <>
+                <p className={`text-sm font-medium ${identity.accent}`}>{visual.title}</p>
+                <p className="mt-2 text-sm md:text-base leading-relaxed text-muted-foreground">{visual.description}</p>
+              </>
+            )}
+            <div className={isCustomMathVisual ? "mt-0" : "mt-4"}>
               <SubjectSignature subjectName={subjectName} nodes={visual.nodes} visualTitle={visual.title} />
             </div>
           </div>
-          {!isCustomChemistryVisual && (
+          {!isCustomChemistryVisual && !isCustomMathVisual && (
           <div className="flex-1">
             <div className={`grid gap-2 ${visual.type === "function-graph" ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>
               {visual.nodes.map((node, index) => (
@@ -4624,33 +4979,46 @@ function FunctionSignature({ nodes }: { nodes: string[] }) {
   const labels = nodes.length ? nodes.slice(0, 6) : ["Entrada x", "Regra", "Saída f(x)", "Tabela", "Gráfico", "Interpretação"];
 
   return (
-    <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
-      <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-xl border border-indigo-200 bg-background p-4 dark:border-indigo-900">
-          <svg viewBox="0 0 420 240" className="h-[240px] w-full">
+    <div className="rounded-xl border border-border bg-background p-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(520px,1.25fr)_minmax(280px,0.75fr)]">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <svg viewBox="0 0 520 300" className="h-[300px] w-full" role="img" aria-label="Funções e formas geométricas">
             <defs>
               <marker id="mathArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                <path d="M0,0 L8,4 L0,8 Z" className="fill-current text-indigo-600" />
+                <path d="M0,0 L8,4 L0,8 Z" className="fill-current text-primary" />
               </marker>
             </defs>
-            <line x1="42" y1="200" x2="388" y2="200" stroke="currentColor" strokeWidth="2" markerEnd="url(#mathArrow)" className="text-muted-foreground" />
-            <line x1="60" y1="216" x2="60" y2="26" stroke="currentColor" strokeWidth="2" markerEnd="url(#mathArrow)" className="text-muted-foreground" />
-            <path d="M70 180 L140 148 L210 116 L280 84 L350 52" fill="none" stroke="currentColor" strokeWidth="4" className="text-indigo-600" />
-            <path d="M70 168 C140 48 250 48 350 168" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="8 7" className="text-violet-500" />
-            {[70, 140, 210, 280, 350].map((x, index) => (
-              <circle key={x} cx={x} cy={180 - index * 32} r="5" className="fill-current text-indigo-600" />
+            <rect x="20" y="18" width="480" height="264" rx="18" className="fill-muted/20" />
+            <line x1="56" y1="214" x2="286" y2="214" stroke="currentColor" strokeWidth="2" markerEnd="url(#mathArrow)" className="text-muted-foreground" />
+            <line x1="72" y1="232" x2="72" y2="52" stroke="currentColor" strokeWidth="2" markerEnd="url(#mathArrow)" className="text-muted-foreground" />
+            <path d="M82 188 L128 164 L174 140 L220 116 L266 92" fill="none" stroke="currentColor" strokeWidth="4" className="text-primary" />
+            <path d="M84 184 C126 70 206 70 270 184" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="7 7" className="text-muted-foreground" />
+            {[82, 128, 174, 220, 266].map((x, index) => (
+              <circle key={x} cx={x} cy={188 - index * 24} r="5" className="fill-current text-primary" />
             ))}
-            <text x="88" y="44" className="fill-foreground text-sm font-semibold">f(x)=ax+b</text>
-            <text x="252" y="68" className="fill-violet-700 text-sm font-semibold dark:fill-violet-300">ax²+bx+c</text>
-            <text x="344" y="224" className="fill-muted-foreground text-xs">entrada</text>
-            <text x="18" y="42" className="fill-muted-foreground text-xs">saída</text>
+            <rect x="332" y="54" width="72" height="54" rx="8" fill="none" stroke="currentColor" strokeWidth="4" className="text-primary" />
+            <text x="328" y="132" className="fill-muted-foreground text-[10px]">retângulo</text>
+            <polygon points="430,110 470,54 504,110" fill="none" stroke="currentColor" strokeWidth="4" className="text-primary" />
+            <line x1="470" y1="54" x2="470" y2="110" stroke="currentColor" strokeWidth="2" strokeDasharray="5 5" className="text-muted-foreground" />
+            <text x="430" y="132" className="fill-muted-foreground text-[10px]">triângulo</text>
+            <circle cx="370" cy="190" r="35" fill="none" stroke="currentColor" strokeWidth="4" className="text-primary" />
+            <line x1="370" y1="190" x2="405" y2="190" stroke="currentColor" strokeWidth="3" className="text-primary" />
+            <text x="410" y="196" className="fill-muted-foreground text-[10px]">raio</text>
+            <path d="M440 184 L490 184 L490 232" fill="none" stroke="currentColor" strokeWidth="4" className="text-primary" />
+            <text x="438" y="172" className="fill-muted-foreground text-[10px]">90°</text>
           </svg>
+          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+            <span className="rounded-lg bg-background px-3 py-2">Função afim: f(x)=ax+b</span>
+            <span className="rounded-lg bg-background px-3 py-2">Quadrática: ax²+bx+c</span>
+            <span className="rounded-lg bg-background px-3 py-2">Áreas: b.h, b.h/2, πr²</span>
+            <span className="rounded-lg bg-background px-3 py-2">Pitágoras: a²=b²+c²</span>
+          </div>
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
           {labels.map((node, index) => (
-            <div key={`${node}-${index}`} className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-background p-3 dark:border-indigo-900">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200">
+            <div key={`${node}-${index}`} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-xs font-bold text-primary">
                 {index + 1}
               </span>
               <span className="text-sm font-medium text-foreground">{node}</span>
@@ -4666,27 +5034,27 @@ function GeometrySignature({ nodes }: { nodes: string[] }) {
   const labels = nodes.length ? nodes.slice(0, 5) : ["Figura", "Medidas", "Perímetro", "Área", "Semelhança"];
 
   return (
-    <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 dark:border-cyan-900 dark:bg-cyan-950/20">
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-xl border border-cyan-200 bg-background p-4 dark:border-cyan-900">
-          <svg viewBox="0 0 420 230" className="h-[230px] w-full">
+    <div className="rounded-xl border border-border bg-background p-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(480px,1.2fr)_minmax(320px,0.8fr)]">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <svg viewBox="0 0 420 230" className="h-[250px] w-full">
             <rect x="34" y="42" width="112" height="78" rx="8" fill="none" stroke="currentColor" strokeWidth="4" className="text-cyan-600" />
-            <text x="70" y="138" className="fill-foreground text-sm font-semibold">A=b.h</text>
+            <text x="70" y="138" className="fill-muted-foreground text-xs">base x altura</text>
             <polygon points="205,122 260,42 330,122" fill="none" stroke="currentColor" strokeWidth="4" className="text-indigo-600" />
             <line x1="260" y1="42" x2="260" y2="122" stroke="currentColor" strokeWidth="2" strokeDasharray="5 5" className="text-muted-foreground" />
-            <text x="225" y="146" className="fill-foreground text-sm font-semibold">A=b.h/2</text>
+            <text x="226" y="146" className="fill-muted-foreground text-xs">metade do retângulo</text>
             <circle cx="104" cy="184" r="32" fill="none" stroke="currentColor" strokeWidth="4" className="text-violet-600" />
             <line x1="104" y1="184" x2="136" y2="184" stroke="currentColor" strokeWidth="3" className="text-violet-600" />
-            <text x="150" y="190" className="fill-foreground text-sm font-semibold">πr²</text>
+            <text x="150" y="190" className="fill-muted-foreground text-xs">raio</text>
             <path d="M260 178 L330 178 L330 208" fill="none" stroke="currentColor" strokeWidth="4" className="text-emerald-600" />
             <text x="252" y="166" className="fill-muted-foreground text-xs">Pitágoras</text>
           </svg>
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-1">
           {labels.map((node, index) => (
-            <div key={`${node}-${index}`} className="rounded-xl border border-cyan-200 bg-background p-3 dark:border-cyan-900">
-              <p className="text-xs font-semibold uppercase text-cyan-700 dark:text-cyan-300">Passo {index + 1}</p>
+            <div key={`${node}-${index}`} className="rounded-xl border border-border bg-card p-3">
+              <p className="text-xs font-semibold uppercase text-primary">Passo {index + 1}</p>
               <p className="text-sm font-medium text-foreground">{node}</p>
             </div>
           ))}
@@ -4736,10 +5104,10 @@ function TrigonometrySignature({ nodes }: { nodes: string[] }) {
   const labels = nodes.length ? nodes.slice(0, 5) : ["Ângulo", "Cateto oposto", "Cateto adjacente", "Hipotenusa", "Razões"];
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/20">
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-xl border border-amber-200 bg-background p-4 dark:border-amber-900">
-          <svg viewBox="0 0 420 230" className="h-[230px] w-full">
+    <div className="rounded-xl border border-border bg-background p-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(520px,1.25fr)_minmax(320px,0.75fr)]">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <svg viewBox="0 0 420 230" className="h-[250px] w-full">
             <polygon points="70,178 330,178 330,48" fill="none" stroke="currentColor" strokeWidth="5" className="text-amber-600" />
             <path d="M94 178 A24 24 0 0 1 111 161" fill="none" stroke="currentColor" strokeWidth="3" className="text-violet-600" />
             <rect x="306" y="154" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground" />
@@ -4754,10 +5122,10 @@ function TrigonometrySignature({ nodes }: { nodes: string[] }) {
           </svg>
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-1">
           {labels.map((node, index) => (
-            <div key={`${node}-${index}`} className="rounded-xl border border-amber-200 bg-background p-3 dark:border-amber-900">
-              <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">Conceito {index + 1}</p>
+            <div key={`${node}-${index}`} className="rounded-xl border border-border bg-card p-3">
+              <p className="text-xs font-semibold uppercase text-primary">Conceito {index + 1}</p>
               <p className="text-sm font-medium text-foreground">{node}</p>
             </div>
           ))}
@@ -5442,10 +5810,16 @@ function ModuleReview({
   subjectName: string;
 }) {
   const identity = getSubjectIdentity(subjectName);
+  const coreSummary = review.summary.slice(0, 5);
+  const extraSummary = review.summary.slice(5);
+  const coreFlashcards = review.flashcards.slice(0, 4);
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h4 className="text-base md:text-lg font-semibold text-foreground">{identity.reviewTitle}</h4>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Use esta parte para fechar a aula em poucos minutos e decidir o que revisar depois.
+      </p>
       <div className="grid gap-3 lg:grid-cols-3">
         <div className={`rounded-xl border ${identity.border} bg-card p-4`}>
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -5453,7 +5827,7 @@ function ModuleReview({
             <span className={`rounded-full ${identity.soft} px-2.5 py-1 text-xs ${identity.accent}`}>essencial</span>
           </div>
           <div className="space-y-3">
-            {review.summary.map((item, index) => (
+            {coreSummary.map((item, index) => (
               <div key={item} className="rounded-lg border border-border bg-background p-3">
                 <div className={`mb-2 flex h-7 w-7 items-center justify-center rounded-full ${identity.soft} text-xs font-semibold ${identity.accent}`}>
                   {index + 1}
@@ -5462,6 +5836,16 @@ function ModuleReview({
               </div>
             ))}
           </div>
+          {extraSummary.length > 0 && (
+            <details className="mt-3 rounded-lg border border-border bg-background p-3">
+              <summary className="cursor-pointer text-sm font-medium text-foreground">Ver mais pontos de revisão</summary>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+                {extraSummary.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
         <div className={`rounded-xl border ${identity.border} bg-card p-4`}>
           <h5 className="font-semibold text-foreground">Mapa mental</h5>
@@ -5491,7 +5875,7 @@ function ModuleReview({
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{review.flashcards.length} cards</span>
           </div>
           <div className="space-y-3">
-            {review.flashcards.map((card) => (
+            {coreFlashcards.map((card) => (
               <details key={card.front} className="group rounded-xl border border-border bg-background p-3 transition-colors open:border-primary/40 open:bg-primary/5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground">
                   <span>{card.front}</span>
@@ -5504,6 +5888,49 @@ function ModuleReview({
         </div>
       </div>
     </section>
+  );
+}
+
+function ModulePracticeGroup({
+  title,
+  description,
+  items,
+  subjectName,
+  moduleTitle,
+  onActivityAnswered,
+}: {
+  title: string;
+  description: string;
+  items: { activity: SubjectModuleContent["activities"][number]; index: number }[];
+  subjectName: string;
+  moduleTitle: string;
+  onActivityAnswered: (subjectName: string, moduleTitle: string, activityKey: string) => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-border bg-background p-4 md:p-5">
+      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h5 className="font-semibold text-foreground">{title}</h5>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+        </div>
+        <span className="w-fit rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+          {formatQuestionCount(items.length)}
+        </span>
+      </div>
+      <div className="space-y-3">
+        {items.map(({ activity, index }) => (
+          <ModuleActivity
+            key={activity.question}
+            activity={activity}
+            index={index}
+            difficulty={getActivityDifficulty(activity, index)}
+            onAnswered={() => onActivityAnswered(subjectName, moduleTitle, activity.question)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -5533,6 +5960,7 @@ function ModuleActivity({
   const writtenEvaluation = showFeedback && !hasChoices
     ? evaluateWrittenAnswer(activity, writtenAnswer)
     : null;
+  const activityKind = hasChoices ? "Objetiva" : "Resposta escrita";
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -5540,7 +5968,11 @@ function ModuleActivity({
         <p className="font-medium leading-relaxed text-foreground">
           {index + 1}. {activity.question}
         </p>
-        <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <span className="w-fit rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
+            {activityKind}
+          </span>
+          <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
           difficulty === "facil"
             ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
             : difficulty === "medio"
@@ -5548,7 +5980,8 @@ function ModuleActivity({
               : "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
         }`}>
           {difficulty === "facil" ? "Fácil" : difficulty === "medio" ? "Médio" : "Difícil"}
-        </span>
+          </span>
+        </div>
       </div>
 
       {hasChoices ? (
