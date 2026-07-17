@@ -32,6 +32,7 @@ import {
   Camera,
   Lock,
   Coins,
+  PlayCircle, // <-- ADICIONADO
 } from "lucide-react";
 import {
   DEFAULT_PROFILE,
@@ -121,6 +122,9 @@ import enem2025Q36ViolenciaEscola from "../imports/enem2025/enem-2025-branco-por
 import enem2025Q39BancoTatu from "../imports/enem2025/enem-2025-branco-por-q39-banco-tatu.png";
 import enem2025Q43Gufra from "../imports/enem2025/enem-2025-branco-por-q43-gufra.png";
 
+// >>> IMPORT DO VIDEOSPAGE <<<
+import VideosPage from './videos/VideosPage';
+
 type View =
   | "home"
   | "calendar"
@@ -129,7 +133,8 @@ type View =
   | "simulados"
   | "avaliacoes"
   | "desempenho"
-  | "configuracoes";
+  | "configuracoes"
+  | "videos"; // <-- ADICIONADO
 
 type StudyProgress = StudyProgressMap;
 
@@ -155,6 +160,7 @@ const NAV_ITEMS: { view: View; icon: React.ReactNode; label: string }[] = [
   { view: "calendar", icon: <Calendar className="w-5 h-5" />, label: "Calendário" },
   { view: "materias", icon: <BookOpen className="w-5 h-5" />, label: "Matérias" },
   { view: "flashcards", icon: <CreditCard className="w-5 h-5" />, label: "Flashcards" },
+  { view: "videos", icon: <PlayCircle className="w-5 h-5" />, label: "Vídeos" }, // <-- NOVO
   { view: "simulados", icon: <Timer className="w-5 h-5" />, label: "Simulados" },
   { view: "avaliacoes", icon: <Trophy className="w-5 h-5" />, label: "Avaliações" },
   { view: "desempenho", icon: <BarChart3 className="w-5 h-5" />, label: "Desempenho" },
@@ -162,10 +168,11 @@ const NAV_ITEMS: { view: View; icon: React.ReactNode; label: string }[] = [
 ];
 
 const BOTTOM_NAV: (typeof NAV_ITEMS)[number][] = [
-  NAV_ITEMS[0],
-  NAV_ITEMS[1],
-  NAV_ITEMS[3],
-  NAV_ITEMS[4],
+  NAV_ITEMS[0], // home
+  NAV_ITEMS[1], // calendar
+  NAV_ITEMS[3], // flashcards
+  NAV_ITEMS[4], // videos
+  NAV_ITEMS[5], // simulados
 ];
 
 const VIEW_TITLES: Record<View, { title: string; subtitle: string }> = {
@@ -173,6 +180,7 @@ const VIEW_TITLES: Record<View, { title: string; subtitle: string }> = {
   calendar: { title: "Calendário", subtitle: "Organize seus estudos" },
   materias: { title: "Matérias", subtitle: "Seus módulos de estudo" },
   flashcards: { title: "Flashcards", subtitle: "Reforce seus conhecimentos" },
+  videos: { title: "Vídeos", subtitle: "Assista e acompanhe seu progresso" }, // <-- NOVO
   simulados: { title: "Simulados", subtitle: "Pratique com simulados" },
   avaliacoes: { title: "Avaliações", subtitle: "Seu desempenho" },
   desempenho: { title: "Desempenho", subtitle: "Acompanhe sua evolução" },
@@ -2131,18 +2139,31 @@ export default function App() {
             )
           )}
           {currentView === "flashcards" && (
-            authUser ? (
-              <FlashcardsView profileId={profileId} onUserActivity={markUserActivity} />
-            ) : (
-              <AccountRequiredView
-                title="Flashcards salvos por usuário"
-                description="Entre para criar decks, revisar cards e manter seu histórico sincronizado na sua conta."
-                authUser={authUser}
-                authReady={authReady}
-                onAuthChanged={reloadProfile}
-              />
-            )
-          )}
+  authUser ? (
+    <FlashcardsView profileId={profileId} onUserActivity={markUserActivity} />
+  ) : (
+    <AccountRequiredView
+      title="Flashcards salvos por usuário"
+      description="Entre para criar decks, revisar cards e manter seu histórico sincronizado na sua conta."
+      authUser={authUser}
+      authReady={authReady}
+      onAuthChanged={reloadProfile}
+    />
+  )
+)}
+{currentView === "videos" && (
+  authUser ? (
+    <VideosPage />
+  ) : (
+    <AccountRequiredView
+      title="Vídeos salvos por usuário"
+      description="Entre para acompanhar quais vídeos você já assistiu e manter seu progresso sincronizado."
+      authUser={authUser}
+      authReady={authReady}
+      onAuthChanged={reloadProfile}
+    />
+  )
+)}
           {currentView === "simulados" && <SimuladosView onUserActivity={markUserActivity} />}
           {currentView === "materias" && (
             <MateriasView
